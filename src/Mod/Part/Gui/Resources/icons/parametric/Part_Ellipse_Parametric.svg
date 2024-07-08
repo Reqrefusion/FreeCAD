@@ -3,8 +3,8 @@
 <svg xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:svg="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="64px" height="64px" id="svg2784" sodipodi:version="0.32" inkscape:version="0.48.5 r10040" sodipodi:docname="Part_Ellipse_Parametric.svg" inkscape:output_extension="org.inkscape.output.svg.inkscape" version="1.1">
   <defs id="defs2786">
     <linearGradient inkscape:collect="always" id="linearGradient3799">
-      <stop style="stop-color:#729fcf;stop-opacity:1;" offset="0" id="stop3801"/>
-      <stop style="stop-color:#204a87;stop-opacity:1" offset="1" id="stop3803"/>
+      <stop style="stop-color:#588dc6;stop-opacity:1;" offset="0" id="stop3801"/>
+      <stop style="stop-color:#2862b6;stop-opacity:1" offset="1" id="stop3803"/>
     </linearGradient>
     <linearGradient id="linearGradient3777">
       <stop style="stop-color:#71b2f8;stop-opacity:1;" offset="0" id="stop3779"/>
@@ -85,8 +85,8 @@
   </metadata>
   <g id="layer1" inkscape:label="Layer 1" inkscape:groupmode="layer">
     <g id="g3807" transform="matrix(0.84197406,-0.47313342,0.48611395,0.81949112,-21.26585,11.014576)" style="fill:none">
-      <path transform="matrix(0.92979592,0.00301193,0.00281114,0.86456349,1.4549855,7.132857)" d="M 68.137291,46 A 32.137291,16 0 1 1 3.862709,46 32.137291,16 0 1 1 68.137291,46 z" sodipodi:ry="16" sodipodi:rx="32.137291" sodipodi:cy="46" sodipodi:cx="36" id="path3011-3-3" style="fill:none;stroke:#204a87;stroke-width:6.97702732000000037;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.50000000000000000;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:20.39999999999999858" sodipodi:type="arc"/>
-      <path transform="matrix(0.92979592,0.00301194,0.00281114,0.86456349,1.3912492,7.0963945)" d="M 68.137291,46 C 68.137291,54.836556 53.748936,62 36,62 18.251064,62 3.862709,54.836556 3.862709,46 3.862709,37.163444 18.251064,30 36,30 c 17.748936,0 32.137291,7.163444 32.137291,16 z" sodipodi:ry="16" sodipodi:rx="32.137291" sodipodi:cy="46" sodipodi:cx="36" id="path3011-3" style="fill:none;stroke:#729fcf;stroke-width:2.32567595999999988;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.50000000000000000;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:20.39999999999999858" sodipodi:type="arc"/>
+      <path transform="matrix(0.92979592,0.00301193,0.00281114,0.86456349,1.4549855,7.132857)" d="M 68.137291,46 A 32.137291,16 0 1 1 3.862709,46 32.137291,16 0 1 1 68.137291,46 z" sodipodi:ry="16" sodipodi:rx="32.137291" sodipodi:cy="46" sodipodi:cx="36" id="path3011-3-3" style="fill:none;stroke:#2862b6;stroke-width:6.97702732000000037;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.50000000000000000;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:20.39999999999999858" sodipodi:type="arc"/>
+      <path transform="matrix(0.92979592,0.00301194,0.00281114,0.86456349,1.3912492,7.0963945)" d="M 68.137291,46 C 68.137291,54.836556 53.748936,62 36,62 18.251064,62 3.862709,54.836556 3.862709,46 3.862709,37.163444 18.251064,30 36,30 c 17.748936,0 32.137291,7.163444 32.137291,16 z" sodipodi:ry="16" sodipodi:rx="32.137291" sodipodi:cy="46" sodipodi:cx="36" id="path3011-3" style="fill:none;stroke:#588dc6;stroke-width:2.32567595999999988;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.50000000000000000;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:20.39999999999999858" sodipodi:type="arc"/>
     </g>
     <g transform="matrix(1,0,0,-1,47.032608,91.953503)" id="g3150-8">
       <path inkscape:connector-curvature="0" id="path3130-9" d="M -17,60 9,74" style="fill:none;stroke:#280000;stroke-width:6;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" sodipodi:nodetypes="cc"/>

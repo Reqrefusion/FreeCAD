@@ -3,8 +3,8 @@
 <svg xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:svg="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="64px" height="64px" id="svg2901" sodipodi:version="0.32" inkscape:version="0.48.5 r10040" sodipodi:docname="Tree_Part_Torus_Parametric.svg" inkscape:output_extension="org.inkscape.output.svg.inkscape" version="1.1">
   <defs id="defs2903">
     <linearGradient inkscape:collect="always" id="linearGradient3826">
-      <stop style="stop-color:#729fcf;stop-opacity:1" offset="0" id="stop3828"/>
-      <stop style="stop-color:#204a87;stop-opacity:1" offset="1" id="stop3830"/>
+      <stop style="stop-color:#588dc6;stop-opacity:1" offset="0" id="stop3828"/>
+      <stop style="stop-color:#2862b6;stop-opacity:1" offset="1" id="stop3830"/>
     </linearGradient>
     <linearGradient id="linearGradient3763">
       <stop style="stop-color:#71b2f8;stop-opacity:1;" offset="0" id="stop3765"/>
@@ -98,8 +98,8 @@
     </rdf:RDF>
   </metadata>
   <g id="layer1" inkscape:label="Layer 1" inkscape:groupmode="layer">
-    <path style="fill:url(#linearGradient3832);fill-opacity:1;stroke:#0b1521;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.50000000000000000;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:20.39999999999999858" d="M 32 13 C 15.983742 13 3 22.849736 3 35 C 3 47.150264 15.983742 57 32 57 C 48.016258 57 61 47.150264 61 35 C 61 22.849736 48.016258 13 32 13 z M 32 27 C 40.284271 27 47 30.134007 47 34 C 47 37.865993 40.284271 41 32 41 C 23.715729 41 17 37.865993 17 34 C 17 30.134007 23.715729 27 32 27 z " id="path3019"/>
-    <path inkscape:connector-curvature="0" style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.50000000000000000;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:20.39999999999999858" d="M 32,15 C 17.088312,15 5,23.954306 5,35 5,46.045694 17.088312,55 32,55 46.911688,55 59,46.045694 59,35 59,23.954306 46.911688,15 32,15 z m -0.994299,10.044301 c 13.922413,-0.179 17.882659,5.366352 17.882659,8.880891 0,3.51454 -4.10346,9.253215 -17.031272,9.109362 -11.637733,-0.129499 -16.899763,-5.677681 -16.899763,-9.192221 0,-3.514539 4.409998,-8.648397 16.048376,-8.798032 z" id="path3019-6" sodipodi:nodetypes="ssssssssss"/>
+    <path style="fill:url(#linearGradient3832);fill-opacity:1;stroke:#23446c;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.50000000000000000;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:20.39999999999999858" d="M 32 13 C 15.983742 13 3 22.849736 3 35 C 3 47.150264 15.983742 57 32 57 C 48.016258 57 61 47.150264 61 35 C 61 22.849736 48.016258 13 32 13 z M 32 27 C 40.284271 27 47 30.134007 47 34 C 47 37.865993 40.284271 41 32 41 C 23.715729 41 17 37.865993 17 34 C 17 30.134007 23.715729 27 32 27 z " id="path3019"/>
+    <path inkscape:connector-curvature="0" style="fill:none;stroke:#588dc6;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.50000000000000000;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:20.39999999999999858" d="M 32,15 C 17.088312,15 5,23.954306 5,35 5,46.045694 17.088312,55 32,55 46.911688,55 59,46.045694 59,35 59,23.954306 46.911688,15 32,15 z m -0.994299,10.044301 c 13.922413,-0.179 17.882659,5.366352 17.882659,8.880891 0,3.51454 -4.10346,9.253215 -17.031272,9.109362 -11.637733,-0.129499 -16.899763,-5.677681 -16.899763,-9.192221 0,-3.514539 4.409998,-8.648397 16.048376,-8.798032 z" id="path3019-6" sodipodi:nodetypes="ssssssssss"/>
     <g transform="matrix(0.30349206,0,0,-0.28556833,7.3019047,68.05364)" id="g3150-8">
       <path inkscape:connector-curvature="0" id="path3130-9" d="M 10,57 29,78" style="fill:none;stroke:#280000;stroke-width:20.38086319;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" sodipodi:nodetypes="cc"/>
       <path inkscape:connector-curvature="0" id="path3130-2-7" d="M 10,57 29,78" style="fill:none;stroke:#ef2929;stroke-width:6.79362106;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" sodipodi:nodetypes="cc"/>
