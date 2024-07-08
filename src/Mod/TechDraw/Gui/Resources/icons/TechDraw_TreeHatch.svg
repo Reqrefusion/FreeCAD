@@ -60,7 +60,7 @@
       <stop
          id="stop3811"
          offset="1"
-         style="stop-color:#ffffff;stop-opacity:1" />
+         style="stop-color:#23446c;stop-opacity:1" />
     </linearGradient>
     <pattern
        height=".1"
@@ -101,7 +101,7 @@
     <path
        id="rect4151-7"
        d="M 37,5.043883 V 36 L 5,35.956117 V 59 H 59 V 5 Z"
-       style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:none;stroke:#ffffff;stroke-width:2.23077;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker:none;enable-background:accumulate" />
+       style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:none;stroke:#23446c;stroke-width:2.23077;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker:none;enable-background:accumulate" />
     <path
        id="path2998"
        d="M 61.000002,3.0000001 35.236175,29.031718"

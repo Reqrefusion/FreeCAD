@@ -30,7 +30,7 @@
          offset="0"
          id="stop3777-7" />
       <stop
-         style="stop-color:#ffffff;stop-opacity:1"
+         style="stop-color:#23446c;stop-opacity:1"
          offset="1"
          id="stop3779-5" />
     </linearGradient>
@@ -55,11 +55,11 @@
     <linearGradient
        id="linearGradient4">
       <stop
-         style="stop-color:#204a87;stop-opacity:1;"
+         style="stop-color:#2862b6;stop-opacity:1;"
          offset="0"
          id="stop3" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:1;"
+         style="stop-color:#457cc4;stop-opacity:1;"
          offset="1"
          id="stop4" />
     </linearGradient>
@@ -91,7 +91,7 @@
          y="3"
          transform="rotate(-90)" />
       <rect
-         style="display:inline;fill:url(#linearGradient3781-3);fill-opacity:1;stroke:#ffffff;stroke-width:3.05964;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         style="display:inline;fill:url(#linearGradient3781-3);fill-opacity:1;stroke:#23446c;stroke-width:3.05964;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
          id="rect2987-1"
          width="41.999996"
          height="54.000004"
@@ -151,7 +151,7 @@
            y="3"
            transform="rotate(-90)" />
         <rect
-           style="display:inline;fill:url(#linearGradient9);fill-opacity:1;stroke:#ffffff;stroke-width:3.05964;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="display:inline;fill:url(#linearGradient9);fill-opacity:1;stroke:#23446c;stroke-width:3.05964;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect2"
            width="41.999996"
            height="54.000004"
@@ -191,7 +191,7 @@
            id="path6"
            transform="matrix(0.81818183,0,0,0.63636367,-1.5230411,16.701177)" />
         <path
-           style="display:none;fill:url(#linearGradient10);stroke:#729fcf;stroke-width:3.05964;stroke-linecap:square"
+           style="display:none;fill:url(#linearGradient10);stroke:#588dc6;stroke-width:3.05964;stroke-linecap:square"
            d="m 14.060547,20.060547 h 3.878906 v 10 h 10 v 3.878906 H 14.060547 Z"
            id="path7"
            transform="matrix(0.81818183,0,0,0.63636367,-1.5230411,16.701177)" />

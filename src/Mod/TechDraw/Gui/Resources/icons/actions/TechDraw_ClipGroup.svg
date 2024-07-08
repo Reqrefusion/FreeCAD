@@ -30,7 +30,7 @@
          offset="0"
          id="stop3868" />
       <stop
-         style="stop-color:#ffffff;stop-opacity:1"
+         style="stop-color:#23446c;stop-opacity:1"
          offset="1"
          id="stop3870" />
     </linearGradient>
@@ -62,7 +62,7 @@
              d="m 11,3 v 58.00002 h 42 v -48 L 43,3 Z"
              id="path2991" />
           <path
-             style="fill:none;stroke:#ffffff;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+             style="fill:none;stroke:#23446c;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
              d="M 13,5 V 59.00002 H 51 V 13.81392 L 41.99741,5 Z"
              id="path3763" />
           <path

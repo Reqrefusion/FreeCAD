@@ -18,33 +18,33 @@
     <linearGradient
        id="linearGradient30">
       <stop
-         style="stop-color:#204a87;stop-opacity:1;"
+         style="stop-color:#2862b6;stop-opacity:1;"
          offset="0"
          id="stop30" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:1;"
+         style="stop-color:#457cc4;stop-opacity:1;"
          offset="1"
          id="stop31" />
     </linearGradient>
     <linearGradient
        id="linearGradient28">
       <stop
-         style="stop-color:#204a87;stop-opacity:1;"
+         style="stop-color:#2862b6;stop-opacity:1;"
          offset="0"
          id="stop28" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:1;"
+         style="stop-color:#457cc4;stop-opacity:1;"
          offset="1"
          id="stop29" />
     </linearGradient>
     <linearGradient
        id="linearGradient16">
       <stop
-         style="stop-color:#204a87;stop-opacity:1;"
+         style="stop-color:#2862b6;stop-opacity:1;"
          offset="0"
          id="stop16" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:1;"
+         style="stop-color:#457cc4;stop-opacity:1;"
          offset="1"
          id="stop17" />
     </linearGradient>
@@ -123,32 +123,32 @@
     <g
        id="g29">
       <path
-         style="fill:#729fcf;stroke:#0b1521;stroke-width:0.529167;stroke-linejoin:round;stroke-dasharray:none;stroke-dashoffset:4.65667;paint-order:normal"
+         style="fill:#588dc6;stroke:#23446c;stroke-width:0.529167;stroke-linejoin:round;stroke-dasharray:none;stroke-dashoffset:4.65667;paint-order:normal"
          d="M 0.79375001,8.4666669 5.2916667,5.2916667 v 6.3500003 z"
          id="path13" />
       <path
-         style="fill:url(#linearGradient29);stroke:#729fcf;stroke-width:0.52916667;stroke-linejoin:round;stroke-dasharray:none;stroke-dashoffset:4.65667;paint-order:normal"
+         style="fill:url(#linearGradient29);stroke:#588dc6;stroke-width:0.52916667;stroke-linejoin:round;stroke-dasharray:none;stroke-dashoffset:4.65667;paint-order:normal"
          d="M 4.7617187,6.3105469 V 10.623047 L 1.7089844,8.4667969 Z"
          id="path28" />
     </g>
     <g
        id="g31">
       <path
-         style="fill:#729fcf;stroke:#0b1521;stroke-width:0.529167;stroke-linejoin:round;stroke-dasharray:none;stroke-dashoffset:4.65667;paint-order:normal"
+         style="fill:#588dc6;stroke:#23446c;stroke-width:0.529167;stroke-linejoin:round;stroke-dasharray:none;stroke-dashoffset:4.65667;paint-order:normal"
          d="M 16.139584,8.4666669 11.641667,5.2916667 v 6.3500003 z"
          id="path25" />
       <path
-         style="fill:url(#linearGradient31);stroke:#729fcf;stroke-width:0.529167;stroke-linejoin:round;stroke-dasharray:none;stroke-dashoffset:4.65667;paint-order:normal"
+         style="fill:url(#linearGradient31);stroke:#588dc6;stroke-width:0.529167;stroke-linejoin:round;stroke-dasharray:none;stroke-dashoffset:4.65667;paint-order:normal"
          d="m 12.171875,6.3125 3.050781,2.1542969 -3.050781,2.1542971 z"
          id="path29" />
     </g>
   </g>
   <path
-     style="fill:#babdb6;stroke:#0b1521;stroke-width:2.11666669;stroke-linejoin:round;stroke-dasharray:none;stroke-dashoffset:5.4;paint-order:stroke fill markers"
+     style="fill:#babdb6;stroke:#23446c;stroke-width:2.11666669;stroke-linejoin:round;stroke-dasharray:none;stroke-dashoffset:5.4;paint-order:stroke fill markers"
      d="M 6.0854167,8.4666669 H 10.847917"
      id="path26" />
   <path
-     style="fill:#babdb6;stroke:#729fcf;stroke-width:1.05833334;stroke-linejoin:round;stroke-dasharray:none;stroke-dashoffset:5.4;paint-order:stroke fill markers"
+     style="fill:#babdb6;stroke:#588dc6;stroke-width:1.05833334;stroke-linejoin:round;stroke-dasharray:none;stroke-dashoffset:5.4;paint-order:stroke fill markers"
      d="M 6.0854167,8.4666669 H 10.847917"
      id="path27" />
 </svg>

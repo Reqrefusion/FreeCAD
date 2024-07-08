@@ -39,11 +39,11 @@
     <linearGradient
        id="linearGradient3873">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1;"
+         style="stop-color:#588dc6;stop-opacity:1;"
          offset="0"
          id="stop3875" />
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2862b6;stop-opacity:1"
          offset="1"
          id="stop3877" />
     </linearGradient>
@@ -180,11 +180,11 @@
     <linearGradient
        id="linearGradient3812-2">
       <stop
-         style="stop-color:#3465a4;stop-opacity:1"
+         style="stop-color:#457cc4;stop-opacity:1"
          offset="0"
          id="stop3814-9" />
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#588dc6;stop-opacity:1"
          offset="1"
          id="stop3816-1" />
     </linearGradient>
@@ -253,12 +253,12 @@
          transform="matrix(0.86997005,0,0,0.86663677,26.084867,6.7443139)"
          d="m 38.064973,52.085354 c 0,4.460915 -3.602431,8.077202 -8.046254,8.077202 -4.443824,0 -8.046254,-3.616287 -8.046254,-8.077202 0,-4.460916 3.60243,-8.077202 8.046254,-8.077202 4.443823,0 8.046254,3.616286 8.046254,8.077202 z"
          id="path3024"
-         style="fill:none;stroke:#0b1521;stroke-width:6.91003942000000038;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.50000000000000000;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:20.39999999999999858" />
+         style="fill:none;stroke:#23446c;stroke-width:6.91003942000000038;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.50000000000000000;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:20.39999999999999858" />
       <path
          transform="matrix(0.86997005,0,0,0.86663677,26.084867,6.7443139)"
          d="m 38.064973,52.085354 c 0,4.460915 -3.602431,8.077202 -8.046254,8.077202 -4.443824,0 -8.046254,-3.616287 -8.046254,-8.077202 0,-4.460916 3.60243,-8.077202 8.046254,-8.077202 4.443823,0 8.046254,3.616286 8.046254,8.077202 z"
          id="path3024-3"
-         style="fill:url(#linearGradient3879);stroke:#729fcf;stroke-width:2.30334663000000006;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.50000000000000000;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:20.39999999999999858;fill-opacity:1" />
+         style="fill:url(#linearGradient3879);stroke:#588dc6;stroke-width:2.30334663000000006;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.50000000000000000;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:20.39999999999999858;fill-opacity:1" />
     </g>
     <path
        style="fill:none;stroke:#d3d7cf;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"

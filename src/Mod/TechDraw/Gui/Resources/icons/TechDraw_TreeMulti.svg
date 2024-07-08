@@ -23,7 +23,7 @@
       <stop
          id="stop3880"
          offset="1"
-         style="stop-color:#ffffff;stop-opacity:1" />
+         style="stop-color:#23446c;stop-opacity:1" />
     </linearGradient>
     <linearGradient
        gradientUnits="userSpaceOnUse"
@@ -117,7 +117,7 @@
          id="path2998"
          style="fill:#d3d7cf;fill-opacity:1;stroke:#2e3436;stroke-width:2.4375;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
       <rect
-         style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:url(#linearGradient3882);fill-opacity:1;fill-rule:nonzero;stroke:#ffffff;stroke-width:1.1736;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker:none;enable-background:accumulate"
+         style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:url(#linearGradient3882);fill-opacity:1;fill-rule:nonzero;stroke:#23446c;stroke-width:1.1736;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker:none;enable-background:accumulate"
          id="rect3063-9"
          y="4.7814593"
          x="6.6018314"
@@ -126,14 +126,14 @@
          height="7.3023829"
          width="7.3023815" />
       <path
-         style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:url(#linearGradient3890);fill-opacity:1;fill-rule:evenodd;stroke:#ffffff;stroke-width:1.1736;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker:none;enable-background:accumulate"
+         style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:url(#linearGradient3890);fill-opacity:1;fill-rule:evenodd;stroke:#23446c;stroke-width:1.1736;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker:none;enable-background:accumulate"
          id="path3833-4"
          d="m 22.262359,12.853347 4.484607,3.293062 -1.684691,5.289449 -5.578908,0.02761 -1.727923,-5.319306 z" />
       <path
          transform="matrix(0.37448106,0,0,0.37448107,2.2016797,3.9121302)"
          d="m 31.25,45.5 c 0,5.384776 -4.365224,9.75 -9.75,9.75 -5.384776,0 -9.75,-4.365224 -9.75,-9.75 0,-5.384776 4.365224,-9.75 9.75,-9.75 5.384776,0 9.75,4.365224 9.75,9.75 z"
          id="path2998-8"
-         style="fill:url(#linearGradient3898);fill-opacity:1;stroke:#ffffff;stroke-width:3.13392;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+         style="fill:url(#linearGradient3898);fill-opacity:1;stroke:#23446c;stroke-width:3.13392;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
     </g>
     <path
        y="5"

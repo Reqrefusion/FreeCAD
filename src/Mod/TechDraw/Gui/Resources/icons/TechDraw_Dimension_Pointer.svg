@@ -10,7 +10,7 @@
      id="defs16" />
   <g
      id="crosshair"
-     style="stroke:#ffffff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:miter"
+     style="stroke:#23446c;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:miter"
      transform="translate(-0.4111349)">
     <path
        d="m 16,3 v 9 m 0,8 v 9 M 3,16 h 9 m 8,0 h 9"

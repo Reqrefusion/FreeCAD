@@ -30,7 +30,7 @@
          offset="0"
          id="stop3868" />
       <stop
-         style="stop-color:#ffffff;stop-opacity:1"
+         style="stop-color:#23446c;stop-opacity:1"
          offset="1"
          id="stop3870" />
     </linearGradient>
@@ -78,7 +78,7 @@
            d="m 11,3 v 58.00002 h 42 v -48 L 43,3 Z"
            id="path2991" />
         <path
-           style="display:inline;fill:url(#linearGradient3771);fill-opacity:1;stroke:#ffffff;stroke-width:1.91152;stroke-linecap:butt;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1"
+           style="display:inline;fill:url(#linearGradient3771);fill-opacity:1;stroke:#23446c;stroke-width:1.91152;stroke-linecap:butt;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1"
            d="m 12.912109,4.9121094 h 29.296875 l 8.878907,8.8789066 V 59.087891 H 12.912109 Z"
            id="path1" />
         <path
@@ -90,37 +90,37 @@
     <g
        transform="matrix(0.61151012,0,0,0.61150998,6.5206223,12.370854)"
        id="layer1-7"
-       style="fill:#ffffff;stroke:#2e3436">
+       style="fill:#23446c;stroke:#2e3436">
       <rect
          width="56.18182"
          height="46.545456"
          x="4"
          y="9.272728"
          id="rect3002"
-         style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:#2e3436;stroke-width:4;marker:none;enable-background:accumulate" />
+         style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:#23446c;fill-opacity:1;fill-rule:nonzero;stroke:#2e3436;stroke-width:4;marker:none;enable-background:accumulate" />
       <rect
          width="65.411766"
          height="52.329411"
          x="2.4192533"
          y="5.934762"
          id="rect3002-9"
-         style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:#ffffff;stroke:#2e3436;stroke-width:4;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker:none;enable-background:accumulate" />
+         style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:#23446c;stroke:#2e3436;stroke-width:4;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker:none;enable-background:accumulate" />
       <path
          d="M 2.4192533,19.017115 H 67.831017"
          id="path3790"
-         style="fill:#ffffff;stroke:#2e3436;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+         style="fill:#23446c;stroke:#2e3436;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
       <path
          d="M 25.313371,5.9347618 V 58.264173"
          id="path3792"
-         style="fill:#ffffff;stroke:#2e3436;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+         style="fill:#23446c;stroke:#2e3436;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
       <path
          d="M 2.4192533,32.099467 H 67.831017"
          id="path3794"
-         style="fill:#ffffff;stroke:#2e3436;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+         style="fill:#23446c;stroke:#2e3436;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
       <path
          d="M 2.4192533,45.18182 H 67.831017"
          id="path3796"
-         style="fill:#ffffff;stroke:#2e3436;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+         style="fill:#23446c;stroke:#2e3436;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     </g>
   </g>
 </svg>

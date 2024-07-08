@@ -41,7 +41,7 @@
          offset="0"
          id="stop3868" />
       <stop
-         style="stop-color:#ffffff;stop-opacity:1"
+         style="stop-color:#23446c;stop-opacity:1"
          offset="1"
          id="stop3870" />
     </linearGradient>
@@ -120,7 +120,7 @@
          transform="matrix(0.96242293,0,0,0.96562013,5.0942359,1.5075269)"
          style="stroke-width:1.03732">
         <path
-           style="display:inline;fill:#ffffff;stroke:#ffffff;stroke-width:1.03732px;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1"
+           style="display:inline;fill:#23446c;stroke:#23446c;stroke-width:1.03732px;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1"
            d="M 18.168282,59.640013 32.150309,47.612463 18.318626,31.826303 32.150309,15.438766 18.168282,3.5615599 H 31.999965 L 45.831653,15.58911 32.300654,31.826303 45.230273,47.311774 31.999965,59.640013 Z"
            id="path1194"
            transform="translate(-4.0519604,-0.42144337)" />

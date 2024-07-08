@@ -23,7 +23,7 @@
       <stop
          id="stop3831"
          offset="1"
-         style="stop-color:#ffffff;stop-opacity:1" />
+         style="stop-color:#23446c;stop-opacity:1" />
     </linearGradient>
     <linearGradient
        gradientTransform="translate(0,1)"
@@ -118,7 +118,7 @@
     <path
        id="path7047-4"
        d="M 15,-15 V 15 H 49 V -6 H 25 c 0,0 0,-9 -5,-9 -4,0 -5,0 -5,0 z"
-       style="fill:none;stroke:#ffffff;stroke-width:2;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+       style="fill:none;stroke:#23446c;stroke-width:2;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
     <ellipse
        ry="2.4867074"
        rx="2.4703476"
@@ -126,6 +126,6 @@
        cx="22.952965"
        transform="matrix(2.0240063,0,0,2.0106911,-8.4569445,-37.236847)"
        id="path7049-0"
-       style="fill:none;stroke:#ffffff;stroke-width:0.991406;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+       style="fill:none;stroke:#23446c;stroke-width:0.991406;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
   </g>
 </svg>
