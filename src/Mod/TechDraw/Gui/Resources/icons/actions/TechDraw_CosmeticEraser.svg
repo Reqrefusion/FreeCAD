@@ -32,11 +32,11 @@
        inkscape:collect="always"
        id="linearGradient5062">
       <stop
-         style="stop-color:#588dc6;stop-opacity:1"
+         style="stop-color:#729fcf;stop-opacity:1"
          offset="0"
          id="stop5058" />
       <stop
-         style="stop-color:#2862b6;stop-opacity:1"
+         style="stop-color:#204a87;stop-opacity:1"
          offset="1"
          id="stop5060" />
     </linearGradient>
@@ -440,22 +440,22 @@
      d="m 56.358158,16.495653 -22.672767,14.86923 c -0.69747,0.33704 -1.636554,0.244147 -2.092413,0.0059 L 15.854189,21.92123 30.918141,31.929419 c 0.224946,0.400183 0.02707,1.164863 -0.412416,1.443775 l -10.103131,7.47511 10.515547,-6.872182 c 0.639141,-0.458784 0.795062,0.232952 0.830174,0.709723 l 0.518337,10.180273 0.715593,-11.033696 c 0.02461,-0.625078 0.472036,-1.335433 0.979871,-1.603239 z" />
   <path
      inkscape:connector-curvature="0"
-     style="opacity:0.45100014;fill:#588dc6;fill-rule:evenodd;stroke-width:1.22323501"
+     style="opacity:0.45100014;fill:#729fcf;fill-rule:evenodd;stroke-width:1.22323501"
      id="path996"
      d="M 21.211228,20.988832 24.081089,22.83351 42.36871,9.9109229 39.455947,8.1129329 Z" />
   <path
      inkscape:connector-curvature="0"
-     style="opacity:0.45100014;fill:#588dc6;fill-rule:evenodd;stroke-width:1.22323501"
+     style="opacity:0.45100014;fill:#729fcf;fill-rule:evenodd;stroke-width:1.22323501"
      id="path998"
      d="m 28.516923,22.844535 2.86986,1.844678 15.975433,-11.508791 -2.912762,-1.797989 z" />
   <path
      inkscape:connector-curvature="0"
-     style="opacity:0.45100014;fill:#588dc6;fill-rule:evenodd;stroke-width:1.22323501"
+     style="opacity:0.45100014;fill:#729fcf;fill-rule:evenodd;stroke-width:1.22323501"
      id="path1000"
      d="M 35.998525,24.189994 38.868384,26.034672 52.29244,16.3555 49.379678,14.557511 Z" />
   <path
      inkscape:connector-curvature="0"
-     style="fill:none;stroke:#2862b6;stroke-width:1.14494801;stroke-linecap:round"
+     style="fill:none;stroke:#204a87;stroke-width:1.14494801;stroke-linecap:round"
      id="path1002"
      d="M 15.466415,21.844611 39.496613,5.469047 56.935993,16.078863 56.77709,28.423566 32.57849,44.894256" />
   <path

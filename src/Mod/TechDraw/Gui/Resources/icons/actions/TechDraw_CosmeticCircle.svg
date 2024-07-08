@@ -77,11 +77,11 @@
       <stop
          id="stop5058"
          offset="0"
-         style="stop-color:#588dc6;stop-opacity:1" />
+         style="stop-color:#729fcf;stop-opacity:1" />
       <stop
          id="stop5060"
          offset="1"
-         style="stop-color:#2862b6;stop-opacity:1" />
+         style="stop-color:#204a87;stop-opacity:1" />
     </linearGradient>
     <linearGradient
        gradientTransform="matrix(1.0782163,0,0,1.0813784,-77.236002,-7.705403)"
@@ -103,7 +103,7 @@
     <linearGradient
        id="linearGradient4">
       <stop
-         style="stop-color:#588dc6;stop-opacity:1"
+         style="stop-color:#729fcf;stop-opacity:1"
          offset="0"
          id="stop3" />
       <stop
@@ -160,12 +160,12 @@
        transform="matrix(0.1460346,0,0,0.1460346,-220.10298,-56.296236)"
        style="stroke-width:1">
       <path
-         style="fill:none;stroke:#23446c;stroke-width:8.27356;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         style="fill:none;stroke:#0b1521;stroke-width:8.27356;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
          id="path3044"
          d="m 53.611551,28.644661 c 0,13.703853 -11.109167,24.813021 -24.81302,24.813021 -13.703853,0 -24.8130211,-11.109168 -24.8130211,-24.813021 0,-13.703853 11.1091681,-24.8130208 24.8130211,-24.8130208 13.703853,0 24.81302,11.1091678 24.81302,24.8130208 z"
          transform="matrix(6.6234045,0,0,6.6191713,1521.886,414.91855)" />
       <path
-         style="fill:none;stroke:#457cc4;stroke-width:4.13678;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         style="fill:none;stroke:#3465a4;stroke-width:4.13678;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
          id="path3044-2"
          d="m 53.611551,28.644661 c 0,13.703853 -11.109167,24.813021 -24.81302,24.813021 -13.703853,0 -24.8130211,-11.109168 -24.8130211,-24.813021 0,-13.703853 11.1091681,-24.8130208 24.8130211,-24.8130208 13.703853,0 24.81302,11.1091678 24.81302,24.8130208 z"
          transform="matrix(6.6234045,0,0,6.6191713,1521.886,414.91855)" />

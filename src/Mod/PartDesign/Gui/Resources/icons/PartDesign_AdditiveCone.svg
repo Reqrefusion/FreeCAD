@@ -33,8 +33,8 @@
     </linearGradient>
     <radialGradient r="22" fy="91.956673" fx="225.93762" cy="91.956673" cx="225.93762" gradientTransform="matrix(-1.4090915,3.8636359,-0.97565325,-0.35582669,439.08461,-816.22007)" gradientUnits="userSpaceOnUse" id="radialGradient3127" xlink:href="#linearGradient3021" inkscape:collect="always"/>
     <linearGradient inkscape:collect="always" id="linearGradient3021">
-      <stop style="stop-color:#588dc6;stop-opacity:1" offset="0" id="stop3023"/>
-      <stop style="stop-color:#2862b6;stop-opacity:1" offset="1" id="stop3025"/>
+      <stop style="stop-color:#729fcf;stop-opacity:1" offset="0" id="stop3023"/>
+      <stop style="stop-color:#204a87;stop-opacity:1" offset="1" id="stop3025"/>
     </linearGradient>
     <radialGradient r="22" fy="91.956673" fx="225.93762" cy="91.956673" cx="225.93762" gradientTransform="matrix(-1.362855,3.7309323,-0.94363916,-0.34360517,683.41989,-720.93954)" gradientUnits="userSpaceOnUse" id="radialGradient3268" xlink:href="#linearGradient3238" inkscape:collect="always"/>
   </defs>
