@@ -17,11 +17,11 @@
       <stop
          id="stop3803"
          offset="0"
-         style="stop-color:#204a87;stop-opacity:1" />
+         style="stop-color:#2b62b6;stop-opacity:1" />
       <stop
          id="stop3805"
          offset="1"
-         style="stop-color:#729fcf;stop-opacity:1" />
+         style="stop-color:#85acd5;stop-opacity:1" />
     </linearGradient>
     <radialGradient
        gradientTransform="matrix(2.8492421,1.2585119,-0.4040415,0.9147407,-125.84131,-100.25805)"
@@ -217,20 +217,20 @@
     <path
        id="path2994-3"
        d="m 55.000001,53 c 0,4.418278 -10.745166,8 -24,8 C 17.745168,61 7.000002,57.418278 7.000002,53 L 7,11 54.999999,11 z"
-       style="fill:#729fcf;stroke:#0b1521;stroke-width:1.99999988000000006;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.50000000000000000;stroke-opacity:1;stroke-dashoffset:20.39999999999999858" />
+       style="fill:#85acd5;stroke:#1e3a5c;stroke-width:1.99999988000000006;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.50000000000000000;stroke-opacity:1;stroke-dashoffset:20.39999999999999858" />
     <path
        id="path2994-3-6"
        d="M 53,51.727273 C 53,55.743889 43.15027,59 31,59 18.849736,59 9.000001,55.743889 9.000001,51.727273 l -2e-6,-38 44.000001,0 z"
-       style="fill:url(#linearGradient3807);fill-opacity:1;stroke:#729fcf;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.50000000000000000;stroke-opacity:1;stroke-dashoffset:20.39999999999999858" />
+       style="fill:url(#linearGradient3807);fill-opacity:1;stroke:#85acd5;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.50000000000000000;stroke-opacity:1;stroke-dashoffset:20.39999999999999858" />
     <path
        id="path2994-3-6-9"
        d="M 53,15.727273 C 51,19 43.15027,21 31,21 18.849736,21 12,19 9.000001,15.727273"
-       style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.50000000000000000;stroke-opacity:1;stroke-dashoffset:20.39999999999999858" />
+       style="fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.50000000000000000;stroke-opacity:1;stroke-dashoffset:20.39999999999999858" />
     <path
        transform="matrix(1.1428571,0,0,1.1428571,71,-17.571428)"
        d="m -14,25 a 21,7 0 1 1 -42,0 21,7 0 1 1 42,0 z"
        id="path2994"
-       style="fill:#729fcf;stroke:#0b1521;stroke-width:1.75000000000000000;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.50000000000000000;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:20.39999999999999858" />
+       style="fill:#85acd5;stroke:#1e3a5c;stroke-width:1.75000000000000000;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.50000000000000000;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:20.39999999999999858" />
     <g
        transform="translate(-64,-22)"
        id="g3150">
@@ -280,7 +280,7 @@
        rx="13.913092"
        cy="10.815742"
        cx="31.204308"
-       style="fill:#204a87;fill-opacity:1;stroke:#302b00;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.5;stroke-dasharray:none;stroke-dashoffset:20.4;stroke-opacity:1"
+       style="fill:#2b62b6;fill-opacity:1;stroke:#302b00;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.5;stroke-dasharray:none;stroke-dashoffset:20.4;stroke-opacity:1"
        id="path2994-0" />
     <g
        transform="translate(-103,-38)"

@@ -39,11 +39,11 @@
       <stop id="stop3845-0-8" offset="1" style="stop-color:#379cfb;stop-opacity:1" />
     </linearGradient>
     <radialGradient gradientUnits="userSpaceOnUse" fy="114.5684" fx="20.892099" r="5.256" cy="114.5684" cx="20.892099" id="aigrd2">
-      <stop id="stop15566" style="stop-color:#F0F0F0" offset="0" />
+      <stop id="stop15566" style="stop-color:#f0f0f0" offset="0" />
       <stop id="stop15568" style="stop-color:#9a9a9a;stop-opacity:1" offset="1.0000000" />
     </radialGradient>
     <radialGradient gradientUnits="userSpaceOnUse" fy="64.567902" fx="20.892099" r="5.257" cy="64.567902" cx="20.892099" id="aigrd3">
-      <stop id="stop15573" style="stop-color:#F0F0F0" offset="0" />
+      <stop id="stop15573" style="stop-color:#f0f0f0" offset="0" />
       <stop id="stop15575" style="stop-color:#9a9a9a;stop-opacity:1" offset="1.0000000" />
     </radialGradient>
     <linearGradient id="linearGradient15662">
@@ -73,26 +73,26 @@
   </defs>
   <g id="layer1">
     <g id="g931" transform="translate(-5.0212139,-6)">
-      <path id="path3953-1" d="m 20.999999,19 h 4" style="fill:none;stroke:#204a87;stroke-width:5.99999952;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
-      <path id="path3957-5" d="M 53.000001,19 C 57,19 57,19 57,19" style="fill:none;stroke:#204a87;stroke-width:6;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
-      <path id="path3953-1-1" d="m 20.999999,19 h 4" style="fill:none;stroke:#729fcf;stroke-width:1.99999988;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
-      <path id="path3957-5-8" d="M 53.000001,19 C 57,19 57,19 57,19" style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
-      <path id="path3953-1-5" d="m 37,19 h 4" style="fill:none;stroke:#204a87;stroke-width:5.99999952;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
-      <path id="path3953-1-1-7" d="m 37,19 h 4" style="fill:none;stroke:#729fcf;stroke-width:1.99999988;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
-      <path id="path3953-1-6" d="m 19,57 h 4" style="fill:none;stroke:#204a87;stroke-width:5.99999952;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
-      <path id="path3957-5-1" d="m 51.000002,57 c 3.999999,0 3.999999,0 3.999999,0" style="fill:none;stroke:#204a87;stroke-width:6;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
-      <path id="path3953-1-1-8" d="m 19,57 h 4" style="fill:none;stroke:#729fcf;stroke-width:1.99999988;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
-      <path id="path3957-5-8-9" d="m 51.000002,57 c 3.999999,0 3.999999,0 3.999999,0" style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
-      <path id="path3953-1-5-2" d="m 35.000001,57 h 4" style="fill:none;stroke:#204a87;stroke-width:5.99999952;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
-      <path id="path3953-1-1-7-7" d="m 35.000001,57 h 4" style="fill:none;stroke:#729fcf;stroke-width:1.99999988;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
-      <path id="path3953-1-9" d="M 17,26.999999 V 31" style="fill:none;stroke:#204a87;stroke-width:5.99999952;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
-      <path id="path3953-1-1-4" d="M 17,26.999999 V 31" style="fill:none;stroke:#729fcf;stroke-width:1.99999988;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
-      <path id="path3953-1-5-1" d="M 17,43.000001 V 47" style="fill:none;stroke:#204a87;stroke-width:5.99999952;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
-      <path id="path3953-1-1-7-2" d="M 17,43.000001 V 47" style="fill:none;stroke:#729fcf;stroke-width:1.99999988;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
-      <path id="path3953-1-9-3" d="M 57,28.999999 V 33" style="fill:none;stroke:#204a87;stroke-width:5.99999952;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
-      <path id="path3953-1-1-4-3" d="M 57,28.999999 V 33" style="fill:none;stroke:#729fcf;stroke-width:1.99999988;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
-      <path id="path3953-1-5-1-4" d="M 57,45.000001 V 49" style="fill:none;stroke:#204a87;stroke-width:5.99999952;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
-      <path id="path3953-1-1-7-2-1" d="M 57,45.000001 V 49" style="fill:none;stroke:#729fcf;stroke-width:1.99999988;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+      <path id="path3953-1" d="m 20.999999,19 h 4" style="fill:none;stroke:#2b62b6;stroke-width:5.99999952;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+      <path id="path3957-5" d="M 53.000001,19 C 57,19 57,19 57,19" style="fill:none;stroke:#2b62b6;stroke-width:6;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+      <path id="path3953-1-1" d="m 20.999999,19 h 4" style="fill:none;stroke:#85acd5;stroke-width:1.99999988;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+      <path id="path3957-5-8" d="M 53.000001,19 C 57,19 57,19 57,19" style="fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+      <path id="path3953-1-5" d="m 37,19 h 4" style="fill:none;stroke:#2b62b6;stroke-width:5.99999952;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+      <path id="path3953-1-1-7" d="m 37,19 h 4" style="fill:none;stroke:#85acd5;stroke-width:1.99999988;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+      <path id="path3953-1-6" d="m 19,57 h 4" style="fill:none;stroke:#2b62b6;stroke-width:5.99999952;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+      <path id="path3957-5-1" d="m 51.000002,57 c 3.999999,0 3.999999,0 3.999999,0" style="fill:none;stroke:#2b62b6;stroke-width:6;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+      <path id="path3953-1-1-8" d="m 19,57 h 4" style="fill:none;stroke:#85acd5;stroke-width:1.99999988;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+      <path id="path3957-5-8-9" d="m 51.000002,57 c 3.999999,0 3.999999,0 3.999999,0" style="fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+      <path id="path3953-1-5-2" d="m 35.000001,57 h 4" style="fill:none;stroke:#2b62b6;stroke-width:5.99999952;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+      <path id="path3953-1-1-7-7" d="m 35.000001,57 h 4" style="fill:none;stroke:#85acd5;stroke-width:1.99999988;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+      <path id="path3953-1-9" d="M 17,26.999999 V 31" style="fill:none;stroke:#2b62b6;stroke-width:5.99999952;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+      <path id="path3953-1-1-4" d="M 17,26.999999 V 31" style="fill:none;stroke:#85acd5;stroke-width:1.99999988;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+      <path id="path3953-1-5-1" d="M 17,43.000001 V 47" style="fill:none;stroke:#2b62b6;stroke-width:5.99999952;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+      <path id="path3953-1-1-7-2" d="M 17,43.000001 V 47" style="fill:none;stroke:#85acd5;stroke-width:1.99999988;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+      <path id="path3953-1-9-3" d="M 57,28.999999 V 33" style="fill:none;stroke:#2b62b6;stroke-width:5.99999952;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+      <path id="path3953-1-1-4-3" d="M 57,28.999999 V 33" style="fill:none;stroke:#85acd5;stroke-width:1.99999988;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+      <path id="path3953-1-5-1-4" d="M 57,45.000001 V 49" style="fill:none;stroke:#2b62b6;stroke-width:5.99999952;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+      <path id="path3953-1-1-7-2-1" d="M 57,45.000001 V 49" style="fill:none;stroke:#85acd5;stroke-width:1.99999988;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
     </g>
   </g>
   <metadata id="metadata5469">

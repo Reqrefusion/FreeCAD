@@ -3,8 +3,8 @@
   <title id="title848">Part_MakeFace</title>
   <defs id="defs2827">
     <linearGradient id="linearGradient889">
-      <stop style="stop-color:#204a87;stop-opacity:1" offset="0" id="stop885" />
-      <stop style="stop-color:#729fcf;stop-opacity:1" offset="1" id="stop887" />
+      <stop style="stop-color:#2b62b6;stop-opacity:1" offset="0" id="stop885" />
+      <stop style="stop-color:#85acd5;stop-opacity:1" offset="1" id="stop887" />
     </linearGradient>
     <linearGradient id="linearGradient3836-0">
       <stop style="stop-color:#c4a000;stop-opacity:1" offset="0" id="stop3838-2" />
@@ -20,8 +20,8 @@
     <g id="g3527" transform="matrix(0.12582859,0,0,0.13656891,-119.21901,-53.81056)">
       <path id="rect2233" d="M 977.50867,421.69252 V 753.79102 L 1336.8902,752.81086 L 1337.954,421.69252 Z M 1007.5458,449.36739 L 1307.9169,449.36739 L 1307.9169,726.11615 H 1007.5458 Z" style="fill:#ef2929;fill-opacity:1;stroke:#a40000;stroke-width:15.2568;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     </g>
-    <rect style="fill:url(#linearGradient891);fill-opacity:1;fill-rule:evenodd;stroke:#0b1521;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;paint-order:markers stroke fill" id="rect881" width="38" height="36.347828" x="22" y="23.652174" />
-    <rect style="fill:none;fill-rule:evenodd;stroke:#729fcf;stroke-width:2;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;paint-order:markers stroke fill" id="rect883" width="36.347828" height="34.695652" x="22.826086" y="24.47826" ry="0" />
+    <rect style="fill:url(#linearGradient891);fill-opacity:1;fill-rule:evenodd;stroke:#1e3a5c;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;paint-order:markers stroke fill" id="rect881" width="38" height="36.347828" x="22" y="23.652174" />
+    <rect style="fill:none;fill-rule:evenodd;stroke:#85acd5;stroke-width:2;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;paint-order:markers stroke fill" id="rect883" width="36.347828" height="34.695652" x="22.826086" y="24.47826" ry="0" />
   </g>
   <metadata id="metadata5305">
     <rdf:RDF>

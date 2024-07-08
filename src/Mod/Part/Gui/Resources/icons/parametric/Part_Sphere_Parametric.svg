@@ -11,8 +11,8 @@
       <feGaussianBlur inkscape:collect="always" stdDeviation="9.8975056" id="feGaussianBlur3873"/>
     </filter>
     <linearGradient id="linearGradient3600">
-      <stop style="stop-color:#729fcf;stop-opacity:1" offset="0" id="stop3602"/>
-      <stop style="stop-color:#204a87;stop-opacity:1" offset="1" id="stop3604"/>
+      <stop style="stop-color:#85acd5;stop-opacity:1" offset="0" id="stop3602"/>
+      <stop style="stop-color:#2b62b6;stop-opacity:1" offset="1" id="stop3604"/>
     </linearGradient>
     <linearGradient inkscape:collect="always" xlink:href="#linearGradient3836-0-6-92-4-62" id="linearGradient3801-1-3-14-0-35" gradientUnits="userSpaceOnUse" x1="-18" y1="18" x2="-22" y2="5" gradientTransform="matrix(0.76342439,0,0,0.75750425,-4.596389,2.7525637)"/>
     <linearGradient id="linearGradient3836-0-6-92-4-62">
@@ -64,9 +64,9 @@
     </rdf:RDF>
   </metadata>
   <g id="layer1" inkscape:label="Layer 1" inkscape:groupmode="layer">
-    <path sodipodi:type="arc" style="color:#000000;fill:url(#radialGradient3808);fill-opacity:1;fill-rule:evenodd;stroke:#0b1521;stroke-width:1.80564272000000003;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" id="path2826" sodipodi:cx="31.636364" sodipodi:cy="30.363636" sodipodi:rx="26.181818" sodipodi:ry="26.181818" d="m 57.818182,30.363636 a 26.181818,26.181818 0 1 1 -52.363636,0 26.181818,26.181818 0 1 1 52.363636,0 z" transform="matrix(1.1076389,0,0,1.1076389,-3.0416672,-1.6319442)"/>
-    <path sodipodi:type="arc" style="color:#000000;fill:none;stroke:#729fcf;stroke-width:1.93939412000000000;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" id="path2826-4" sodipodi:cx="31.636364" sodipodi:cy="30.363636" sodipodi:rx="26.181818" sodipodi:ry="26.181818" d="m 57.818182,30.363636 a 26.181818,26.181818 0 1 1 -52.363636,0 26.181818,26.181818 0 1 1 52.363636,0 z" transform="matrix(1.03125,0,0,1.03125,-0.62500046,0.68750048)"/>
-    <path sodipodi:type="arc" style="color:#000000;fill:none;stroke:#0b1521;stroke-width:1.80564272000000003;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" id="path2826-5" sodipodi:cx="31.636364" sodipodi:cy="30.363636" sodipodi:rx="26.181818" sodipodi:ry="26.181818" d="m 57.818182,30.363636 a 26.181818,26.181818 0 1 1 -52.363636,0 26.181818,26.181818 0 1 1 52.363636,0 z" transform="matrix(1.1076389,0,0,1.1076389,-3.0416672,-1.631944)"/>
+    <path sodipodi:type="arc" style="color:#000000;fill:url(#radialGradient3808);fill-opacity:1;fill-rule:evenodd;stroke:#1e3a5c;stroke-width:1.80564272000000003;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" id="path2826" sodipodi:cx="31.636364" sodipodi:cy="30.363636" sodipodi:rx="26.181818" sodipodi:ry="26.181818" d="m 57.818182,30.363636 a 26.181818,26.181818 0 1 1 -52.363636,0 26.181818,26.181818 0 1 1 52.363636,0 z" transform="matrix(1.1076389,0,0,1.1076389,-3.0416672,-1.6319442)"/>
+    <path sodipodi:type="arc" style="color:#000000;fill:none;stroke:#85acd5;stroke-width:1.93939412000000000;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" id="path2826-4" sodipodi:cx="31.636364" sodipodi:cy="30.363636" sodipodi:rx="26.181818" sodipodi:ry="26.181818" d="m 57.818182,30.363636 a 26.181818,26.181818 0 1 1 -52.363636,0 26.181818,26.181818 0 1 1 52.363636,0 z" transform="matrix(1.03125,0,0,1.03125,-0.62500046,0.68750048)"/>
+    <path sodipodi:type="arc" style="color:#000000;fill:none;stroke:#1e3a5c;stroke-width:1.80564272000000003;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" id="path2826-5" sodipodi:cx="31.636364" sodipodi:cy="30.363636" sodipodi:rx="26.181818" sodipodi:ry="26.181818" d="m 57.818182,30.363636 a 26.181818,26.181818 0 1 1 -52.363636,0 26.181818,26.181818 0 1 1 52.363636,0 z" transform="matrix(1.1076389,0,0,1.1076389,-3.0416672,-1.631944)"/>
     <g transform="matrix(1,0,0,-1,22,89)" id="g3150-8">
       <path inkscape:connector-curvature="0" id="path3130-9" d="M 10,57 29,78" style="fill:none;stroke:#280000;stroke-width:6;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" sodipodi:nodetypes="cc"/>
       <path inkscape:connector-curvature="0" id="path3130-2-7" d="M 10,57 29,78" style="fill:none;stroke:#ef2929;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" sodipodi:nodetypes="cc"/>

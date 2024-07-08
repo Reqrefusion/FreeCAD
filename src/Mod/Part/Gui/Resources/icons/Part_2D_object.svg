@@ -10,7 +10,7 @@
       <stop id="stop3868" offset="1" style="stop-color:#002795;stop-opacity:1" />
     </linearGradient>
     <linearGradient id="linearGradient3767">
-      <stop style="stop-color:#3465a4;stop-opacity:1" offset="0" id="stop3769" />
+      <stop style="stop-color:#3b72ba;stop-opacity:1" offset="0" id="stop3769" />
       <stop style="stop-color:#cdd5df;stop-opacity:1" offset="1" id="stop3771" />
     </linearGradient>
     <radialGradient xlink:href="#linearGradient3794" id="radialGradient3800" cx="1" cy="45" fx="1" fy="45" r="41" gradientTransform="matrix(0.93348213,-2.2905276e-8,0,0.28687573,0.06651751,32.090592)" gradientUnits="userSpaceOnUse" />
@@ -63,7 +63,7 @@
     </rdf:RDF>
   </metadata>
   <g id="layer1">
-    <path style="display:inline;overflow:visible;visibility:visible;opacity:1;fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#0b1521;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker:none;enable-background:accumulate" d="m 11,4.999938 40.24538,7.363655 V 59.00006 L 11,51.636408 Z" id="path935" />
+    <path style="display:inline;overflow:visible;visibility:visible;opacity:1;fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#1e3a5c;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker:none;enable-background:accumulate" d="m 11,4.999938 40.24538,7.363655 V 59.00006 L 11,51.636408 Z" id="path935" />
     <path id="path964" d="m 11,4.999938 40.24538,7.363655 V 59.00006 L 11,51.636408 Z" style="display:inline;overflow:visible;visibility:visible;opacity:1;fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#9cb2c8;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker:none;enable-background:accumulate" />
     <path style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:6;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" d="M 5,27 59,39" id="path960" />
     <path id="path962" d="M 5,27 59,39" style="fill:none;fill-rule:evenodd;stroke:#9cb2c8;stroke-width:2;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;fill-opacity:1" />

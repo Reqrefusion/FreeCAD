@@ -59,8 +59,8 @@
     </linearGradient>
     <linearGradient inkscape:collect="always" xlink:href="#linearGradient3826" id="linearGradient3832" x1="10.202547" y1="20.352594" x2="29.541351" y2="54.686111" gradientUnits="userSpaceOnUse" spreadMethod="reflect"/>
     <linearGradient inkscape:collect="always" id="linearGradient3826">
-      <stop style="stop-color:#729fcf;stop-opacity:1" offset="0" id="stop3828"/>
-      <stop style="stop-color:#204a87;stop-opacity:1" offset="1" id="stop3830"/>
+      <stop style="stop-color:#85acd5;stop-opacity:1" offset="0" id="stop3828"/>
+      <stop style="stop-color:#2b62b6;stop-opacity:1" offset="1" id="stop3830"/>
     </linearGradient>
     <linearGradient gradientTransform="translate(0,-3.4747466)" y2="54.686111" x2="29.541351" y1="20.352594" x1="10.202547" spreadMethod="reflect" gradientUnits="userSpaceOnUse" id="linearGradient3249" xlink:href="#linearGradient3203" inkscape:collect="always"/>
   </defs>
