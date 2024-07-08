@@ -73,11 +73,11 @@
        id="linearGradient3893">
       <stop
          id="stop3895"
-         style="stop-color:#23446c;stop-opacity:1"
+         style="stop-color:#ffffff;stop-opacity:1"
          offset="0" />
       <stop
          id="stop3897"
-         style="stop-color:#23446c;stop-opacity:0"
+         style="stop-color:#ffffff;stop-opacity:0"
          offset="1" />
     </linearGradient>
     <linearGradient
@@ -172,11 +172,11 @@
        id="layer1"
        transform="translate(-3.2499999,2.0000121)">
       <path
-         style="fill:#457cc4;stroke:#23446c;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         style="fill:#3465a4;stroke:#0b1521;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
          d="M 15.908118,53.33451 11.665477,49.091871 54.091883,6.6654658 58.334523,10.908105 Z"
          id="path3061" />
       <path
-         style="fill:none;stroke:#588dc6;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
          d="M 14.002003,49.583771 54.583793,9.0019854"
          id="path3063" />
     </g>

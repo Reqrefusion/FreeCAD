@@ -43,7 +43,7 @@
       <stop
          id="stop3831"
          offset="1"
-         style="stop-color:#23446c;stop-opacity:1" />
+         style="stop-color:#ffffff;stop-opacity:1" />
     </linearGradient>
     <linearGradient
        gradientTransform="matrix(1.125,0,0,-1.125,-4,-1.125)"
@@ -135,6 +135,6 @@
        cx="22.952965"
        transform="matrix(2.0240063,0,0,2.0106911,-8.4569449,-36.236847)"
        id="path7049-0"
-       style="fill:none;stroke:#23446c;stroke-width:1.11533;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+       style="fill:none;stroke:#ffffff;stroke-width:1.11533;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
   </g>
 </svg>

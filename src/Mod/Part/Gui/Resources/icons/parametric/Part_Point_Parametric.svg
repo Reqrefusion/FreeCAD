@@ -3,8 +3,8 @@
 <svg xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:svg="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="64px" height="64px" id="svg3052" sodipodi:version="0.32" inkscape:version="0.48.5 r10040" sodipodi:docname="Part_Point_Parametric.svg" inkscape:output_extension="org.inkscape.output.svg.inkscape" version="1.1">
   <defs id="defs3054">
     <linearGradient inkscape:collect="always" id="linearGradient3812">
-      <stop style="stop-color:#457cc4;stop-opacity:1" offset="0" id="stop3814"/>
-      <stop style="stop-color:#588dc6;stop-opacity:1" offset="1" id="stop3816"/>
+      <stop style="stop-color:#3465a4;stop-opacity:1" offset="0" id="stop3814"/>
+      <stop style="stop-color:#729fcf;stop-opacity:1" offset="1" id="stop3816"/>
     </linearGradient>
     <linearGradient id="linearGradient4032">
       <stop style="stop-color:#71b2f8;stop-opacity:1;" offset="0" id="stop4034"/>
@@ -34,7 +34,7 @@
     </linearGradient>
     <linearGradient inkscape:collect="always" xlink:href="#linearGradient3812" id="linearGradient3818" x1="31.168184" y1="59.008671" x2="26.570324" y2="44.008152" gradientUnits="userSpaceOnUse"/>
   </defs>
-  <sodipodi:namedview id="base" pagecolor="#23446c" bordercolor="#666666" borderopacity="1.0" inkscape:pageopacity="0.0" inkscape:pageshadow="2" inkscape:zoom="8.0782929" inkscape:cx="38.240919" inkscape:cy="28.68886" inkscape:current-layer="g3797-9-5-66-7" showgrid="true" inkscape:document-units="px" inkscape:grid-bbox="true" inkscape:window-width="1600" inkscape:window-height="837" inkscape:window-x="0" inkscape:window-y="27" inkscape:window-maximized="1" inkscape:snap-global="true" showguides="true" inkscape:guide-bbox="true" inkscape:snap-bbox="true" inkscape:snap-nodes="false">
+  <sodipodi:namedview id="base" pagecolor="#ffffff" bordercolor="#666666" borderopacity="1.0" inkscape:pageopacity="0.0" inkscape:pageshadow="2" inkscape:zoom="8.0782929" inkscape:cx="38.240919" inkscape:cy="28.68886" inkscape:current-layer="g3797-9-5-66-7" showgrid="true" inkscape:document-units="px" inkscape:grid-bbox="true" inkscape:window-width="1600" inkscape:window-height="837" inkscape:window-x="0" inkscape:window-y="27" inkscape:window-maximized="1" inkscape:snap-global="true" showguides="true" inkscape:guide-bbox="true" inkscape:snap-bbox="true" inkscape:snap-nodes="false">
     <inkscape:grid type="xygrid" id="grid3001" empspacing="2" visible="true" enabled="true" snapvisiblegridlinesonly="true"/>
   </sodipodi:namedview>
   <metadata id="metadata3057">
@@ -72,7 +72,7 @@
     </rdf:RDF>
   </metadata>
   <g id="layer1" inkscape:label="Layer 1" inkscape:groupmode="layer">
-    <path sodipodi:type="arc" style="fill:none;stroke:#2862b6;stroke-width:6.91003942;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.5;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:20.4" id="path3024" sodipodi:cx="30.018719" sodipodi:cy="52.085354" sodipodi:rx="8.0462542" sodipodi:ry="8.0772018" d="m 38.064973,52.085354 a 8.0462542,8.0772018 0 1 1 -16.092508,0 8.0462542,8.0772018 0 1 1 16.092508,0 z" transform="matrix(0.86997005,0,0,0.86663677,5.9104689,-13.112977)"/>
+    <path sodipodi:type="arc" style="fill:none;stroke:#204a87;stroke-width:6.91003942;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.5;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:20.4" id="path3024" sodipodi:cx="30.018719" sodipodi:cy="52.085354" sodipodi:rx="8.0462542" sodipodi:ry="8.0772018" d="m 38.064973,52.085354 a 8.0462542,8.0772018 0 1 1 -16.092508,0 8.0462542,8.0772018 0 1 1 16.092508,0 z" transform="matrix(0.86997005,0,0,0.86663677,5.9104689,-13.112977)"/>
     <path sodipodi:type="arc" style="fill:none;stroke:url(#linearGradient3818);stroke-width:2.30334663;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.5;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:20.4" id="path3024-3" sodipodi:cx="30.018719" sodipodi:cy="52.085354" sodipodi:rx="8.0462542" sodipodi:ry="8.0772018" d="m 38.064973,52.085354 a 8.0462542,8.0772018 0 1 1 -16.092508,0 8.0462542,8.0772018 0 1 1 16.092508,0 z" transform="matrix(0.86997005,0,0,0.86663677,5.9104689,-13.112977)"/>
     <g transform="matrix(0.5613787,1.5641823e-8,0,0.56576972,23.248143,22.558916)" id="g3827-1-3-92-1">
       <g transform="translate(31.322131,40.570289)" id="g3797-9-5-66-7">

@@ -15,7 +15,7 @@
    sodipodi:docname="techdraw-MoveView.svg"
    inkscape:version="0.92.5 (2060ec1f9f, 2020-04-08)">
   <sodipodi:namedview
-     pagecolor="#23446c"
+     pagecolor="#ffffff"
      bordercolor="#666666"
      borderopacity="1"
      objecttolerance="10"
@@ -116,7 +116,7 @@
        id="linearGradient15662">
       <stop
          offset="0"
-         style="stop-color:#23446c;stop-opacity:1"
+         style="stop-color:#ffffff;stop-opacity:1"
          id="stop15664" />
       <stop
          offset="1"
@@ -183,7 +183,7 @@
        id="linearGradient12512">
       <stop
          offset="0"
-         style="stop-color:#23446c;stop-opacity:1"
+         style="stop-color:#ffffff;stop-opacity:1"
          id="stop12513" />
       <stop
          offset="0.5"
@@ -351,7 +351,7 @@
        gradientUnits="userSpaceOnUse">
       <stop
          offset="0"
-         style="stop-color:#f0f0f0"
+         style="stop-color:#F0F0F0"
          id="stop15566-3" />
       <stop
          offset="1.0000000"
@@ -378,7 +378,7 @@
        gradientUnits="userSpaceOnUse">
       <stop
          offset="0"
-         style="stop-color:#f0f0f0"
+         style="stop-color:#F0F0F0"
          id="stop15573-6" />
       <stop
          offset="1.0000000"
@@ -400,7 +400,7 @@
       <stop
          id="stop15664-6"
          offset="0.0000000"
-         style="stop-color:#23446c;stop-opacity:1.0000000;" />
+         style="stop-color:#ffffff;stop-opacity:1.0000000;" />
       <stop
          id="stop15666-1"
          offset="1.0000000"
@@ -531,7 +531,7 @@
       <stop
          id="stop5008"
          offset="1"
-         style="stop-color:#457cc4;stop-opacity:0;" />
+         style="stop-color:#3465a4;stop-opacity:0;" />
     </linearGradient>
     <linearGradient
        gradientTransform="matrix(1.1607655,0,0,1.1607655,2.580384,2.8598531)"

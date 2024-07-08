@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 <svg xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:svg="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="64px" height="64px" id="svg3364" sodipodi:version="0.32" inkscape:version="0.48.5 r10040" sodipodi:docname="PartDesign_Additive_Loft.svg" inkscape:output_extension="org.inkscape.output.svg.inkscape" version="1.1">
-  <sodipodi:namedview id="base" pagecolor="#23446c" bordercolor="#666666" borderopacity="1.0" inkscape:pageopacity="0.0" inkscape:pageshadow="2" inkscape:zoom="3.6363924" inkscape:cx="32.628624" inkscape:cy="-35.940421" inkscape:current-layer="layer1" showgrid="true" inkscape:document-units="px" inkscape:grid-bbox="true" inkscape:window-width="798" inkscape:window-height="871" inkscape:window-x="800" inkscape:window-y="27" inkscape:window-maximized="0">
+  <sodipodi:namedview id="base" pagecolor="#ffffff" bordercolor="#666666" borderopacity="1.0" inkscape:pageopacity="0.0" inkscape:pageshadow="2" inkscape:zoom="3.6363924" inkscape:cx="32.628624" inkscape:cy="-35.940421" inkscape:current-layer="layer1" showgrid="true" inkscape:document-units="px" inkscape:grid-bbox="true" inkscape:window-width="798" inkscape:window-height="871" inkscape:window-x="800" inkscape:window-y="27" inkscape:window-maximized="0">
     <inkscape:grid type="xygrid" id="grid3211" empspacing="2" visible="true" enabled="true" snapvisiblegridlinesonly="true"/>
   </sodipodi:namedview>
   <defs id="defs3366">
@@ -49,8 +49,8 @@
     </linearGradient>
     <linearGradient inkscape:collect="always" xlink:href="#linearGradient3803-7" id="linearGradient3848" gradientUnits="userSpaceOnUse" gradientTransform="translate(-16,22)" x1="-28" y1="22" x2="-26" y2="39"/>
     <linearGradient inkscape:collect="always" id="linearGradient3803-7">
-      <stop style="stop-color:#457cc4;stop-opacity:1" offset="0" id="stop3805-5"/>
-      <stop style="stop-color:#2862b6;stop-opacity:1" offset="1" id="stop3807-3"/>
+      <stop style="stop-color:#3465a4;stop-opacity:1" offset="0" id="stop3805-5"/>
+      <stop style="stop-color:#204a87;stop-opacity:1" offset="1" id="stop3807-3"/>
     </linearGradient>
     <linearGradient y2="39" x2="-26" y1="22" x1="-28" gradientTransform="translate(-16,22)" gradientUnits="userSpaceOnUse" id="linearGradient3236" xlink:href="#linearGradient3256" inkscape:collect="always"/>
     <linearGradient y2="39" x2="-26" y1="22" x1="-28" gradientTransform="translate(-16,22)" gradientUnits="userSpaceOnUse" id="linearGradient3236-531" xlink:href="#linearGradient3256-748" inkscape:collect="always"/>
@@ -170,15 +170,15 @@
   </metadata>
   <g id="layer1" inkscape:label="Layer 1" inkscape:groupmode="layer">
     <g id="g3844" transform="translate(66,-18)">
-      <path sodipodi:nodetypes="ccccc" inkscape:connector-curvature="0" id="path3015-5" d="m -29,33 4,36 -32,-4 0,-16 z" style="fill:#2862b6;stroke:#23446c;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1"/>
+      <path sodipodi:nodetypes="ccccc" inkscape:connector-curvature="0" id="path3015-5" d="m -29,33 4,36 -32,-4 0,-16 z" style="fill:#204a87;stroke:#0b1521;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1"/>
       <path sodipodi:nodetypes="ccccc" inkscape:connector-curvature="0" id="path3015-3-6" d="m -27,34.4 0,32.3 -28,-3.5 0,-13 z" style="fill:url(#linearGradient3236-531-908-264-687-237-623-493-179);fill-opacity:1;stroke:#cc0000;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
     </g>
     <path style="fill:#ef2929;stroke:#280000;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1" d="M 25,11 9,31 23,35 55,17 z" id="path3013" inkscape:connector-curvature="0"/>
     <path style="fill:#a40000;stroke:#280000;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1" d="M 55,17 55,55 23,51 23,35 z" id="path3015" inkscape:connector-curvature="0" sodipodi:nodetypes="ccccc"/>
     <path style="fill:url(#linearGradient3809-950-2-364-167-991-742-739-921);fill-opacity:1;stroke:#cc0000;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 53,20.4 0,32.3 -28,-3.5 0,-13 z" id="path3015-3" inkscape:connector-curvature="0" sodipodi:nodetypes="ccccc"/>
-    <path style="fill:none;stroke:#2862b6;stroke-width:6;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1" d="m 9,31 0,16 14,4 0,-16 z" id="path3850" inkscape:connector-curvature="0"/>
-    <path style="fill:none;stroke:#588dc6;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1" d="m 9,31 0,16 14,4 0,-16 z" id="path3850-2" inkscape:connector-curvature="0"/>
-    <path style="fill:none;stroke:#2862b6;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1" d="m 25,11 30,6 0,38" id="path3870" inkscape:connector-curvature="0"/>
-    <path style="fill:none;stroke:#588dc6;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1" d="m 25,11 30,6 0,38" id="path3870-9" inkscape:connector-curvature="0"/>
+    <path style="fill:none;stroke:#204a87;stroke-width:6;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1" d="m 9,31 0,16 14,4 0,-16 z" id="path3850" inkscape:connector-curvature="0"/>
+    <path style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1" d="m 9,31 0,16 14,4 0,-16 z" id="path3850-2" inkscape:connector-curvature="0"/>
+    <path style="fill:none;stroke:#204a87;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1" d="m 25,11 30,6 0,38" id="path3870" inkscape:connector-curvature="0"/>
+    <path style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1" d="m 25,11 30,6 0,38" id="path3870-9" inkscape:connector-curvature="0"/>
   </g>
 </svg>
