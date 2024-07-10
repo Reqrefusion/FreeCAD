@@ -142,11 +142,11 @@
     <linearGradient
        id="linearGradient3809">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="0"
          id="stop3811" />
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="1"
          id="stop3813" />
     </linearGradient>
@@ -275,11 +275,11 @@
          transform="rotate(-88.62016)" />
       <path
          d="M 14.951172,12.048828 A 2,2 0 0 0 12.902344,14 a 2,2 0 0 0 0.01172,0.06836 36,36 0 0 1 27.060546,11.007813 36,36 0 0 1 10.001953,26.986328 2,2 0 0 0 0.05469,0.01172 2,2 0 0 0 2.001953,-1.998047 C 52.053484,29.45341 35.567964,12.545433 14.951172,12.048828 Z"
-         style="fill:#729fcf;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:100;stroke-dashoffset:3.45;fill-opacity:1"
+         style="fill:#85acd5;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:100;stroke-dashoffset:3.45;fill-opacity:1"
          id="path3" />
       <path
          d="M 49.976562,52.0625 A 36,36 0 0 0 39.974609,25.076172 36,36 0 0 0 12.914063,14.068359 a 2,2 0 0 0 1.939453,1.980469 c 18.48833,0.445336 33.199828,15.529753 33.18164,34.023438 a 2,2 0 0 0 1.941406,1.990234 z"
-         style="display:inline;fill:#3465a4;fill-opacity:1;stroke:none;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:100;stroke-dashoffset:3.45"
+         style="display:inline;fill:#3b72ba;fill-opacity:1;stroke:none;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:100;stroke-dashoffset:3.45"
          id="path4" />
     </g>
     <g

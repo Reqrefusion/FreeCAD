@@ -40,11 +40,11 @@
     <linearGradient
        id="linearGradient910">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="0"
          id="stop906" />
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="1"
          id="stop908" />
     </linearGradient>
@@ -204,13 +204,13 @@
     <g
        id="g4036-9"
        transform="matrix(-0.64428531,-0.92040759,0.70710678,-1.0101525,0.936348,1060.8558)"
-       style="fill:#3465a4;fill-opacity:1;stroke:#0b1521;stroke-width:1.753;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1">
+       style="fill:#3b72ba;fill-opacity:1;stroke:#1e3a5c;stroke-width:1.753;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1">
       <g
          id="g4033-8"
          transform="matrix(0.53748674,0.48973482,-0.7760537,0.70710678,30.821878,1.6927139)"
-         style="fill:#3465a4;fill-opacity:1;stroke:#0b1521;stroke-width:1.75119;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1">
+         style="fill:#3b72ba;fill-opacity:1;stroke:#1e3a5c;stroke-width:1.75119;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1">
         <rect
-           style="fill:#3465a4;fill-opacity:1;stroke:#0b1521;stroke-width:1.75119;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+           style="fill:#3b72ba;fill-opacity:1;stroke:#1e3a5c;stroke-width:1.75119;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
            id="rect3261-1"
            width="23"
            height="6"
@@ -220,11 +220,11 @@
       </g>
     </g>
     <path
-       style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       style="fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        d="M 16.157967,1027.8686 V 999.86865"
        id="path4083-0" />
     <path
-       style="fill:url(#linearGradient912);fill-opacity:1;stroke:#0b1521;stroke-width:2.50713;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       style="fill:url(#linearGradient912);fill-opacity:1;stroke:#1e3a5c;stroke-width:2.50713;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        d="m 17.171767,991.6197 -5.5,16.0002 c 4.142481,1.7805 7.666483,1.2466 11,0 z"
        id="path872" />
   </g>

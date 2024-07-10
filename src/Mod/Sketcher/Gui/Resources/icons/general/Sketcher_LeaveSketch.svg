@@ -32,8 +32,8 @@
     </linearGradient>
     <linearGradient gradientTransform="matrix(0.93570344,0.35278756,-0.35278756,0.93570344,13.795598,-24.167017)" y2="44" x2="48" y1="22" x1="43" gradientUnits="userSpaceOnUse" id="linearGradient3023" xlink:href="#linearGradient3895" />
     <linearGradient id="linearGradient3895">
-      <stop style="stop-color:#729fcf;stop-opacity:1" offset="0" id="stop3897" />
-      <stop style="stop-color:#204a87;stop-opacity:1" offset="1" id="stop3899" />
+      <stop style="stop-color:#85acd5;stop-opacity:1" offset="0" id="stop3897" />
+      <stop style="stop-color:#2b62b6;stop-opacity:1" offset="1" id="stop3899" />
     </linearGradient>
     <linearGradient y2="44" x2="48" y1="22" x1="43" gradientTransform="matrix(0.00239211,0.99999714,-0.99999714,0.00239211,-0.10300017,-24.117089)" gradientUnits="userSpaceOnUse" id="linearGradient3082" xlink:href="#linearGradient3895" />
     <linearGradient xlink:href="#linearGradient3895" id="linearGradient3837" gradientUnits="userSpaceOnUse" gradientTransform="matrix(0.00239211,0.99999714,-0.99999714,0.00239211,-0.10300017,-24.117089)" x1="51.973827" y1="35.978416" x2="25.988253" y2="29.916241" />
@@ -78,8 +78,8 @@
     <path style="fill:none;stroke:#ffffff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1" d="m 9,57 48,0 0,-18" id="path3810" />
     <path style="fill:none;stroke:#ffffff;stroke-width:2;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" d="m 46,35 13,0" id="path3812" />
     <g id="g3833" transform="matrix(1,0,0,-1,63.956988,39.942653)">
-      <path id="path3343" d="m -14.956988,18.942653 -10,0 10e-7,-20 -14.000001,0 0,20 -10,0 17,18 z" style="fill:url(#linearGradient3837);fill-opacity:1;fill-rule:evenodd;stroke:#0b1521;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
-      <path id="path3343-2" d="m -19.638282,20.942653 -7.318706,0 -1e-6,-20 -9.999999,0 0,20 -7.395261,0 12.395261,13 z" style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <path id="path3343" d="m -14.956988,18.942653 -10,0 10e-7,-20 -14.000001,0 0,20 -10,0 17,18 z" style="fill:url(#linearGradient3837);fill-opacity:1;fill-rule:evenodd;stroke:#1e3a5c;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <path id="path3343-2" d="m -19.638282,20.942653 -7.318706,0 -1e-6,-20 -9.999999,0 0,20 -7.395261,0 12.395261,13 z" style="fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
     </g>
   </g>
 </svg>

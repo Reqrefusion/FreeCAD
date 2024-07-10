@@ -161,7 +161,7 @@
        gradientUnits="userSpaceOnUse">
       <stop
          offset="0"
-         style="stop-color:#F0F0F0"
+         style="stop-color:#f0f0f0"
          id="stop15566" />
       <stop
          offset="1.0000000"
@@ -178,7 +178,7 @@
        gradientUnits="userSpaceOnUse">
       <stop
          offset="0"
-         style="stop-color:#F0F0F0"
+         style="stop-color:#f0f0f0"
          id="stop15573" />
       <stop
          offset="1.0000000"
@@ -271,11 +271,11 @@
       <stop
          id="stop3897"
          offset="0"
-         style="stop-color:#729fcf;stop-opacity:1;" />
+         style="stop-color:#85acd5;stop-opacity:1;" />
       <stop
          id="stop3899"
          offset="1"
-         style="stop-color:#204a87;stop-opacity:1;" />
+         style="stop-color:#2b62b6;stop-opacity:1;" />
     </linearGradient>
     <linearGradient
        xlink:href="#linearGradient3895"
@@ -300,11 +300,11 @@
       <stop
          id="stop3897-7"
          offset="0"
-         style="stop-color:#729fcf;stop-opacity:1;" />
+         style="stop-color:#85acd5;stop-opacity:1;" />
       <stop
          id="stop3899-5"
          offset="1"
-         style="stop-color:#204a87;stop-opacity:1;" />
+         style="stop-color:#2b62b6;stop-opacity:1;" />
     </linearGradient>
     <linearGradient
        xlink:href="#linearGradient3895-6"
@@ -335,11 +335,11 @@
        d="M 18.578125,10 H 7.421875 C 7.1882682,10.000096 6.9999125,10.205514 7,10.460938 L 7.00391,15.96875 7,16 v 38 c 0,1 0,1 1,1 h 48 c 1,0 1,0 1,-1 V 18 c 0,-1 0,-1 -1,-1 H 24 L 19,10.460938 C 18.999913,10.205514 18.811732,9.9999044 18.578125,10 Z"
        style="color:#000000;display:block;overflow:visible;visibility:visible;fill:none;fill-opacity:1;fill-rule:nonzero;stroke:#ef2929;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker:none" />
     <path
-       style="fill:url(#linearGradient3978);fill-opacity:1;fill-rule:evenodd;stroke:#0b1521;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       style="fill:url(#linearGradient3978);fill-opacity:1;fill-rule:evenodd;stroke:#1e3a5c;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
        d="M 55,28 45,28 45,5 31,5 31,28 21,28 38,46 z"
        id="path3343" />
     <path
-       style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       style="fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
        d="M 50.357002,30.006611 43,30 43,7 33,7 33,30 25.642998,29.9934 38,43 z"
        id="path3343-2" />
   </g>

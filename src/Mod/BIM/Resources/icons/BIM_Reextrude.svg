@@ -51,11 +51,11 @@
     <linearGradient
        id="linearGradient3895">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1;"
+         style="stop-color:#85acd5;stop-opacity:1;"
          offset="0"
          id="stop3897" />
       <stop
-         style="stop-color:#204a87;stop-opacity:1;"
+         style="stop-color:#2b62b6;stop-opacity:1;"
          offset="1"
          id="stop3899" />
     </linearGradient>
@@ -72,11 +72,11 @@
     <linearGradient
        id="linearGradient3895-6">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1;"
+         style="stop-color:#85acd5;stop-opacity:1;"
          offset="0"
          id="stop3897-7" />
       <stop
-         style="stop-color:#204a87;stop-opacity:1;"
+         style="stop-color:#2b62b6;stop-opacity:1;"
          offset="1"
          id="stop3899-5" />
     </linearGradient>
@@ -93,11 +93,11 @@
     <linearGradient
        id="linearGradient3895-6-2">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1;"
+         style="stop-color:#85acd5;stop-opacity:1;"
          offset="0"
          id="stop3897-7-9" />
       <stop
-         style="stop-color:#204a87;stop-opacity:1;"
+         style="stop-color:#2b62b6;stop-opacity:1;"
          offset="1"
          id="stop3899-5-1" />
     </linearGradient>
@@ -114,11 +114,11 @@
     <linearGradient
        id="linearGradient3895-9">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1;"
+         style="stop-color:#85acd5;stop-opacity:1;"
          offset="0"
          id="stop3897-3" />
       <stop
-         style="stop-color:#204a87;stop-opacity:1;"
+         style="stop-color:#2b62b6;stop-opacity:1;"
          offset="1"
          id="stop3899-6" />
     </linearGradient>
@@ -398,7 +398,7 @@
          sodipodi:nodetypes="cccccccc"
          id="path3343-5"
          d="m -14.956988,18.942653 h -10 l 10e-7,-14 h -14.000001 v 14 h -10 l 17,18 z"
-         style="fill:url(#linearGradient3837);fill-opacity:1;fill-rule:evenodd;stroke:#0b1521;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         style="fill:url(#linearGradient3837);fill-opacity:1;fill-rule:evenodd;stroke:#1e3a5c;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
          inkscape:connector-curvature="0" />
       <path
          inkscape:export-ydpi="4.1683898"
@@ -407,7 +407,7 @@
          sodipodi:nodetypes="cccccccc"
          id="path3343-2-62"
          d="m -19.638282,20.942653 h -7.318706 l -1e-6,-14 h -9.999999 v 14 h -7.395261 l 12.395261,13 z"
-         style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         style="fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
          inkscape:connector-curvature="0" />
     </g>
   </g>

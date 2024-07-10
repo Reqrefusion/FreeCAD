@@ -114,7 +114,7 @@
     <path
        transform="matrix(0.86667,0,0,0.86667,4.2667,4.2667)"
        d="M 62,32 A 30,30 0 1 1 2,32 30,30 0 1 1 62,32 Z"
-       stroke="#0b1521"
+       stroke="#1e3a5c"
        stroke-width="9.96931"
        id="path6"
        style="fill:none;fill-opacity:1" />
@@ -129,7 +129,7 @@
        style="fill:none;fill-opacity:1" />
     <path
        d="m 58.000044,32.00014 c 0,14.359 -11.641,26 -26.000004,26 -14.359,0 -26,-11.641 -26,-26 0,-14.359 11.641,-26.0000003 26,-26.0000003 14.359004,0 26.000004,11.6410003 26.000004,26.0000003 z"
-       stroke="#3465a4"
+       stroke="#3b72ba"
        stroke-width="4.32002"
        id="path10"
        style="fill:none;fill-opacity:1;stroke:#cc0000;stroke-opacity:1" />

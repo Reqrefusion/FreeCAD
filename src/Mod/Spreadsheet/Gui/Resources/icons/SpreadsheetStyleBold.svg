@@ -48,7 +48,7 @@
       <stop
          id="stop2247"
          offset="1"
-         style="stop-color:#3465a4;stop-opacity:1;" />
+         style="stop-color:#3b72ba;stop-opacity:1;" />
     </linearGradient>
     <linearGradient
        inkscape:collect="always"
@@ -188,7 +188,7 @@
      inkscape:window-x="0"
      inkscape:window-y="27"
      inkscape:grid-points="true"
-     stroke="#204a87"
+     stroke="#2b62b6"
      fill="#2e3436"
      showborder="true"
      inkscape:showpageshadow="false"

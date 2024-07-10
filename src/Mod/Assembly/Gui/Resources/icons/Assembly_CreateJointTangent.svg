@@ -41,11 +41,11 @@
     <linearGradient
        id="linearGradient3600">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1;"
+         style="stop-color:#85acd5;stop-opacity:1;"
          offset="0"
          id="stop3602" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:1;"
+         style="stop-color:#3b72ba;stop-opacity:1;"
          offset="1"
          id="stop3604" />
     </linearGradient>
@@ -213,21 +213,21 @@
          transform="matrix(0.58620688,0,0,0.58620688,20.24138,7.4137941)"
          style="stroke-width:0.944312">
         <circle
-           style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:url(#radialGradient3808);fill-opacity:1;fill-rule:evenodd;stroke:#0b1521;stroke-width:1.7051;marker:none;enable-background:accumulate"
+           style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:url(#radialGradient3808);fill-opacity:1;fill-rule:evenodd;stroke:#1e3a5c;stroke-width:1.7051;marker:none;enable-background:accumulate"
            id="path2826"
            cx="31.636364"
            cy="30.363636"
            r="26.181818"
            transform="matrix(1.1076389,0,0,1.1076389,-3.0416672,-1.6319442)" />
         <circle
-           style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:none;stroke:#729fcf;stroke-width:1.83139;stroke-opacity:1;marker:none;enable-background:accumulate"
+           style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:none;stroke:#85acd5;stroke-width:1.83139;stroke-opacity:1;marker:none;enable-background:accumulate"
            id="path2826-4"
            transform="matrix(1.03125,0,0,1.03125,-0.62500046,0.68750048)"
            cx="31.636364"
            cy="30.363636"
            r="26.181818" />
         <circle
-           style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:none;stroke:#0b1521;stroke-width:1.7051;stroke-opacity:1;marker:none;enable-background:accumulate"
+           style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:none;stroke:#1e3a5c;stroke-width:1.7051;stroke-opacity:1;marker:none;enable-background:accumulate"
            id="path2826-5"
            transform="matrix(1.1076389,0,0,1.1076389,-3.0416672,-1.631944)"
            cx="31.636364"

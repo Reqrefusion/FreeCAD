@@ -167,11 +167,11 @@
        gradientTransform="scale(0.99999018,1.0000098)"
        gradientUnits="userSpaceOnUse">
       <stop
-         stop-color="#A40000"
+         stop-color="#a40000"
          offset="0%"
          id="stop6-9" />
       <stop
-         stop-color="#EF2929"
+         stop-color="#ef2929"
          offset="100%"
          id="stop8" />
     </linearGradient>
@@ -186,11 +186,11 @@
     <linearGradient
        id="linearGradient3815">
       <stop
-         style="stop-color:#3465a4;stop-opacity:1"
+         style="stop-color:#3b72ba;stop-opacity:1"
          offset="0"
          id="stop3817" />
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="1"
          id="stop3819" />
     </linearGradient>
@@ -205,11 +205,11 @@
     <linearGradient
        id="linearGradient3841">
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="0"
          id="stop3843" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:1"
+         style="stop-color:#3b72ba;stop-opacity:1"
          offset="1"
          id="stop3845" />
     </linearGradient>
@@ -390,11 +390,11 @@
          d="m 77.902386,22.6769 v 24"
          id="path3491-7" />
       <path
-         style="fill:none;stroke:#3465a4;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         style="fill:none;stroke:#3b72ba;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
          d="m 77.902386,22.6769 v 24"
          id="path3491-4-7" />
       <path
-         style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         style="fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
          d="m 76.902386,22.6769 v 24"
          id="path3491-4-1-3" />
     </g>

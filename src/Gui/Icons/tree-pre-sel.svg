@@ -205,7 +205,7 @@
        id="aigrd2">
       <stop
          id="stop15566"
-         style="stop-color:#F0F0F0"
+         style="stop-color:#f0f0f0"
          offset="0" />
       <stop
          id="stop15568"
@@ -222,7 +222,7 @@
        id="aigrd3">
       <stop
          id="stop15573"
-         style="stop-color:#F0F0F0"
+         style="stop-color:#f0f0f0"
          offset="0" />
       <stop
          id="stop15575"
@@ -385,11 +385,11 @@
     <linearGradient
        id="linearGradient3895-5">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1;"
+         style="stop-color:#85acd5;stop-opacity:1;"
          offset="0"
          id="stop3897-6" />
       <stop
-         style="stop-color:#204a87;stop-opacity:1;"
+         style="stop-color:#2b62b6;stop-opacity:1;"
          offset="1"
          id="stop3899-2" />
     </linearGradient>
@@ -498,11 +498,11 @@
        inkscape:collect="always"
        id="linearGradient3801-6">
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="0"
          id="stop3803-7" />
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="1"
          id="stop3805-5" />
     </linearGradient>
@@ -639,19 +639,19 @@
          inkscape:connector-curvature="0"
          id="path2994-3-3"
          d="m 25.000001,24.86206 c 0,2.28532 -4.924867,4.13794 -11,4.13794 C 7.924868,29 3,27.14738 3,24.86206 l -1e-6,-17.7241305 22.000001,0 z"
-         style="fill:#729fcf;stroke:#0b1521;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.5;stroke-dashoffset:20.39999962;stroke-opacity:1" />
+         style="fill:#85acd5;stroke:#1e3a5c;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.5;stroke-dashoffset:20.39999962;stroke-opacity:1" />
       <path
          sodipodi:nodetypes="sscccs"
          inkscape:connector-curvature="0"
          id="path2994-3-6-5"
          d="m 23,24 c 0,2.07756 -5.999802,3.01587 -9,3.01587 -3,0 -9,-0.93831 -9,-3.01587 l -1e-6,-15.6551715 18.000001,0 z"
-         style="fill:url(#linearGradient3807-3);fill-opacity:1;stroke:#729fcf;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.5;stroke-dashoffset:20.39999962;stroke-opacity:1" />
+         style="fill:url(#linearGradient3807-3);fill-opacity:1;stroke:#85acd5;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.5;stroke-dashoffset:20.39999962;stroke-opacity:1" />
       <path
          sodipodi:nodetypes="csc"
          inkscape:connector-curvature="0"
          id="path2994-3-6-9-6"
          d="M 23,11.000001 C 21,13 17,13.351648 14,13.351648 11,13.351648 7,13 5,11.000001"
-         style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.5;stroke-dashoffset:20.39999962;stroke-opacity:1" />
+         style="fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.5;stroke-dashoffset:20.39999962;stroke-opacity:1" />
       <ellipse
          ry="7"
          rx="21"
@@ -659,7 +659,7 @@
          cx="-35"
          transform="matrix(0.52380955,0,0,0.59113297,32.333335,-7.640393)"
          id="path2994-2"
-         style="fill:#729fcf;stroke:#0b1521;stroke-width:3.59418702;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.5;stroke-dasharray:none;stroke-dashoffset:20.39999962;stroke-opacity:1" />
+         style="fill:#85acd5;stroke:#1e3a5c;stroke-width:3.59418702;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.5;stroke-dasharray:none;stroke-dashoffset:20.39999962;stroke-opacity:1" />
     </g>
     <g
        id="g4585"
@@ -703,19 +703,19 @@
          inkscape:connector-curvature="0"
          id="path2994-3-3-6"
          d="m 25.000001,24.86206 c 0,2.28532 -4.924867,4.13794 -11,4.13794 C 7.924868,29 3,27.14738 3,24.86206 l -1e-6,-17.7241305 22.000001,0 z"
-         style="fill:#729fcf;stroke:#0b1521;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.5;stroke-dashoffset:20.39999962;stroke-opacity:1" />
+         style="fill:#85acd5;stroke:#1e3a5c;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.5;stroke-dashoffset:20.39999962;stroke-opacity:1" />
       <path
          sodipodi:nodetypes="sscccs"
          inkscape:connector-curvature="0"
          id="path2994-3-6-5-1"
          d="m 23,24 c 0,2.07756 -5.999802,3.01587 -9,3.01587 -3,0 -9,-0.93831 -9,-3.01587 l -1e-6,-15.6551715 18.000001,0 z"
-         style="fill:url(#linearGradient4627);fill-opacity:1;stroke:#729fcf;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.5;stroke-dashoffset:20.39999962;stroke-opacity:1" />
+         style="fill:url(#linearGradient4627);fill-opacity:1;stroke:#85acd5;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.5;stroke-dashoffset:20.39999962;stroke-opacity:1" />
       <path
          sodipodi:nodetypes="csc"
          inkscape:connector-curvature="0"
          id="path2994-3-6-9-6-8"
          d="M 23,11.000001 C 21,13 17,13.351648 14,13.351648 11,13.351648 7,13 5,11.000001"
-         style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.5;stroke-dashoffset:20.39999962;stroke-opacity:1" />
+         style="fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.5;stroke-dashoffset:20.39999962;stroke-opacity:1" />
       <ellipse
          ry="7"
          rx="21"
@@ -723,7 +723,7 @@
          cx="-35"
          transform="matrix(0.52380955,0,0,0.59113297,32.333335,-7.640393)"
          id="path2994-2-7"
-         style="fill:#729fcf;stroke:#0b1521;stroke-width:3.59418702;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.5;stroke-dasharray:none;stroke-dashoffset:20.39999962;stroke-opacity:1" />
+         style="fill:#85acd5;stroke:#1e3a5c;stroke-width:3.59418702;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4.5;stroke-dasharray:none;stroke-dashoffset:20.39999962;stroke-opacity:1" />
     </g>
     <g
        id="g4404"

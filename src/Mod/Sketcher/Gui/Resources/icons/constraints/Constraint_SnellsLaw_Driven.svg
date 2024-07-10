@@ -92,9 +92,9 @@
     <path style="fill:none;stroke:#edd400;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;display:inline" d="m 7,7 25,24 7,26" id="path3900-7" />
     <path style="fill:none;stroke:#fce94f;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;display:inline" d="M 8.15625,5.390625 36,32 30,31 37,58" id="path3900-7-5" />
     <g style="display:inline" id="g3895">
-      <path id="path3077" d="m 6,31 52,0" style="fill:none;stroke:#0b1521;stroke-width:8;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
-      <path id="path3077-3" d="m 6,31 52,0" style="fill:none;stroke:#3465a4;stroke-width:4;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1;display:inline" />
-      <path id="path3077-3-6" d="m 6,30 52,0" style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1;display:inline" />
+      <path id="path3077" d="m 6,31 52,0" style="fill:none;stroke:#1e3a5c;stroke-width:8;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+      <path id="path3077-3" d="m 6,31 52,0" style="fill:none;stroke:#3b72ba;stroke-width:4;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1;display:inline" />
+      <path id="path3077-3-6" d="m 6,30 52,0" style="fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1;display:inline" />
     </g>
   </g>
 </svg>

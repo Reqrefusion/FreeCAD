@@ -20,7 +20,7 @@
        orient="auto">
       <path
          transform="scale(0.8) translate(12.5,0)"
-         style="fill-rule:evenodd;stroke:#729fcf;stroke-width:1pt;stroke-opacity:1;fill:#729fcf;fill-opacity:1"
+         style="fill-rule:evenodd;stroke:#85acd5;stroke-width:1pt;stroke-opacity:1;fill:#85acd5;fill-opacity:1"
          d="M 0.0,0.0 L 5.0,-5.0 L -12.5,0.0 L 5.0,5.0 L 0.0,0.0 z "
          id="path4859" />
     </marker>
@@ -240,11 +240,11 @@
        transform="translate(0,4)"
        id="g5168">
       <path
-         style="fill:#00ffff;stroke:#0b1521;stroke-width:6;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:4, 8;stroke-dashoffset:0;stroke-opacity:1"
+         style="fill:#00ffff;stroke:#1e3a5c;stroke-width:6;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:4, 8;stroke-dashoffset:0;stroke-opacity:1"
          d="M 5,52 V 23"
          id="path3878-4" />
       <path
-         style="fill:#00ffff;stroke:#729fcf;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:4, 8;stroke-dashoffset:0;stroke-opacity:1"
+         style="fill:#00ffff;stroke:#85acd5;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:4, 8;stroke-dashoffset:0;stroke-opacity:1"
          d="M 5,52 V 22"
          id="path3878" />
     </g>
@@ -252,11 +252,11 @@
        transform="translate(2)"
        id="g5172">
       <path
-         style="fill:none;stroke:#0b1521;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:4, 8;stroke-dashoffset:0;stroke-opacity:1"
+         style="fill:none;stroke:#1e3a5c;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:4, 8;stroke-dashoffset:0;stroke-opacity:1"
          d="M 34,56 V 25 c 0,-3 -5,-9 -8,-12"
          id="path3878-2-8" />
       <path
-         style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:4, 8;stroke-dashoffset:0;stroke-opacity:1"
+         style="fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:4, 8;stroke-dashoffset:0;stroke-opacity:1"
          d="M 34,56 V 25 c 0,-3 -5,-9 -8,-12"
          id="path3878-2" />
     </g>

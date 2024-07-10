@@ -176,11 +176,11 @@
        gradientTransform="scale(0.99999018,1.0000098)"
        gradientUnits="userSpaceOnUse">
       <stop
-         stop-color="#A40000"
+         stop-color="#a40000"
          offset="0%"
          id="stop6-9" />
       <stop
-         stop-color="#EF2929"
+         stop-color="#ef2929"
          offset="100%"
          id="stop8" />
     </linearGradient>

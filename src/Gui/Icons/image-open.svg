@@ -177,7 +177,7 @@
        id="aigrd2">
       <stop
          id="stop15566"
-         style="stop-color:#F0F0F0"
+         style="stop-color:#f0f0f0"
          offset="0" />
       <stop
          id="stop15568"
@@ -194,7 +194,7 @@
        id="aigrd3">
       <stop
          id="stop15573"
-         style="stop-color:#F0F0F0"
+         style="stop-color:#f0f0f0"
          offset="0" />
       <stop
          id="stop15575"
@@ -353,11 +353,11 @@
     <linearGradient
        id="linearGradient3895">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1;"
+         style="stop-color:#85acd5;stop-opacity:1;"
          offset="0"
          id="stop3897" />
       <stop
-         style="stop-color:#204a87;stop-opacity:1;"
+         style="stop-color:#2b62b6;stop-opacity:1;"
          offset="1"
          id="stop3899" />
     </linearGradient>
@@ -415,7 +415,7 @@
          inkscape:export-ydpi="103.58996" />
       <path
          inkscape:connector-curvature="0"
-         style="fill:url(#linearGradient3023);fill-opacity:1;fill-rule:evenodd;stroke:#0b1521;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         style="fill:url(#linearGradient3023);fill-opacity:1;fill-rule:evenodd;stroke:#1e3a5c;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
          d="m 404.19864,141.64563 v 10 h -17 v 14 h 17 v 10 l 18,-17 z"
          id="path3343"
          sodipodi:nodetypes="cccccccc"
@@ -424,7 +424,7 @@
          inkscape:export-ydpi="103.58996" />
       <path
          inkscape:connector-curvature="0"
-         style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         style="fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
          d="m 406.20525,146.28863 -0.007,7.357 h -17 v 10 h 17 l -0.007,7.357 13.0066,-12.357 z"
          id="path3343-2"
          sodipodi:nodetypes="cccccccc"

@@ -16,8 +16,8 @@
     </linearGradient>
     <radialGradient xlink:href="#linearGradient3600" id="radialGradient3808" cx="20.802507" cy="18.626959" fx="20.802507" fy="18.626959" r="27.084639" gradientUnits="userSpaceOnUse" gradientTransform="matrix(0.66666671,0.70000004,-1.3510775,1.2867404,32.100634,-19.902858)" />
     <linearGradient id="linearGradient3600">
-      <stop style="stop-color:#729fcf;stop-opacity:1" offset="0" id="stop3602" />
-      <stop style="stop-color:#204a87;stop-opacity:1" offset="1" id="stop3604" />
+      <stop style="stop-color:#85acd5;stop-opacity:1" offset="0" id="stop3602" />
+      <stop style="stop-color:#2b62b6;stop-opacity:1" offset="1" id="stop3604" />
     </linearGradient>
     <radialGradient r="27.084639" fy="18.626959" fx="20.802507" cy="18.626959" cx="20.802507" gradientTransform="matrix(0.66666671,0.70000004,-1.3510775,1.2867404,32.100634,-19.902858)" gradientUnits="userSpaceOnUse" id="radialGradient3132" xlink:href="#linearGradient3600" />
   </defs>
@@ -55,8 +55,8 @@
     </rdf:RDF>
   </metadata>
   <g id="layer1">
-    <path style="color:#000000;fill:url(#radialGradient3132);fill-opacity:1;fill-rule:evenodd;stroke:#0b1521;stroke-width:1.80564272;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" id="path2826" d="m 57.818182,30.363636 a 26.181818,26.181818 0 1 1 -52.363636,0 26.181818,26.181818 0 1 1 52.363636,0 z" transform="matrix(1.1076389,0,0,1.1076389,-3.0416672,-1.6319442)" />
-    <path style="color:#000000;fill:none;stroke:#729fcf;stroke-width:1.93939412;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" id="path2826-4" d="m 57.818182,30.363636 a 26.181818,26.181818 0 1 1 -52.363636,0 26.181818,26.181818 0 1 1 52.363636,0 z" transform="matrix(1.03125,0,0,1.03125,-0.6250005,0.68750036)" />
-    <path style="color:#000000;fill:none;stroke:#0b1521;stroke-width:1.80564272;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" id="path2826-5" d="m 57.818182,30.363636 a 26.181818,26.181818 0 1 1 -52.363636,0 26.181818,26.181818 0 1 1 52.363636,0 z" transform="matrix(1.1076389,0,0,1.1076389,-3.0416672,-1.631944)" />
+    <path style="color:#000000;fill:url(#radialGradient3132);fill-opacity:1;fill-rule:evenodd;stroke:#1e3a5c;stroke-width:1.80564272;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" id="path2826" d="m 57.818182,30.363636 a 26.181818,26.181818 0 1 1 -52.363636,0 26.181818,26.181818 0 1 1 52.363636,0 z" transform="matrix(1.1076389,0,0,1.1076389,-3.0416672,-1.6319442)" />
+    <path style="color:#000000;fill:none;stroke:#85acd5;stroke-width:1.93939412;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" id="path2826-4" d="m 57.818182,30.363636 a 26.181818,26.181818 0 1 1 -52.363636,0 26.181818,26.181818 0 1 1 52.363636,0 z" transform="matrix(1.03125,0,0,1.03125,-0.6250005,0.68750036)" />
+    <path style="color:#000000;fill:none;stroke:#1e3a5c;stroke-width:1.80564272;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" id="path2826-5" d="m 57.818182,30.363636 a 26.181818,26.181818 0 1 1 -52.363636,0 26.181818,26.181818 0 1 1 52.363636,0 z" transform="matrix(1.1076389,0,0,1.1076389,-3.0416672,-1.631944)" />
   </g>
 </svg>

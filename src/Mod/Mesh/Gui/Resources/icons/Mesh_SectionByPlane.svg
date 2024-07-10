@@ -19,44 +19,44 @@
       <stop
          id="stop2494"
          offset="0"
-         style="stop-color:#204a87;stop-opacity:1" />
+         style="stop-color:#2b62b6;stop-opacity:1" />
       <stop
          id="stop2496"
          offset="1"
-         style="stop-color:#729fcf;stop-opacity:1" />
+         style="stop-color:#85acd5;stop-opacity:1" />
     </linearGradient>
     <linearGradient
        id="linearGradient2490">
       <stop
          id="stop2486"
          offset="0"
-         style="stop-color:#204a87;stop-opacity:1" />
+         style="stop-color:#2b62b6;stop-opacity:1" />
       <stop
          id="stop2488"
          offset="1"
-         style="stop-color:#729fcf;stop-opacity:1" />
+         style="stop-color:#85acd5;stop-opacity:1" />
     </linearGradient>
     <linearGradient
        id="linearGradient2364">
       <stop
          id="stop2360"
          offset="0"
-         style="stop-color:#204a87;stop-opacity:1;" />
+         style="stop-color:#2b62b6;stop-opacity:1;" />
       <stop
          id="stop2362"
          offset="1"
-         style="stop-color:#729fcf;stop-opacity:1" />
+         style="stop-color:#85acd5;stop-opacity:1" />
     </linearGradient>
     <linearGradient
        id="linearGradient2356">
       <stop
          id="stop2352"
          offset="0"
-         style="stop-color:#204a87;stop-opacity:1" />
+         style="stop-color:#2b62b6;stop-opacity:1" />
       <stop
          id="stop2354"
          offset="1"
-         style="stop-color:#729fcf;stop-opacity:1" />
+         style="stop-color:#85acd5;stop-opacity:1" />
     </linearGradient>
     <linearGradient
        id="linearGradient3935">
@@ -258,7 +258,7 @@
     <path
        id="path2504"
        d="M 7,43 9.8945377,13.644065 58,5 57,26"
-       style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+       style="fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     <circle
        r="23"
        cy="32"
@@ -334,7 +334,7 @@
     <path
        id="path2506"
        d="M 57,26 56.027106,48.297954 7.0372865,57.433965 7.9321634,42.850854"
-       style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+       style="fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     <path
        id="path2508"
        d="M 9,43 C 26.936461,43.147931 43.197569,38.265295 57,26"
@@ -346,6 +346,6 @@
     <path
        id="path2502"
        d="m 8,12 52,-9 -2,46.91869 -53.1118596,10 z"
-       style="fill:none;stroke:#0b1521;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+       style="fill:none;stroke:#1e3a5c;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
   </g>
 </svg>

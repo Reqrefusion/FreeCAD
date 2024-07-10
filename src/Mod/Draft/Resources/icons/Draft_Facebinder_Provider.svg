@@ -413,11 +413,11 @@
       <stop
          id="stop3838"
          offset="0"
-         style="stop-color:#3465a4;stop-opacity:1;" />
+         style="stop-color:#3b72ba;stop-opacity:1;" />
       <stop
          id="stop3840"
          offset="1"
-         style="stop-color:#729fcf;stop-opacity:1;" />
+         style="stop-color:#85acd5;stop-opacity:1;" />
     </linearGradient>
   </defs>
   <g
@@ -437,15 +437,15 @@
     <path
        id="rect3200-8-9-3"
        d="M 35.024525,8.3433506 5,24.245707 5,59 l 21.421721,0 8.553754,-5.120934 z"
-       style="color:#000000;fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" />
+       style="color:#000000;fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" />
     <path
        id="rect3200-8-99-6"
        d="M 41.500925,4.9999999 38.991329,6.2383464 39.034684,16.61848 58.982658,5.8092399 59,4.9999999 z"
-       style="color:#000000;fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" />
+       style="color:#000000;fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" />
     <path
        id="rect3200-8-7"
        d="M 39,36.277469 59.017342,26.208102 59.032192,40.278278 39.052025,51.537597 z"
-       style="color:#000000;fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" />
+       style="color:#000000;fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" />
   </g>
   <metadata
      id="metadata4502">

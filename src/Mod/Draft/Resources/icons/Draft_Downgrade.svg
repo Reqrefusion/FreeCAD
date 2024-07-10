@@ -44,11 +44,11 @@
       <stop
          id="stop3897"
          offset="0"
-         style="stop-color:#729fcf;stop-opacity:1;" />
+         style="stop-color:#85acd5;stop-opacity:1;" />
       <stop
          id="stop3899"
          offset="1"
-         style="stop-color:#204a87;stop-opacity:1;" />
+         style="stop-color:#2b62b6;stop-opacity:1;" />
     </linearGradient>
     <linearGradient
        xlink:href="#linearGradient3895"
@@ -65,11 +65,11 @@
     <path
        id="path3343"
        d="M 57,34.9 43,35 43,3 21,3 21,35 7.0000006,34.9 32.000001,61 z"
-       style="fill:url(#linearGradient3036);fill-opacity:1;fill-rule:evenodd;stroke:#0b1521;stroke-width:1.99999988000000006;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+       style="fill:url(#linearGradient3036);fill-opacity:1;fill-rule:evenodd;stroke:#1e3a5c;stroke-width:1.99999988000000006;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
     <path
        id="path3343-2"
        d="M 52,37 41,37 41,5 23,5 23,37 12,37 31.827939,57.999994 z"
-       style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+       style="fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
   </g>
   <metadata
      id="metadata4089">

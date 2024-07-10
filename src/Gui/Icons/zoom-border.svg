@@ -73,7 +73,7 @@
          offset="0"
          id="stop11981" />
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="1"
          id="stop11983" />
     </linearGradient>
@@ -124,11 +124,11 @@
     <linearGradient
        id="linearGradient4454">
       <stop
-         style="stop-color:#729fcf;stop-opacity:0.20784314;"
+         style="stop-color:#85acd5;stop-opacity:0.20784314;"
          offset="0.0000000"
          id="stop4456" />
       <stop
-         style="stop-color:#729fcf;stop-opacity:0.67619050;"
+         style="stop-color:#85acd5;stop-opacity:0.67619050;"
          offset="1.0000000"
          id="stop4458" />
     </linearGradient>
@@ -235,7 +235,7 @@
     <linearGradient
        id="linearGradient1322">
       <stop
-         style="stop-color:#729fcf"
+         style="stop-color:#85acd5"
          offset="0.0000000"
          id="stop1324" />
       <stop
@@ -301,7 +301,7 @@
       <stop
          id="stop2404"
          offset="0"
-         style="stop-color:#729fcf;stop-opacity:1;" />
+         style="stop-color:#85acd5;stop-opacity:1;" />
       <stop
          id="stop2406"
          offset="1"
@@ -313,11 +313,11 @@
       <stop
          id="stop2873"
          offset="0"
-         style="stop-color:#3465a4;stop-opacity:1;" />
+         style="stop-color:#3b72ba;stop-opacity:1;" />
       <stop
          id="stop2875"
          offset="1"
-         style="stop-color:#3465a4;stop-opacity:1" />
+         style="stop-color:#3b72ba;stop-opacity:1" />
     </linearGradient>
     <linearGradient
        gradientTransform="translate(-48.77039,-5.765705)"
@@ -371,7 +371,7 @@
       <stop
          id="stop2384"
          offset="1"
-         style="stop-color:#729fcf;stop-opacity:1" />
+         style="stop-color:#85acd5;stop-opacity:1" />
     </linearGradient>
     <linearGradient
        y2="19.115122"
@@ -388,7 +388,7 @@
       <stop
          id="stop2833"
          offset="0"
-         style="stop-color:#3465a4;stop-opacity:1;" />
+         style="stop-color:#3b72ba;stop-opacity:1;" />
       <stop
          style="stop-color:#5b86be;stop-opacity:1;"
          offset="0.33333334"
@@ -414,11 +414,11 @@
       <stop
          id="stop2849"
          offset="0"
-         style="stop-color:#3465a4;stop-opacity:1;" />
+         style="stop-color:#3b72ba;stop-opacity:1;" />
       <stop
          id="stop2851"
          offset="1"
-         style="stop-color:#3465a4;stop-opacity:0;" />
+         style="stop-color:#3b72ba;stop-opacity:0;" />
     </linearGradient>
     <radialGradient
        r="15.644737"
@@ -520,7 +520,7 @@
        gradientUnits="userSpaceOnUse" />
   </defs>
   <sodipodi:namedview
-     stroke="#3465a4"
+     stroke="#3b72ba"
      inkscape:window-y="27"
      inkscape:window-x="0"
      inkscape:window-height="837"
@@ -539,7 +539,7 @@
      bordercolor="#666666"
      pagecolor="#ffffff"
      id="base"
-     fill="#729fcf"
+     fill="#85acd5"
      inkscape:snap-bbox="true"
      inkscape:snap-nodes="false"
      inkscape:window-maximized="1">

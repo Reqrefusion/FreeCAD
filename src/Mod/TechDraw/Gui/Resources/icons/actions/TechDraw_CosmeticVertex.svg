@@ -17,11 +17,11 @@
     <linearGradient
        id="linearGradient5062">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="0"
          id="stop5058" />
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="1"
          id="stop5060" />
     </linearGradient>
@@ -107,11 +107,11 @@
     <linearGradient
        id="linearGradient3836-9-3">
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="0"
          id="stop3838-8-5" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:1"
+         style="stop-color:#3b72ba;stop-opacity:1"
          offset="1"
          id="stop3840-1-6" />
     </linearGradient>
@@ -135,11 +135,11 @@
        transform="matrix(0.86962493,0,0,0.86962474,4.1720044,4.1720253)"
        style="stroke-width:1.14992">
       <path
-         style="fill:#729fcf;fill-opacity:1;stroke:#0b1521;stroke-width:2.29984;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         style="fill:#85acd5;fill-opacity:1;stroke:#1e3a5c;stroke-width:2.29984;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
          id="path4250"
          d="M 23.263097,24.518251 A 11.502815,11.502299 0.0048887 1 1 40.736898,39.48171 11.502815,11.502299 0.0048887 1 1 23.263097,24.518251 Z" />
       <path
-         style="fill:url(#linearGradient3922);fill-opacity:1;stroke:#729fcf;stroke-width:2.29984;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;font-variation-settings:normal;opacity:1;vector-effect:none;stroke-linecap:butt;stroke-linejoin:miter;stroke-dashoffset:0;-inkscape-stroke:none;stop-color:#000000;stop-opacity:1"
+         style="fill:url(#linearGradient3922);fill-opacity:1;stroke:#85acd5;stroke-width:2.29984;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;font-variation-settings:normal;opacity:1;vector-effect:none;stroke-linecap:butt;stroke-linejoin:miter;stroke-dashoffset:0;-inkscape-stroke:none;stop-color:#000000;stop-opacity:1"
          id="path1"
          d="m 32.175781,22.794922 c 2.057708,0.0371 4.120381,0.761913 5.8125,2.210937 3.85283,3.29932 4.30235,9.127829 1,12.980469 -3.297926,3.85424 -9.123393,4.307423 -12.976562,1.007813 -3.85283,-3.29932 -4.30235,-9.127829 -1,-12.980469 1.862092,-2.1762 4.518208,-3.266456 7.164062,-3.21875 z" />
     </g>

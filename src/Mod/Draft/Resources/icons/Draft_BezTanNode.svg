@@ -267,11 +267,11 @@
       <stop
          id="stop3838-0-9-9"
          offset="0"
-         style="stop-color:#3465a4;stop-opacity:1;" />
+         style="stop-color:#3b72ba;stop-opacity:1;" />
       <stop
          id="stop3840-6-2-1"
          offset="1"
-         style="stop-color:#729fcf;stop-opacity:1;" />
+         style="stop-color:#85acd5;stop-opacity:1;" />
     </linearGradient>
     <linearGradient
        xlink:href="#linearGradient3836-6-7"
@@ -287,11 +287,11 @@
       <stop
          id="stop3838-0-9"
          offset="0"
-         style="stop-color:#3465a4;stop-opacity:1;" />
+         style="stop-color:#3b72ba;stop-opacity:1;" />
       <stop
          id="stop3840-6-2"
          offset="1"
-         style="stop-color:#729fcf;stop-opacity:1;" />
+         style="stop-color:#85acd5;stop-opacity:1;" />
     </linearGradient>
     <linearGradient
        xlink:href="#linearGradient3836"
@@ -307,11 +307,11 @@
       <stop
          id="stop3838"
          offset="0"
-         style="stop-color:#3465a4;stop-opacity:1;" />
+         style="stop-color:#3b72ba;stop-opacity:1;" />
       <stop
          id="stop3840"
          offset="1"
-         style="stop-color:#729fcf;stop-opacity:1;" />
+         style="stop-color:#85acd5;stop-opacity:1;" />
     </linearGradient>
   </defs>
   <g
@@ -341,11 +341,11 @@
      transform="translate(49.020267,20.045388)"
      id="g3900">
     <path
-       style="fill:#3465a4;fill-opacity:1;stroke:#0b1521;stroke-width:1.99999988;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       style="fill:#3b72ba;fill-opacity:1;stroke:#1e3a5c;stroke-width:1.99999988;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
        id="path4250-3"
        d="M -24.85434,22.102082 A 8.993818,8.9934077 0.02042283 1 1 -11.191929,33.801697 8.993818,8.9934077 0.02042283 1 1 -24.85434,22.102082 z" />
     <path
-       style="fill:url(#linearGradient4066);fill-opacity:1;stroke:#729fcf;stroke-width:1.99999952;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       style="fill:url(#linearGradient4066);fill-opacity:1;stroke:#85acd5;stroke-width:1.99999952;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
        id="path4250-7"
        d="m -23.331724,23.413044 a 6.9999997,7.0000001 0 1 1 10.633588,9.106412 6.9999997,7.0000001 0 0 1 -10.633588,-9.106412 z" />
   </g>
@@ -355,11 +355,11 @@
     <path
        d="M -24.738496,22.201269 A 8.8415964,8.8410632 0.01544676 1 1 -11.307323,33.702698 8.8415964,8.8410632 0.01544676 1 1 -24.738496,22.201269 z"
        id="path4250-3-6-2"
-       style="fill:#3465a4;fill-opacity:1;stroke:#0b1521;stroke-width:4.4223876;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+       style="fill:#3b72ba;fill-opacity:1;stroke:#1e3a5c;stroke-width:4.4223876;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
     <path
        d="m -21.383898,25.077595 a 4.4222541,4.4226169 0 1 1 6.717775,5.753453 4.4222541,4.4226169 0 0 1 -6.717775,-5.753453 z"
        id="path4250-7-1-3"
-       style="fill:url(#linearGradient4104);fill-opacity:1;stroke:#729fcf;stroke-width:4.42238665;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+       style="fill:url(#linearGradient4104);fill-opacity:1;stroke:#85acd5;stroke-width:4.42238665;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
   </g>
   <g
      id="g3946-0-7"
@@ -367,11 +367,11 @@
     <path
        d="M -24.738496,22.201269 A 8.8415964,8.8410632 0.01544676 1 1 -11.307323,33.702698 8.8415964,8.8410632 0.01544676 1 1 -24.738496,22.201269 z"
        id="path4250-3-6-2-0"
-       style="fill:#3465a4;fill-opacity:1;stroke:#0b1521;stroke-width:4.4223876;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+       style="fill:#3b72ba;fill-opacity:1;stroke:#1e3a5c;stroke-width:4.4223876;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
     <path
        d="m -21.383898,25.077595 a 4.4222541,4.4226169 0 1 1 6.717775,5.753453 4.4222541,4.4226169 0 0 1 -6.717775,-5.753453 z"
        id="path4250-7-1-3-9"
-       style="fill:url(#linearGradient4104-2);fill-opacity:1;stroke:#729fcf;stroke-width:4.42238665;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+       style="fill:url(#linearGradient4104-2);fill-opacity:1;stroke:#85acd5;stroke-width:4.42238665;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
   </g>
   <metadata
      id="metadata3697">

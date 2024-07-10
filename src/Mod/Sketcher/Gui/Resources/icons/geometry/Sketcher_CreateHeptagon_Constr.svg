@@ -164,11 +164,11 @@
     <linearGradient
        id="linearGradient3809">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="0"
          id="stop3811" />
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="1"
          id="stop3813" />
     </linearGradient>
@@ -455,16 +455,16 @@
          d="M 60.999998,60.999998 -6.1838169,84.508631 -66.45203,46.639603 l -7.969418,-70.730539 50.330511,-50.330512 70.73054,7.969417 37.869028,60.2682136 z"
          transform="matrix(0.31413596,0.0860429,-0.08666285,0.3174932,30.916893,31.701158)" />
       <path
-         style="fill:none;stroke:#3465a4;stroke-width:12.2174;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.9;stroke-dasharray:none;stroke-opacity:1"
+         style="fill:none;stroke:#3b72ba;stroke-width:12.2174;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.9;stroke-dasharray:none;stroke-opacity:1"
          id="path3064-9"
          d="M 60.999998,60.999998 -6.1838169,84.508631 -66.45203,46.639603 l -7.969418,-70.730539 50.330511,-50.330512 70.73054,7.969417 37.869028,60.2682136 z"
          transform="matrix(0.31413596,0.0860429,-0.08666285,0.3174932,30.916893,31.701158)" />
       <path
-         style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.9;stroke-opacity:1"
+         style="fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.9;stroke-opacity:1"
          d="M 5,41.129312 8.765699,17.097051 29.71397,5 52.070337,13.947485 59,37.201867"
          id="path3064-9-1" />
       <path
-         style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.9;stroke-opacity:1"
+         style="fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.9;stroke-opacity:1"
          d="M 57,36.816544 44.300724,55.381596 22.04863,57 7,40.453067"
          id="path3064-9-2" />
     </g>

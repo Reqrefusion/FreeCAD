@@ -50,7 +50,7 @@
          offset="0"
          id="stop6783" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:0;"
+         style="stop-color:#3b72ba;stop-opacity:0;"
          offset="1"
          id="stop6785" />
     </linearGradient>
@@ -130,11 +130,11 @@
     <linearGradient
        id="linearGradient3600">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="0"
          id="stop3602" />
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="1"
          id="stop3604" />
     </linearGradient>
@@ -211,19 +211,19 @@
       <circle
          r="18.457682"
          id="path2826"
-         style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:url(#radialGradient3808);fill-opacity:1;fill-rule:evenodd;stroke:#0b1521;stroke-width:1.84547901;marker:none;enable-background:accumulate"
+         style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:url(#radialGradient3808);fill-opacity:1;fill-rule:evenodd;stroke:#1e3a5c;stroke-width:1.84547901;marker:none;enable-background:accumulate"
          cx="-91.928146"
          cy="-42.321846" />
       <circle
          r="17.184738"
          id="path2826-4"
-         style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:none;stroke:#729fcf;stroke-width:1.84547901;marker:none;enable-background:accumulate"
+         style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:none;stroke:#85acd5;stroke-width:1.84547901;marker:none;enable-background:accumulate"
          cx="-91.928146"
          cy="-42.321846" />
       <circle
          r="18.457682"
          id="path2826-5"
-         style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:none;stroke:#0b1521;stroke-width:1.84547901;marker:none;enable-background:accumulate"
+         style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:none;stroke:#1e3a5c;stroke-width:1.84547901;marker:none;enable-background:accumulate"
          cx="-91.928146"
          cy="-42.321846" />
     </g>

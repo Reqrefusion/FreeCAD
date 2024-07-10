@@ -17,11 +17,11 @@
       <stop
          id="stop3897"
          offset="0"
-         style="stop-color:#729fcf;stop-opacity:1;" />
+         style="stop-color:#85acd5;stop-opacity:1;" />
       <stop
          id="stop3899"
          offset="1"
-         style="stop-color:#204a87;stop-opacity:1;" />
+         style="stop-color:#2b62b6;stop-opacity:1;" />
     </linearGradient>
     <linearGradient
        id="linearGradient3354">
@@ -101,14 +101,14 @@
        height="8.0000019"
        width="20"
        id="rect3341-9"
-       style="fill:none;stroke:#0b1521;stroke-width:2;stroke-linejoin:round;stroke-opacity:1;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" />
+       style="fill:none;stroke:#1e3a5c;stroke-width:2;stroke-linejoin:round;stroke-opacity:1;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" />
     <rect
        y="37"
        x="9"
        height="3.9999986"
        width="16"
        id="rect3341-3-1"
-       style="fill:#3465a4;stroke:#729fcf;stroke-width:2;stroke-opacity:1;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" />
+       style="fill:#3b72ba;stroke:#85acd5;stroke-width:2;stroke-opacity:1;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" />
     <rect
        y="21"
        x="7"
@@ -140,11 +140,11 @@
     <path
        id="path3343"
        d="m 43,15 0,10 -22,0 0,14 22,0 0,10 18,-17 z"
-       style="fill:url(#linearGradient3909);fill-opacity:1;fill-rule:evenodd;stroke:#0b1521;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+       style="fill:url(#linearGradient3909);fill-opacity:1;fill-rule:evenodd;stroke:#1e3a5c;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
     <path
        id="path3343-2"
        d="M 45.006611,19.642998 45,27 l -22,0 0,10 22,0 -0.0066,7.357002 L 58,32 z"
-       style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+       style="fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
   </g>
   <metadata
      id="metadata3231">

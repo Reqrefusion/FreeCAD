@@ -188,11 +188,11 @@
     <linearGradient
        id="linearGradient4383">
       <stop
-         stop-color="#3465a4"
+         stop-color="#3b72ba"
          offset="0"
          id="stop3" />
       <stop
-         stop-color="#729fcf"
+         stop-color="#85acd5"
          offset="1"
          id="stop4" />
     </linearGradient>
@@ -333,23 +333,23 @@
       <path
          d="m 91,33.5 -0.02739,-14.214 12.967,4.3352 v 14.5 z"
          id="path54"
-         style="fill:url(#linearGradient69709);stroke:#0b1521;stroke-width:2;stroke-linejoin:round" />
+         style="fill:url(#linearGradient69709);stroke:#1e3a5c;stroke-width:2;stroke-linejoin:round" />
       <path
          d="m 92.927,32.029 0.04731,-10.141 8.9272,3.29 0.0781,10.042 z"
          id="path56"
-         style="fill:none;stroke:#729fcf;stroke-width:2" />
+         style="fill:none;stroke:#85acd5;stroke-width:2" />
       <path
          d="m 103.94,38.121 v -14.5 l 11,-9 L 115,28 Z"
          id="path58"
-         style="fill:url(#linearGradient69717);stroke:#0b1521;stroke-width:2;stroke-linejoin:round" />
+         style="fill:url(#linearGradient69717);stroke:#1e3a5c;stroke-width:2;stroke-linejoin:round" />
       <path
          d="m 105.94,33.621 v -9 l 7,-6 -0.0122,8.5816 z"
          id="path60"
-         style="fill:none;stroke:#729fcf;stroke-width:2" />
+         style="fill:none;stroke:#85acd5;stroke-width:2" />
       <path
          d="M 90.973,19.286 102,9.9998 l 12.94,4.6214 -11,9 z"
          id="path62"
-         style="fill:#729fcf;stroke:#0b1521;stroke-width:2;stroke-linejoin:round" />
+         style="fill:#85acd5;stroke:#1e3a5c;stroke-width:2;stroke-linejoin:round" />
     </g>
     <path
        style="display:inline;fill:url(#linearGradient3012);fill-opacity:1;fill-rule:evenodd;stroke:#ef2929;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"

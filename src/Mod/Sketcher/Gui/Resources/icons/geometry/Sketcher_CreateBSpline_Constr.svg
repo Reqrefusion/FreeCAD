@@ -131,11 +131,11 @@
     <linearGradient
        id="linearGradient3809">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="0"
          id="stop3811" />
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="1"
          id="stop3813" />
     </linearGradient>
@@ -240,11 +240,11 @@
        d="M 54.027246,12.000001 C 51.825881,50.000002 12.201365,14 9.9999998,52.000001"
        id="path3266" />
     <path
-       style="display:inline;fill:none;stroke:#3465a4;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       style="display:inline;fill:none;stroke:#3b72ba;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        d="M 54.027246,12.000001 C 51.825881,50.000002 12.201365,14 9.9999998,52.000001"
        id="path3266-9" />
     <path
-       style="display:inline;fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       style="display:inline;fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        d="m 52.926563,12.000001 c -2.201364,37.000001 -40.725198,0 -44.0272456,40"
        id="path3266-9-2" />
     <g

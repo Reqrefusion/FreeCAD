@@ -18,7 +18,7 @@
     </linearGradient>
     <linearGradient id="linearGradient2243">
       <stop id="stop2245" offset="0" style="stop-color:#2a5387;stop-opacity:1"/>
-      <stop id="stop2247" offset="1" style="stop-color:#3465a4;stop-opacity:1;"/>
+      <stop id="stop2247" offset="1" style="stop-color:#3b72ba;stop-opacity:1;"/>
     </linearGradient>
     <linearGradient inkscape:collect="always" id="linearGradient2233">
       <stop style="stop-color:#ffffff;stop-opacity:1;" offset="0" id="stop2235"/>
@@ -38,7 +38,7 @@
     </linearGradient>
     <linearGradient id="linearGradient1467">
       <stop style="stop-color:#2a5387;stop-opacity:1" offset="0" id="stop1469"/>
-      <stop style="stop-color:#3465a4;stop-opacity:1;" offset="1" id="stop1471"/>
+      <stop style="stop-color:#3b72ba;stop-opacity:1;" offset="1" id="stop1471"/>
     </linearGradient>
     <linearGradient inkscape:collect="always" xlink:href="#linearGradient2233" id="linearGradient1621" gradientUnits="userSpaceOnUse" gradientTransform="translate(-1,-1)" x1="24.911612" y1="22.13604" x2="24.911612" y2="6.4029131"/>
     <linearGradient inkscape:collect="always" xlink:href="#linearGradient2834" id="linearGradient1624" gradientUnits="userSpaceOnUse" x1="19.891792" y1="16.114628" x2="21.506844" y2="85.696808" gradientTransform="translate(0,-1)"/>
@@ -66,7 +66,7 @@
     <linearGradient inkscape:collect="always" xlink:href="#linearGradient3682" id="linearGradient3257" gradientUnits="userSpaceOnUse" gradientTransform="matrix(1.418198,0,0,1.3587377,-1.9890258,-17.725202)" x1="29.033241" y1="36.44521" x2="14.33379" y2="9.4596548"/>
     <linearGradient inkscape:collect="always" xlink:href="#linearGradient2243" id="linearGradient3259" gradientUnits="userSpaceOnUse" gradientTransform="matrix(1.418198,0,0,1.3587377,-1.9890258,-13.648988)" x1="22.125" y1="34.962811" x2="22.125" y2="6.25"/>
   </defs>
-  <sodipodi:namedview id="base" pagecolor="#ffffff" bordercolor="#666666" borderopacity="1" inkscape:pageopacity="0.0" inkscape:pageshadow="2" inkscape:zoom="5.2386321" inkscape:cx="3.0685083" inkscape:cy="15.164037" inkscape:current-layer="layer2" showgrid="true" inkscape:grid-bbox="true" inkscape:document-units="px" showguides="false" inkscape:guide-bbox="true" inkscape:window-width="1600" inkscape:window-height="837" inkscape:window-x="0" inkscape:window-y="27" inkscape:grid-points="true" stroke="#204a87" fill="#2e3436" showborder="true" inkscape:showpageshadow="false" borderlayer="true" inkscape:snap-bbox="true" inkscape:snap-nodes="false" inkscape:snap-global="false" inkscape:window-maximized="1">
+  <sodipodi:namedview id="base" pagecolor="#ffffff" bordercolor="#666666" borderopacity="1" inkscape:pageopacity="0.0" inkscape:pageshadow="2" inkscape:zoom="5.2386321" inkscape:cx="3.0685083" inkscape:cy="15.164037" inkscape:current-layer="layer2" showgrid="true" inkscape:grid-bbox="true" inkscape:document-units="px" showguides="false" inkscape:guide-bbox="true" inkscape:window-width="1600" inkscape:window-height="837" inkscape:window-x="0" inkscape:window-y="27" inkscape:grid-points="true" stroke="#2b62b6" fill="#2e3436" showborder="true" inkscape:showpageshadow="false" borderlayer="true" inkscape:snap-bbox="true" inkscape:snap-nodes="false" inkscape:snap-global="false" inkscape:window-maximized="1">
     <sodipodi:guide orientation="vertical" position="14.406922" id="guide2257"/>
     <sodipodi:guide orientation="horizontal" position="41.565351" id="guide2259"/>
     <sodipodi:guide orientation="vertical" position="29.03324" id="guide2261"/>

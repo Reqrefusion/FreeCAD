@@ -49,8 +49,8 @@
     </linearGradient>
     <linearGradient inkscape:collect="always" xlink:href="#linearGradient3775" id="linearGradient3781" x1="10" y1="39.999996" x2="53" y2="25.999996" gradientUnits="userSpaceOnUse" gradientTransform="translate(-64,3.8146973e-6)"/>
     <linearGradient id="linearGradient3895">
-      <stop id="stop3897" offset="0" style="stop-color:#729fcf;stop-opacity:1;"/>
-      <stop id="stop3899" offset="1" style="stop-color:#204a87;stop-opacity:1;"/>
+      <stop id="stop3897" offset="0" style="stop-color:#85acd5;stop-opacity:1;"/>
+      <stop id="stop3899" offset="1" style="stop-color:#2b62b6;stop-opacity:1;"/>
     </linearGradient>
     <linearGradient inkscape:collect="always" xlink:href="#linearGradient3895" id="linearGradient3036" gradientUnits="userSpaceOnUse" x1="56.172409" y1="29.279999" x2="21.689653" y2="36.079998" gradientTransform="matrix(0,-1.4500001,1.4705882,0,-15.05882,91.45)"/>
     <linearGradient id="linearGradient3253-6-5">
@@ -74,7 +74,7 @@
     <inkscape:perspective id="perspective6256" inkscape:persp3d-origin="32 : 21.333333 : 1" inkscape:vp_z="64 : 32 : 1" inkscape:vp_y="0 : 1000 : 0" inkscape:vp_x="0 : 32 : 1" sodipodi:type="inkscape:persp3d"/>
     <linearGradient id="linearGradient6781">
       <stop id="stop6783" offset="0" style="stop-color:#ffffff;stop-opacity:1;"/>
-      <stop id="stop6785" offset="1" style="stop-color:#3465a4;stop-opacity:0;"/>
+      <stop id="stop6785" offset="1" style="stop-color:#3b72ba;stop-opacity:0;"/>
     </linearGradient>
     <linearGradient id="linearGradient6816" inkscape:collect="always">
       <stop id="stop6818" offset="0" style="stop-color:#000000;stop-opacity:1;"/>

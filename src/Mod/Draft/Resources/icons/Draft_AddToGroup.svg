@@ -124,7 +124,7 @@
        gradientUnits="userSpaceOnUse">
       <stop
          offset="0"
-         style="stop-color:#F0F0F0"
+         style="stop-color:#f0f0f0"
          id="stop15566" />
       <stop
          offset="1.0000000"
@@ -141,7 +141,7 @@
        gradientUnits="userSpaceOnUse">
       <stop
          offset="0"
-         style="stop-color:#F0F0F0"
+         style="stop-color:#f0f0f0"
          id="stop15573" />
       <stop
          offset="1.0000000"
@@ -293,7 +293,7 @@
          rx="0"
          ry="0" />
       <rect
-         style="color:#000000;fill:#3465a4;stroke:#0b1521;stroke-width:1.99999988;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+         style="color:#000000;fill:#3b72ba;stroke:#1e3a5c;stroke-width:1.99999988;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
          id="rect4258-1-7-4-7"
          width="37.999989"
          height="10"
@@ -307,7 +307,7 @@
          height="6"
          width="34"
          id="rect3852"
-         style="fill:#3465a4;fill-opacity:1;stroke:#729fcf;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+         style="fill:#3b72ba;fill-opacity:1;stroke:#85acd5;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
       <rect
          y="153.78349"
          x="284.85208"

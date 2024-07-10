@@ -164,11 +164,11 @@
     <linearGradient
        id="linearGradient3809">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="0"
          id="stop3811" />
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="1"
          id="stop3813" />
     </linearGradient>
@@ -492,15 +492,15 @@
        id="path3064"
        d="M 57.750001,34.901222 46.577411,51.43625 26.719125,56 9.8078579,45.919089 5.7500005,27.098778 16.92259,10.563751 36.780876,6.0000008 53.692143,16.080912 Z" />
     <path
-       style="fill:#000000;stroke:#3465a4;stroke-width:3.99998;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.9;stroke-dasharray:none;stroke-opacity:1;fill-opacity:0"
+       style="fill:#000000;stroke:#3b72ba;stroke-width:3.99998;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.9;stroke-dasharray:none;stroke-opacity:1;fill-opacity:0"
        id="path3064-3"
        d="M 57.750001,34.901222 46.577411,51.43625 26.719125,56 9.8078579,45.919089 5.7500005,27.098778 16.92259,10.563751 36.780876,6.0000008 53.692143,16.080912 Z" />
     <path
-       style="fill:#000000;stroke:#729fcf;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.9;stroke-opacity:1;fill-opacity:0"
+       style="fill:#000000;stroke:#85acd5;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.9;stroke-opacity:1;fill-opacity:0"
        d="M 8.9639296,46.515853 4.7500006,26.942729 16.352305,9.7462992 36.974371,4.9999991 54.536072,15.484147"
        id="path3064-3-6" />
     <path
-       style="fill:#000000;stroke:#729fcf;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.9;stroke-opacity:1;fill-opacity:0"
+       style="fill:#000000;stroke:#85acd5;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.9;stroke-opacity:1;fill-opacity:0"
        d="M 52.848215,16.677675 56.750001,34.745173 46.007125,50.618799 26.91262,54.999999 10.651786,45.322325"
        id="path3064-3-6-7" />
     <g

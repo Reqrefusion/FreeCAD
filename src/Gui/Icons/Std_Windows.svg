@@ -17,11 +17,11 @@
     <linearGradient
        id="linearGradient3319">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="0"
          id="stop3315" />
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="1"
          id="stop3317" />
     </linearGradient>
@@ -114,11 +114,11 @@
       <stop
          id="stop3897-7"
          offset="0"
-         style="stop-color:#729fcf;stop-opacity:1;" />
+         style="stop-color:#85acd5;stop-opacity:1;" />
       <stop
          id="stop3899-5"
          offset="1"
-         style="stop-color:#204a87;stop-opacity:1;" />
+         style="stop-color:#2b62b6;stop-opacity:1;" />
     </linearGradient>
     <linearGradient
        xlink:href="#linearGradient3319"
@@ -141,11 +141,11 @@
     <linearGradient
        id="linearGradient3842">
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="0"
          id="stop3844" />
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="1"
          id="stop3846" />
     </linearGradient>
@@ -228,21 +228,21 @@
      height="52.421707"
      width="39.439812"
      id="rect3020"
-     style="fill:none;stroke:#204a87;stroke-width:7.5783;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:6;stroke-opacity:1" />
+     style="fill:none;stroke:#2b62b6;stroke-width:7.5783;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:6;stroke-opacity:1" />
   <rect
      y="5.8080096"
      x="12.275028"
      height="52.421707"
      width="39.439812"
      id="rect3020-6"
-     style="fill:none;stroke:#729fcf;stroke-width:2.5261;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:6;stroke-opacity:1" />
+     style="fill:none;stroke:#85acd5;stroke-width:2.5261;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:6;stroke-opacity:1" />
   <rect
      y="5.8080068"
      x="12.275028"
      height="7.7661781"
      width="39.439812"
      id="rect3826"
-     style="fill:url(#linearGradient3848);fill-opacity:1;stroke:#729fcf;stroke-width:2.5261;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:6;stroke-opacity:1" />
+     style="fill:url(#linearGradient3848);fill-opacity:1;stroke:#85acd5;stroke-width:2.5261;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:6;stroke-opacity:1" />
   <rect
      y="17.31262"
      x="17.170778"
@@ -253,7 +253,7 @@
   <path
      id="path3838"
      d="M 13.532966,15.515748 H 50.426045"
-     style="fill:none;stroke:#204a87;stroke-width:2.55182;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+     style="fill:none;stroke:#2b62b6;stroke-width:2.55182;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
   <path
      id="path3840"
      d="M 13.671701,9.691097 H 26.818305"
@@ -267,14 +267,14 @@
      d="m 20.565033,33.623598 h 23.12479"
      id="path1619-0-3" />
   <rect
-     style="fill:url(#linearGradient3848-5);fill-opacity:1;stroke:#729fcf;stroke-width:2.5261;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:6;stroke-opacity:1"
+     style="fill:url(#linearGradient3848-5);fill-opacity:1;stroke:#85acd5;stroke-width:2.5261;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:6;stroke-opacity:1"
      id="rect3826-5"
      width="39.439812"
      height="7.7661781"
      x="12.257233"
      y="49.145481" />
   <path
-     style="fill:none;stroke:#204a87;stroke-width:2.55182;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     style="fill:none;stroke:#2b62b6;stroke-width:2.55182;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
      d="M 13.520488,46.620649 H 50.413567"
      id="path3838-2" />
   <path

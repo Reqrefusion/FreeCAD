@@ -41,11 +41,11 @@
       <stop
          id="stop3807"
          offset="0"
-         style="stop-color:#3465a4;stop-opacity:1;" />
+         style="stop-color:#3b72ba;stop-opacity:1;" />
       <stop
          id="stop3809"
          offset="1"
-         style="stop-color:#3465a4;stop-opacity:0;" />
+         style="stop-color:#3b72ba;stop-opacity:0;" />
     </linearGradient>
     <linearGradient
        id="linearGradient3864">
@@ -84,11 +84,11 @@
       <stop
          id="stop3145"
          offset="0"
-         style="stop-color:#729fcf;stop-opacity:1" />
+         style="stop-color:#85acd5;stop-opacity:1" />
       <stop
          id="stop3147"
          offset="1"
-         style="stop-color:#3465a4;stop-opacity:1" />
+         style="stop-color:#3b72ba;stop-opacity:1" />
     </linearGradient>
     <radialGradient
        xlink:href="#linearGradient3143-7"
@@ -105,11 +105,11 @@
       <stop
          id="stop3145-0"
          offset="0"
-         style="stop-color:#729fcf;stop-opacity:1" />
+         style="stop-color:#85acd5;stop-opacity:1" />
       <stop
          id="stop3147-9"
          offset="1"
-         style="stop-color:#204a87;stop-opacity:1" />
+         style="stop-color:#2b62b6;stop-opacity:1" />
     </linearGradient>
     <radialGradient
        r="19.571428"

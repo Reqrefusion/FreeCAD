@@ -19,11 +19,11 @@
       <stop
          id="stop3838"
          offset="0"
-         style="stop-color:#3465a4;stop-opacity:1;" />
+         style="stop-color:#3b72ba;stop-opacity:1;" />
       <stop
          id="stop3840"
          offset="1"
-         style="stop-color:#729fcf;stop-opacity:1;" />
+         style="stop-color:#85acd5;stop-opacity:1;" />
     </linearGradient>
     <linearGradient
        id="linearGradient3144-6">
@@ -93,7 +93,7 @@
        gradientUnits="userSpaceOnUse">
       <stop
          offset="0"
-         style="stop-color:#F0F0F0"
+         style="stop-color:#f0f0f0"
          id="stop15566" />
       <stop
          offset="1.0000000"
@@ -110,7 +110,7 @@
        gradientUnits="userSpaceOnUse">
       <stop
          offset="0"
-         style="stop-color:#F0F0F0"
+         style="stop-color:#f0f0f0"
          id="stop15573" />
       <stop
          offset="1.0000000"

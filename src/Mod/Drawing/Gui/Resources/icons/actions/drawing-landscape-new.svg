@@ -17,11 +17,11 @@
       <stop style="stop-color:#f8f8f8;stop-opacity:1.0000000;" offset="1.0000000" id="stop15666"/>
     </linearGradient>
     <radialGradient gradientUnits="userSpaceOnUse" fy="64.567902" fx="20.892099" r="5.257" cy="64.567902" cx="20.892099" id="aigrd3">
-      <stop id="stop15573" style="stop-color:#F0F0F0" offset="0"/>
+      <stop id="stop15573" style="stop-color:#f0f0f0" offset="0"/>
       <stop id="stop15575" style="stop-color:#9a9a9a;stop-opacity:1.0000000;" offset="1.0000000"/>
     </radialGradient>
     <radialGradient gradientUnits="userSpaceOnUse" fy="114.5684" fx="20.892099" r="5.256" cy="114.5684" cx="20.892099" id="aigrd2">
-      <stop id="stop15566" style="stop-color:#F0F0F0" offset="0"/>
+      <stop id="stop15566" style="stop-color:#f0f0f0" offset="0"/>
       <stop id="stop15568" style="stop-color:#9a9a9a;stop-opacity:1.0000000;" offset="1.0000000"/>
     </radialGradient>
     <linearGradient id="linearGradient269">

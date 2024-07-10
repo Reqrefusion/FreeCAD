@@ -17,44 +17,44 @@
     <linearGradient
        id="linearGradient27">
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="0"
          id="stop26" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:1"
+         style="stop-color:#3b72ba;stop-opacity:1"
          offset="1"
          id="stop27" />
     </linearGradient>
     <linearGradient
        id="linearGradient25">
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="0"
          id="stop24" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:1"
+         style="stop-color:#3b72ba;stop-opacity:1"
          offset="1"
          id="stop25" />
     </linearGradient>
     <linearGradient
        id="linearGradient23">
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="0"
          id="stop22" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:1"
+         style="stop-color:#3b72ba;stop-opacity:1"
          offset="1"
          id="stop23" />
     </linearGradient>
     <linearGradient
        id="linearGradient21">
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="0"
          id="stop20" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:1"
+         style="stop-color:#3b72ba;stop-opacity:1"
          offset="1"
          id="stop21" />
     </linearGradient>
@@ -81,11 +81,11 @@
     <linearGradient
        id="linearGradient9">
       <stop
-         style="stop-color:#204a87;stop-opacity:1;"
+         style="stop-color:#2b62b6;stop-opacity:1;"
          offset="0"
          id="stop9" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:1;"
+         style="stop-color:#3b72ba;stop-opacity:1;"
          offset="1"
          id="stop10" />
     </linearGradient>
@@ -119,11 +119,11 @@
     <linearGradient
        id="linearGradient34">
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="0"
          id="stop33" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:1"
+         style="stop-color:#3b72ba;stop-opacity:1"
          offset="1"
          id="stop34" />
     </linearGradient>
@@ -255,11 +255,11 @@
        id="g14"
        style="stroke-width:1.2842">
       <path
-         style="fill:#729fcf;stroke:#0b1521;stroke-width:2.56841;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         style="fill:#85acd5;stroke:#1e3a5c;stroke-width:2.56841;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
          id="path13"
          d="M -26.310778,5.3580033 A 8.3519646,8.3515832 0.02039876 1 1 -13.623399,16.222662 8.3519646,8.3515832 0.02039876 1 1 -26.310778,5.3580033 Z" />
       <path
-         style="fill:url(#linearGradient1);fill-opacity:1;stroke:#729fcf;stroke-width:2.56842;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         style="fill:url(#linearGradient1);fill-opacity:1;stroke:#85acd5;stroke-width:2.56842;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
          id="path14"
          d="m -24.358888,7.0362241 a 5.782493,5.7773415 0 1 1 8.784093,7.5158349 5.782493,5.7773415 0 0 1 -8.784093,-7.5158349 z" />
     </g>
@@ -268,11 +268,11 @@
        id="g3"
        style="stroke-width:1.2842">
       <path
-         style="fill:#729fcf;stroke:#0b1521;stroke-width:2.56841;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         style="fill:#85acd5;stroke:#1e3a5c;stroke-width:2.56841;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
          id="path2"
          d="M -26.310778,5.3580033 A 8.3519646,8.3515832 0.02039876 1 1 -13.623399,16.222662 8.3519646,8.3515832 0.02039876 1 1 -26.310778,5.3580033 Z" />
       <path
-         style="fill:url(#linearGradient5);fill-opacity:1;stroke:#729fcf;stroke-width:2.56842;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         style="fill:url(#linearGradient5);fill-opacity:1;stroke:#85acd5;stroke-width:2.56842;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
          id="path3"
          d="m -24.358888,7.0362241 a 5.782493,5.7773415 0 1 1 8.784093,7.5158349 5.782493,5.7773415 0 0 1 -8.784093,-7.5158349 z" />
     </g>
@@ -281,11 +281,11 @@
        id="g6"
        style="stroke-width:1.2842">
       <path
-         style="fill:#729fcf;stroke:#0b1521;stroke-width:2.56841;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         style="fill:#85acd5;stroke:#1e3a5c;stroke-width:2.56841;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
          id="path5"
          d="M -26.310778,5.3580033 A 8.3519646,8.3515832 0.02039876 1 1 -13.623399,16.222662 8.3519646,8.3515832 0.02039876 1 1 -26.310778,5.3580033 Z" />
       <path
-         style="fill:url(#linearGradient7);fill-opacity:1;stroke:#729fcf;stroke-width:2.56842;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         style="fill:url(#linearGradient7);fill-opacity:1;stroke:#85acd5;stroke-width:2.56842;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
          id="path6"
          d="m -24.358888,7.0362241 a 5.782493,5.7773415 0 1 1 8.784093,7.5158349 5.782493,5.7773415 0 0 1 -8.784093,-7.5158349 z" />
     </g>
@@ -294,11 +294,11 @@
        id="g8"
        style="stroke-width:1.2842">
       <path
-         style="fill:#729fcf;stroke:#0b1521;stroke-width:2.56841;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         style="fill:#85acd5;stroke:#1e3a5c;stroke-width:2.56841;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
          id="path7"
          d="M -26.310778,5.3580033 A 8.3519646,8.3515832 0.02039876 1 1 -13.623399,16.222662 8.3519646,8.3515832 0.02039876 1 1 -26.310778,5.3580033 Z" />
       <path
-         style="fill:url(#linearGradient8);fill-opacity:1;stroke:#729fcf;stroke-width:2.56842;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         style="fill:url(#linearGradient8);fill-opacity:1;stroke:#85acd5;stroke-width:2.56842;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
          id="path8"
          d="m -24.358888,7.0362241 a 5.782493,5.7773415 0 1 1 8.784093,7.5158349 5.782493,5.7773415 0 0 1 -8.784093,-7.5158349 z" />
     </g>
@@ -310,11 +310,11 @@
          transform="matrix(0.70709613,0.70710678,-0.70709613,0.70710678,22.261815,-13.415797)"
          style="display:inline;stroke-width:1.00001">
         <path
-           style="fill:#3465a4;stroke:#a40000;stroke-width:2.00002;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke markers fill"
+           style="fill:#3b72ba;stroke:#a40000;stroke-width:2.00002;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke markers fill"
            d="m 34.999999,14 h 7.999999"
            id="path34" />
         <path
-           style="fill:#3465a4;stroke:#a40000;stroke-width:2.00002;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke markers fill"
+           style="fill:#3b72ba;stroke:#a40000;stroke-width:2.00002;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke markers fill"
            d="m 34.999999,11 h 7.999999"
            id="path35" />
       </g>
@@ -323,11 +323,11 @@
          transform="matrix(0.70709613,-0.70710678,-0.70709613,-0.70710678,22.261816,77.416199)"
          style="display:inline;stroke-width:1.00001">
         <path
-           style="fill:#3465a4;stroke:#a40000;stroke-width:2.00002;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke markers fill"
+           style="fill:#3b72ba;stroke:#a40000;stroke-width:2.00002;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke markers fill"
            d="m 34.999999,14 h 7.999999"
            id="path36" />
         <path
-           style="fill:#3465a4;stroke:#a40000;stroke-width:2.00002;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke markers fill"
+           style="fill:#3b72ba;stroke:#a40000;stroke-width:2.00002;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke markers fill"
            d="m 34.999999,11 h 7.999999"
            id="path37" />
       </g>
@@ -336,11 +336,11 @@
          transform="matrix(-0.70709613,-0.70710678,0.70709613,-0.70710678,41.738178,77.416198)"
          style="display:inline;stroke-width:1.00001">
         <path
-           style="fill:#3465a4;stroke:#a40000;stroke-width:2.00002;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke markers fill"
+           style="fill:#3b72ba;stroke:#a40000;stroke-width:2.00002;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke markers fill"
            d="m 34.999999,14 h 7.999999"
            id="path38" />
         <path
-           style="fill:#3465a4;stroke:#a40000;stroke-width:2.00002;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke markers fill"
+           style="fill:#3b72ba;stroke:#a40000;stroke-width:2.00002;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke markers fill"
            d="m 34.999999,11 h 7.999999"
            id="path39" />
       </g>
@@ -349,11 +349,11 @@
          transform="matrix(-0.70709613,0.70710678,0.70709613,0.70710678,41.738179,-13.415797)"
          style="display:inline;stroke-width:1.00001">
         <path
-           style="fill:#3465a4;stroke:#a40000;stroke-width:2.00002;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke markers fill"
+           style="fill:#3b72ba;stroke:#a40000;stroke-width:2.00002;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke markers fill"
            d="m 34.999999,14 h 7.999999"
            id="path40" />
         <path
-           style="fill:#3465a4;stroke:#a40000;stroke-width:2.00002;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke markers fill"
+           style="fill:#3b72ba;stroke:#a40000;stroke-width:2.00002;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke markers fill"
            d="m 34.999999,11 h 7.999999"
            id="path41" />
       </g>

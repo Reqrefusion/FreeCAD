@@ -178,11 +178,11 @@
        gradientTransform="scale(0.99999018,1.0000098)"
        gradientUnits="userSpaceOnUse">
       <stop
-         stop-color="#A40000"
+         stop-color="#a40000"
          offset="0%"
          id="stop6-9" />
       <stop
-         stop-color="#EF2929"
+         stop-color="#ef2929"
          offset="100%"
          id="stop8" />
     </linearGradient>
@@ -197,11 +197,11 @@
     <linearGradient
        id="linearGradient3815">
       <stop
-         style="stop-color:#3465a4;stop-opacity:1"
+         style="stop-color:#3b72ba;stop-opacity:1"
          offset="0"
          id="stop3817" />
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="1"
          id="stop3819" />
     </linearGradient>
@@ -216,11 +216,11 @@
     <linearGradient
        id="linearGradient3841">
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="0"
          id="stop3843" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:1"
+         style="stop-color:#3b72ba;stop-opacity:1"
          offset="1"
          id="stop3845" />
     </linearGradient>
@@ -303,11 +303,11 @@
     <linearGradient
        id="linearGradient3862">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="0"
          id="stop3864" />
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="1"
          id="stop3866" />
     </linearGradient>
@@ -369,11 +369,11 @@
     </rdf:RDF>
   </metadata>
   <path
-     style="display:inline;fill:#3465a4;stroke:#204a87;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1"
+     style="display:inline;fill:#3b72ba;stroke:#2b62b6;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1"
      id="ellipse294"
      d="M 32.000002,1.5000047 C 48.833516,1.5000047 62.5,15.166487 62.5,32.000002 62.5,48.833517 48.833516,62.5 32.000002,62.5 15.166488,62.5 1.5000047,48.833517 1.5000047,32.000002 1.5000047,15.166487 15.166488,1.5000047 32.000002,1.5000047 Z" />
   <path
-     style="display:inline;fill:#ffffff;fill-opacity:1;stroke:#204a87;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1"
+     style="display:inline;fill:#ffffff;fill-opacity:1;stroke:#2b62b6;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1"
      d="M 14.498662,26.192226 25.672632,37.459722 48.020568,14.924729 56.401045,23.375352 25.672632,54.36097 6.1181852,34.642848 Z"
      id="path4088" />
 </svg>

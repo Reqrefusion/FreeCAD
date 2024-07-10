@@ -47,11 +47,11 @@
     <linearGradient
        id="linearGradient1014">
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="0"
          id="stop1010" />
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="1"
          id="stop1012" />
     </linearGradient>
@@ -133,11 +133,11 @@
     </g>
   </g>
   <path
-     style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:url(#linearGradient951-4);fill-opacity:1;fill-rule:evenodd;stroke:#0b1521;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker:none;enable-background:accumulate"
+     style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:url(#linearGradient951-4);fill-opacity:1;fill-rule:evenodd;stroke:#1e3a5c;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker:none;enable-background:accumulate"
      d="m 12.740176,32.45158 v 5.538461 h 9.503301 v 9.230768 h 5.70198 v -9.230768 l 9.503301,-10e-7 v -5.538461 l -9.503301,10e-7 v -9.230769 h -5.70198 v 9.230769 z"
      id="rect3761" />
   <path
-     style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:none;stroke:#729fcf;stroke-width:1.32456;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker:none;enable-background:accumulate"
+     style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:none;stroke:#85acd5;stroke-width:1.32456;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker:none;enable-background:accumulate"
      d="m 14.165671,33.836195 v 2.769231 h 9.503301 v 9.230767 h 2.85099 v -9.230767 l 9.503301,-1e-6 v -2.769231 l -9.503301,10e-7 1e-6,-9.230768 h -2.85099 l -1e-6,9.230768 z"
      id="rect3761-3" />
 </svg>

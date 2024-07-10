@@ -11,7 +11,7 @@
 <sodipodi:namedview  bordercolor="#666666" borderopacity="1.0" gridtolerance="10.0" guidetolerance="10.0" height="40mm" id="base" inkscape:current-layer="svg2" inkscape:cx="91.558698" inkscape:cy="47.9926" inkscape:deskcolor="#d1d1d1" inkscape:document-units="pt" inkscape:pagecheckerboard="0" inkscape:pageopacity="0.0" inkscape:pageshadow="2" inkscape:showpageshadow="2" inkscape:window-height="2080" inkscape:window-maximized="0" inkscape:window-width="1976" inkscape:window-x="1092" inkscape:window-y="72" inkscape:zoom="2.1461642" objecttolerance="10.0" pagecolor="#ffffff" showgrid="false" units="mm" width="210mm">
 	</sodipodi:namedview>
 <linearGradient id="path1948_00000170251524934803191530000002315116568552905148_" gradientUnits="userSpaceOnUse" x1="280.9483" y1="-334.1358" x2="389.9646" y2="-427.9297" gradientTransform="matrix(0.5625 0 0 -0.568 -160.4375 -186.5795)">
-	<stop  offset="0" style="stop-color:#5A9FD4"/>
+	<stop  offset="0" style="stop-color:#5a9fd4"/>
 	<stop  offset="1" style="stop-color:#306998"/>
 </linearGradient>
 <path id="path1948" style="fill:url(#path1948_00000170251524934803191530000002315116568552905148_);" d="M55.3,0
@@ -19,8 +19,8 @@
 	c1.9,7.9,6.5,13.6,14.2,13.6h9.2V70.8c0-8.8,7.7-16.7,16.8-16.7h26.8c7.5,0,13.4-6.1,13.4-13.6V15c0-7.3-6.1-12.7-13.4-13.9
 	C64.6,0.3,59.8,0,55.3,0z M40.8,8.2c2.8,0,5,2.3,5,5.1c0,2.8-2.3,5.1-5,5.1c-2.8,0-5-2.3-5-5.1C35.7,10.5,38,8.2,40.8,8.2z"/>
 <linearGradient id="path1950_00000173141890808856555460000015931308003617822606_" gradientUnits="userSpaceOnUse" x1="432.111" y1="-484.6977" x2="393.1813" y2="-429.6189" gradientTransform="matrix(0.5625 0 0 -0.568 -160.4375 -186.5795)">
-	<stop  offset="0" style="stop-color:#FFD43B"/>
-	<stop  offset="1" style="stop-color:#FFE873"/>
+	<stop  offset="0" style="stop-color:#ffd43b"/>
+	<stop  offset="1" style="stop-color:#ffe873"/>
 </linearGradient>
 <path id="path1950" style="fill:url(#path1950_00000173141890808856555460000015931308003617822606_);" d="M86,28.7v11.9
 	c0,9.2-7.8,17-16.8,17H42.4c-7.3,0-13.4,6.3-13.4,13.6v25.5c0,7.3,6.3,11.5,13.4,13.6c8.5,2.5,16.6,2.9,26.8,0

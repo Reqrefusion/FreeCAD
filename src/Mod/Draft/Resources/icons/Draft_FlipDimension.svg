@@ -17,11 +17,11 @@
       <stop
          id="stop5194"
          offset="0"
-         style="stop-color:#204a87;stop-opacity:1" />
+         style="stop-color:#2b62b6;stop-opacity:1" />
       <stop
          id="stop5196"
          offset="1"
-         style="stop-color:#729fcf;stop-opacity:1" />
+         style="stop-color:#85acd5;stop-opacity:1" />
     </linearGradient>
     <linearGradient
        id="linearGradient5127">
@@ -89,7 +89,7 @@
     <path
        id="path3009"
        d="m 59,37 -18,2 4,4 c 0,0 -2,5 -13,5 C 21,48 13,34 13,34 l -8,7 c 0,0 10,18 27,18 17,0 21,-8 21,-8 l 4,4 z"
-       style="fill:url(#linearGradient5198);fill-opacity:1;stroke:#0b1521;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+       style="fill:url(#linearGradient5198);fill-opacity:1;stroke:#1e3a5c;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
     <path
        id="path2644-2-3"
        d="M 51.159091,20 39,32.160706 39,7.8392939 z"
@@ -105,7 +105,7 @@
     <path
        id="path3009-4"
        d="m 56.749324,39.265165 -11.467298,1.276823 2.344728,2.42508 C 47.626754,42.967068 43,50 32,50 21,50 12.568182,37.022727 12.568182,37.022727 l -4.9886365,4.375 c 0,0 8.5490195,15.791498 25.3525495,15.698697 16.803531,-0.0928 19.930065,-8.924354 19.930065,-8.924354 l 2.607821,2.600333 z"
-       style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+       style="fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
   </g>
   <metadata
      id="metadata4610">

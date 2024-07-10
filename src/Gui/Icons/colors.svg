@@ -28,11 +28,11 @@
     <linearGradient
        id="linearGradient3809">
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="0"
          id="stop3811" />
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="1"
          id="stop3813" />
     </linearGradient>
@@ -203,7 +203,7 @@
        d="m 33.514821,20.772686 c 0.02727,-3.574532 2.121969,-9.489113 6.173419,-8.768792 3.770065,0.670293 -1.868989,8.401805 0.955911,9.752788 8.340558,3.988799 5.216823,9.254169 0,9.47814 -3.913186,0.168002 -7.161526,-6.242164 -7.12933,-10.462136 z"
        id="path3654-7" />
     <path
-       style="fill:url(#linearGradient3831-3);fill-opacity:1;stroke:#204a87;stroke-width:1.00002px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       style="fill:url(#linearGradient3831-3);fill-opacity:1;stroke:#2b62b6;stroke-width:1.00002px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        d="m 11.604102,26.895375 c 0.837962,-7.454977 8.54096,0.109336 11.374572,2.795296 3.287268,3.115977 7.752403,10.552104 3.943581,13.003302 -3.340444,2.149769 0.0784,-7.472476 -8.947049,-7.872143 -3.41722,-0.151322 -6.753177,-4.527318 -6.371104,-7.926455 z"
        id="path3644-6" />
   </g>

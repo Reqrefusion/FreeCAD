@@ -55,11 +55,11 @@
     <linearGradient
        id="linearGradient4">
       <stop
-         style="stop-color:#204a87;stop-opacity:1;"
+         style="stop-color:#2b62b6;stop-opacity:1;"
          offset="0"
          id="stop3" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:1;"
+         style="stop-color:#3b72ba;stop-opacity:1;"
          offset="1"
          id="stop4" />
     </linearGradient>
@@ -191,7 +191,7 @@
            id="path6"
            transform="matrix(0.81818183,0,0,0.63636367,-1.5230411,16.701177)" />
         <path
-           style="display:none;fill:url(#linearGradient10);stroke:#729fcf;stroke-width:3.05964;stroke-linecap:square"
+           style="display:none;fill:url(#linearGradient10);stroke:#85acd5;stroke-width:3.05964;stroke-linecap:square"
            d="m 14.060547,20.060547 h 3.878906 v 10 h 10 v 3.878906 H 14.060547 Z"
            id="path7"
            transform="matrix(0.81818183,0,0,0.63636367,-1.5230411,16.701177)" />

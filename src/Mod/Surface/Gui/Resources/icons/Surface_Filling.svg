@@ -103,11 +103,11 @@
       <stop
          id="stop1185"
          offset="0"
-         style="stop-color:#204a87;stop-opacity:1" />
+         style="stop-color:#2b62b6;stop-opacity:1" />
       <stop
          id="stop1187"
          offset="1"
-         style="stop-color:#729fcf;stop-opacity:1" />
+         style="stop-color:#85acd5;stop-opacity:1" />
     </linearGradient>
   </defs>
   <metadata
@@ -168,7 +168,7 @@
        d="M 8.3549048,24.972224 18.621264,49.266191 C 31.716699,27.213603 50.17526,55.741537 55.247193,35.269413 L 40.202199,12.856071 C 30.336022,29.759966 16.753608,10.080699 8.3549048,24.972224 Z"
        id="path857" />
     <path
-       style="fill:none;stroke:#0b1521;stroke-width:6;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       style="fill:none;stroke:#1e3a5c;stroke-width:6;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        d="M 50.052882,19.009632 C 39.920857,43.882553 19.461473,17.890994 9.4176161,41.158468"
        id="path857-1" />
     <path

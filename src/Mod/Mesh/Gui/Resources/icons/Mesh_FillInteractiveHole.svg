@@ -26,11 +26,11 @@
        inkscape:collect="always"
        id="linearGradient3787">
       <stop
-         style="stop-color:#3465a4;stop-opacity:1;"
+         style="stop-color:#3b72ba;stop-opacity:1;"
          offset="0"
          id="stop3789" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:0;"
+         style="stop-color:#3b72ba;stop-opacity:0;"
          offset="1"
          id="stop3791" />
     </linearGradient>
@@ -181,7 +181,7 @@
        sodipodi:nodetypes="cccc" />
     <path
        sodipodi:type="arc"
-       style="fill:#204a87;fill-opacity:1;stroke:#0b1521;stroke-width:2.15216589;stroke-opacity:1"
+       style="fill:#2b62b6;fill-opacity:1;stroke:#1e3a5c;stroke-width:2.15216589;stroke-opacity:1"
        id="path10509"
        sodipodi:cx="20.143869"
        sodipodi:cy="14.792462"

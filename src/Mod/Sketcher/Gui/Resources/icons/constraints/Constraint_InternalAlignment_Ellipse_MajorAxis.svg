@@ -61,8 +61,8 @@
     <path style="fill:none;stroke:#280000;stroke-width:8.48074722;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:10.8" id="path3025" d="M 61,31 A 27.5,17 0 1 1 6,31 27.5,17 0 1 1 61,31 z" transform="matrix(0.66853732,-0.66853732,0.66551226,0.66551226,-11.462903,34.201144)" />
     <path style="fill:none;stroke:#cc0000;stroke-width:4.24037361;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:10.8" id="path3025-3" d="M 61,31 A 27.5,17 0 1 1 6,31 27.5,17 0 1 1 61,31 z" transform="matrix(0.66853732,-0.66853732,0.66551226,0.66551226,-11.462903,34.201144)" />
     <path style="fill:none;stroke:#ef2929;stroke-width:2.01843357;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:10.8" id="path3025-3-6" d="M 61,31 A 27.5,17 0 1 1 6,31 27.5,17 0 1 1 61,31 z" transform="matrix(0.69425029,-0.69425029,0.70710678,0.70710678,-13.613718,33.773098)" />
-    <path style="fill:none;stroke:#0b1521;stroke-width:7.99999905;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" d="M 12,50 49.724955,14" id="path3037" />
-    <path style="fill:none;stroke:#3465a4;stroke-width:3.99999952;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" d="M 12,50 49.724954,14.000002" id="path3037-3" />
-    <path style="fill:none;stroke:#729fcf;stroke-width:1.99999976;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" d="M 11.141118,48.947844 49.065922,13.205413" id="path3037-3-6" />
+    <path style="fill:none;stroke:#1e3a5c;stroke-width:7.99999905;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" d="M 12,50 49.724955,14" id="path3037" />
+    <path style="fill:none;stroke:#3b72ba;stroke-width:3.99999952;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" d="M 12,50 49.724954,14.000002" id="path3037-3" />
+    <path style="fill:none;stroke:#85acd5;stroke-width:1.99999976;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" d="M 11.141118,48.947844 49.065922,13.205413" id="path3037-3-6" />
   </g>
 </svg>

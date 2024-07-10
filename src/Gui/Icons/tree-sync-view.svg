@@ -64,7 +64,7 @@
          offset="0"
          id="stop11981" />
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="1"
          id="stop11983" />
     </linearGradient>
@@ -108,11 +108,11 @@
     <linearGradient
        id="linearGradient4454">
       <stop
-         style="stop-color:#729fcf;stop-opacity:0.20784314;"
+         style="stop-color:#85acd5;stop-opacity:0.20784314;"
          offset="0.0000000"
          id="stop4456" />
       <stop
-         style="stop-color:#729fcf;stop-opacity:0.67619050;"
+         style="stop-color:#85acd5;stop-opacity:0.67619050;"
          offset="1.0000000"
          id="stop4458" />
     </linearGradient>
@@ -210,7 +210,7 @@
     <linearGradient
        id="linearGradient1322">
       <stop
-         style="stop-color:#729fcf"
+         style="stop-color:#85acd5"
          offset="0.0000000"
          id="stop1324" />
       <stop
@@ -272,7 +272,7 @@
       <stop
          id="stop2404"
          offset="0"
-         style="stop-color:#729fcf;stop-opacity:1;" />
+         style="stop-color:#85acd5;stop-opacity:1;" />
       <stop
          id="stop2406"
          offset="1"
@@ -283,11 +283,11 @@
       <stop
          id="stop2873"
          offset="0"
-         style="stop-color:#3465a4;stop-opacity:1;" />
+         style="stop-color:#3b72ba;stop-opacity:1;" />
       <stop
          id="stop2875"
          offset="1"
-         style="stop-color:#3465a4;stop-opacity:1" />
+         style="stop-color:#3b72ba;stop-opacity:1" />
     </linearGradient>
     <linearGradient
        gradientTransform="translate(-48.77039,-5.765705)"
@@ -338,7 +338,7 @@
       <stop
          id="stop2384"
          offset="1"
-         style="stop-color:#729fcf;stop-opacity:1" />
+         style="stop-color:#85acd5;stop-opacity:1" />
     </linearGradient>
     <linearGradient
        y2="19.115122"
@@ -354,7 +354,7 @@
       <stop
          id="stop2833"
          offset="0"
-         style="stop-color:#3465a4;stop-opacity:1;" />
+         style="stop-color:#3b72ba;stop-opacity:1;" />
       <stop
          style="stop-color:#5b86be;stop-opacity:1;"
          offset="0.33333334"
@@ -378,11 +378,11 @@
       <stop
          id="stop2849"
          offset="0"
-         style="stop-color:#3465a4;stop-opacity:1;" />
+         style="stop-color:#3b72ba;stop-opacity:1;" />
       <stop
          id="stop2851"
          offset="1"
-         style="stop-color:#3465a4;stop-opacity:0;" />
+         style="stop-color:#3b72ba;stop-opacity:0;" />
     </linearGradient>
     <radialGradient
        r="15.644737"
@@ -489,11 +489,11 @@
       <stop
          id="stop3065-6"
          offset="0"
-         style="stop-color:#729fcf;stop-opacity:1" />
+         style="stop-color:#85acd5;stop-opacity:1" />
       <stop
          id="stop3067-0"
          offset="1"
-         style="stop-color:#204a87;stop-opacity:1" />
+         style="stop-color:#2b62b6;stop-opacity:1" />
     </linearGradient>
     <linearGradient
        xlink:href="#linearGradient3873"
@@ -506,11 +506,11 @@
     <linearGradient
        id="linearGradient2380-9">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="0"
          id="stop2382-4" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:1"
+         style="stop-color:#3b72ba;stop-opacity:1"
          offset="1"
          id="stop2384-6" />
     </linearGradient>
@@ -602,7 +602,7 @@
          transform="matrix(1.086755,0,0,1.0862006,-10.804533,-2.6448999)"
          style="stroke-width:0.920404">
         <g
-           style="fill:url(#linearGradient4321);fill-opacity:1;stroke:#204a87;stroke-width:0.674482;stroke-opacity:1"
+           style="fill:url(#linearGradient4321);fill-opacity:1;stroke:#2b62b6;stroke-width:0.674482;stroke-opacity:1"
            transform="matrix(-0.21458192,-0.17978428,-0.18129574,0.21279294,140.23095,24.974324)"
            id="g1878-1">
           <path
@@ -620,7 +620,7 @@
              style="color:#000000;display:block;overflow:visible;visibility:visible;fill:none;stroke:#f0f0f0;stroke-width:2.02626;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:21;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker:none" />
         </g>
         <g
-           style="fill:url(#linearGradient4587);fill-opacity:1;stroke:#204a87;stroke-width:0.674482;stroke-opacity:1"
+           style="fill:url(#linearGradient4587);fill-opacity:1;stroke:#2b62b6;stroke-width:0.674482;stroke-opacity:1"
            transform="matrix(0.21458192,0.17978428,0.18129574,-0.21279294,116.07282,32.308039)"
            id="g1878-6">
           <path

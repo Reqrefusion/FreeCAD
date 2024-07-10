@@ -167,11 +167,11 @@
        gradientTransform="scale(0.99999018,1.0000098)"
        gradientUnits="userSpaceOnUse">
       <stop
-         stop-color="#A40000"
+         stop-color="#a40000"
          offset="0%"
          id="stop6-9" />
       <stop
-         stop-color="#EF2929"
+         stop-color="#ef2929"
          offset="100%"
          id="stop8" />
     </linearGradient>
@@ -186,11 +186,11 @@
     <linearGradient
        id="linearGradient3815">
       <stop
-         style="stop-color:#3465a4;stop-opacity:1"
+         style="stop-color:#3b72ba;stop-opacity:1"
          offset="0"
          id="stop3817" />
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="1"
          id="stop3819" />
     </linearGradient>
@@ -205,11 +205,11 @@
     <linearGradient
        id="linearGradient3841">
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="0"
          id="stop3843" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:1"
+         style="stop-color:#3b72ba;stop-opacity:1"
          offset="1"
          id="stop3845" />
     </linearGradient>
@@ -301,11 +301,11 @@
       <stop
          id="stop3897"
          offset="0"
-         style="stop-color:#729fcf;stop-opacity:1;" />
+         style="stop-color:#85acd5;stop-opacity:1;" />
       <stop
          id="stop3899"
          offset="1"
-         style="stop-color:#204a87;stop-opacity:1;" />
+         style="stop-color:#2b62b6;stop-opacity:1;" />
     </linearGradient>
     <linearGradient
        gradientUnits="userSpaceOnUse"
@@ -388,11 +388,11 @@
     <linearGradient
        id="linearGradient3836-0-7-7">
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="0"
          id="stop3838-2-4-5" />
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="1"
          id="stop3840-5-0-3" />
     </linearGradient>
@@ -495,11 +495,11 @@
             <path
                id="path3037-3-7"
                d="M 2294.682,693.64582 2143.8571,542.9966"
-               style="fill:none;stroke:#3465a4;stroke-width:25.5143;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+               style="fill:none;stroke:#3b72ba;stroke-width:25.5143;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
             <path
                id="path3037-3-6-5"
                d="M 2298.6531,689.08892 2148.9073,537.64164"
-               style="fill:none;stroke:#729fcf;stroke-width:12.7571;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+               style="fill:none;stroke:#85acd5;stroke-width:12.7571;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
           </g>
           <g
              id="g3174"
@@ -512,22 +512,22 @@
             <path
                id="path3037-3"
                d="M 2287.8343,762.12275 2546.1632,515.60583"
-               style="fill:#3465a4;stroke:#3465a4;stroke-width:21.3698;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1;fill-opacity:1" />
+               style="fill:#3b72ba;stroke:#3b72ba;stroke-width:21.3698;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1;fill-opacity:1" />
             <path
                id="path3037-3-6"
                d="M 2286.2092,754.91791 2541.6504,510.16473"
-               style="fill:none;stroke:#729fcf;stroke-width:10.6849;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
+               style="fill:none;stroke:#85acd5;stroke-width:10.6849;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1" />
           </g>
           <g
              transform="matrix(4.5913999,0,0,4.591325,2232.5385,640.93267)"
              id="g3797-9-4-5"
              style="stroke-width:0.931491">
             <path
-               style="fill:#729fcf;stroke:#091425;stroke-width:2.77851;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;fill-opacity:1"
+               style="fill:#85acd5;stroke:#091425;stroke-width:2.77851;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;fill-opacity:1"
                id="path4250-71-8-6"
                d="m -26.070652,5.662872 a 8.9452063,8.9447998 0.02049963 1 1 13.588566,11.63638 8.9452063,8.9447998 0.02049963 1 1 -13.588566,-11.63638 z" />
             <path
-               style="fill:url(#linearGradient40);fill-opacity:1;stroke:#729fcf;stroke-width:2.77851;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+               style="fill:url(#linearGradient40);fill-opacity:1;stroke:#85acd5;stroke-width:2.77851;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
                id="path4250-7-3-8-2"
                d="m -23.843046,7.5698578 a 5.9654783,5.9659886 0 1 1 9.062062,7.7612492 5.9654783,5.9659886 0 0 1 -9.062062,-7.7612492 z" />
           </g>
@@ -536,11 +536,11 @@
              id="g3797-9-4-5-6"
              style="stroke-width:0.931491">
             <path
-               style="fill:#729fcf;stroke:#091425;stroke-width:2.77851;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+               style="fill:#85acd5;stroke:#091425;stroke-width:2.77851;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
                id="path4250-71-8-6-2"
                d="m -26.070652,5.662872 a 8.9452063,8.9447998 0.02049963 1 1 13.588566,11.63638 8.9452063,8.9447998 0.02049963 1 1 -13.588566,-11.63638 z" />
             <path
-               style="fill:url(#linearGradient3922-9);fill-opacity:1;stroke:#729fcf;stroke-width:2.77851;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+               style="fill:url(#linearGradient3922-9);fill-opacity:1;stroke:#85acd5;stroke-width:2.77851;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
                id="path4250-7-3-8-2-9"
                d="m -23.843046,7.5698578 a 5.9654783,5.9659886 0 1 1 9.062062,7.7612492 5.9654783,5.9659886 0 0 1 -9.062062,-7.7612492 z" />
           </g>

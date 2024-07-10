@@ -186,7 +186,7 @@
     </rdf:RDF>
   </metadata>
   <rect
-     style="fill:#280000;fill-opacity:1;stroke:#3465a4;stroke-width:0;stroke-linecap:square;stroke-linejoin:round;stroke-miterlimit:100;stroke-dasharray:none;stroke-dashoffset:3.45"
+     style="fill:#280000;fill-opacity:1;stroke:#3b72ba;stroke-width:0;stroke-linecap:square;stroke-linejoin:round;stroke-miterlimit:100;stroke-dasharray:none;stroke-dashoffset:3.45"
      id="rect2"
      width="48"
      height="7.999999"
@@ -196,7 +196,7 @@
      ry="1.9999999"
      transform="rotate(90)" />
   <rect
-     style="fill:#cc0000;fill-opacity:1;stroke:#3465a4;stroke-width:0;stroke-linecap:square;stroke-linejoin:round;stroke-miterlimit:100;stroke-dasharray:none;stroke-dashoffset:3.45"
+     style="fill:#cc0000;fill-opacity:1;stroke:#3b72ba;stroke-width:0;stroke-linecap:square;stroke-linejoin:round;stroke-miterlimit:100;stroke-dasharray:none;stroke-dashoffset:3.45"
      id="rect2-6"
      width="44"
      height="4"
@@ -207,6 +207,6 @@
      transform="rotate(90)" />
   <path
      d="m 34.003075,10.99692 c 0,-0.553999 -0.446,-0.9999999 -1,-0.9999999 h -1 V 53.99692 h 1 c 0.554,0 1,-0.446001 1,-1 z"
-     style="fill:#ef2929;stroke:#3465a4;stroke-width:0;stroke-linecap:square;stroke-linejoin:round;stroke-miterlimit:100;stroke-dashoffset:3.45"
+     style="fill:#ef2929;stroke:#3b72ba;stroke-width:0;stroke-linecap:square;stroke-linejoin:round;stroke-miterlimit:100;stroke-dashoffset:3.45"
      id="path3" />
 </svg>

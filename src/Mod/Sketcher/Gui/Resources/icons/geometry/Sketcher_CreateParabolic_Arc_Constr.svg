@@ -164,11 +164,11 @@
     <linearGradient
        id="linearGradient3809">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="0"
          id="stop3811" />
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="1"
          id="stop3813" />
     </linearGradient>
@@ -488,11 +488,11 @@
          d="m 1575.4019,499.20708 c 0,0 13.6953,301.29849 143.4102,301.29849 129.7148,0 158.6708,-301.29849 158.6708,-301.29849"
          id="path3102" />
       <path
-         style="fill:none;stroke:#3465a4;stroke-width:27.3909;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         style="fill:none;stroke:#3b72ba;stroke-width:27.3909;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
          d="m 1575.4019,499.20708 c 0,0 13.6954,301.29851 143.4103,301.29851 129.7147,0 158.6707,-301.29851 158.6707,-301.29851"
          id="path3102-8" />
       <path
-         style="fill:none;stroke:#729fcf;stroke-width:13.6955;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         style="fill:none;stroke:#85acd5;stroke-width:13.6955;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
          d="m 1583.0322,491.67462 c 0,0 6.065,301.29849 135.7799,301.29849 129.7147,0 151.0405,-301.29849 151.0405,-301.29849"
          id="path3102-2" />
     </g>

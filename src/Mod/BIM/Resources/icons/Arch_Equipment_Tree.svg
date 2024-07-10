@@ -170,8 +170,8 @@
     <linearGradient inkscape:collect="always" xlink:href="#linearGradient3978" id="linearGradient3984" x1="26" y1="50" x2="25" y2="38" gradientUnits="userSpaceOnUse"/>
     <linearGradient inkscape:collect="always" xlink:href="#linearGradient3797" id="linearGradient3823" x1="42" y1="56" x2="26" y2="9" gradientUnits="userSpaceOnUse"/>
     <linearGradient id="linearGradient3797">
-      <stop style="stop-color:#3465a4;stop-opacity:1;" offset="0" id="stop3799"/>
-      <stop style="stop-color:#729fcf;stop-opacity:1;" offset="1" id="stop3801"/>
+      <stop style="stop-color:#3b72ba;stop-opacity:1;" offset="0" id="stop3799"/>
+      <stop style="stop-color:#85acd5;stop-opacity:1;" offset="1" id="stop3801"/>
     </linearGradient>
     <linearGradient gradientTransform="matrix(0.4997413,0,0,0.49975224,1.5021455,30.501238)" y2="9" x2="26" y1="56" x1="42" gradientUnits="userSpaceOnUse" id="linearGradient3033" xlink:href="#linearGradient3797" inkscape:collect="always"/>
   </defs>

@@ -17,22 +17,22 @@
     <linearGradient
        id="linearGradient11">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="0"
          id="stop11" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:1"
+         style="stop-color:#3b72ba;stop-opacity:1"
          offset="1"
          id="stop12" />
     </linearGradient>
     <linearGradient
        id="linearGradient3">
       <stop
-         style="stop-color:#3465a4;stop-opacity:1"
+         style="stop-color:#3b72ba;stop-opacity:1"
          offset="0"
          id="stop3" />
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="1"
          id="stop4" />
     </linearGradient>
@@ -136,11 +136,11 @@
       <path
          id="path3343-5"
          d="m -29.384776,42.07969 4.242641,4.242641 -12.020815,12.020815 7.071067,7.071067 12.020815,-12.020815 4.242641,4.242641 3.535534,-19.091883 z"
-         style="fill:#729fcf;fill-opacity:1;fill-rule:evenodd;stroke:#0c1522;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+         style="fill:#85acd5;fill-opacity:1;fill-rule:evenodd;stroke:#0c1522;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
       <path
          id="path3343-2-6"
          d="m -25.301511,43.325178 2.987803,2.997153 -12.020815,12.020815 4.24264,4.24264 12.020815,-12.020815 2.971995,2.981329 2.684859,-12.880823 z"
-         style="fill:url(#linearGradient12);stroke:#729fcf;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+         style="fill:url(#linearGradient12);stroke:#85acd5;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     </g>
     <path
        style="fill:#ff0000;fill-opacity:0.956689"
@@ -191,11 +191,11 @@
       <path
          id="path3343-5-6"
          d="m -29.384776,42.07969 4.242641,4.242641 -5.079602,5.631797 7.071067,7.071067 5.079602,-5.631797 4.242641,4.242641 3.535534,-19.091883 z"
-         style="fill:#729fcf;fill-opacity:1;fill-rule:evenodd;stroke:#0c1522;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+         style="fill:#85acd5;fill-opacity:1;fill-rule:evenodd;stroke:#0c1522;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
       <path
          id="path3343-2-6-1"
          d="m -25.301511,43.325178 2.987803,2.997153 -5.079602,5.631797 4.24264,4.24264 5.079602,-5.631797 2.971995,2.981329 2.684859,-12.880823 z"
-         style="fill:url(#linearGradient2);stroke:#729fcf;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;fill-opacity:1" />
+         style="fill:url(#linearGradient2);stroke:#85acd5;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;fill-opacity:1" />
     </g>
   </g>
 </svg>

@@ -12,8 +12,8 @@
     <radialGradient xlink:href="#linearGradient3377" id="radialGradient3705" gradientUnits="userSpaceOnUse" cx="148.88333" cy="81.869568" fx="148.88333" fy="81.869568" r="19.467436" gradientTransform="matrix(1.3852588,-5.1367833e-2,3.7056289e-2,0.9993132,-60.392403,7.7040438)" />
     <linearGradient xlink:href="#linearGradient3809-5" id="linearGradient3815-7" x1="43" y1="58" x2="42" y2="48" gradientUnits="userSpaceOnUse" />
     <linearGradient id="linearGradient3809-5">
-      <stop style="stop-color:#3465a4;stop-opacity:1" offset="0" id="stop3811-3" />
-      <stop style="stop-color:#729fcf;stop-opacity:1" offset="1" id="stop3813-5" />
+      <stop style="stop-color:#3b72ba;stop-opacity:1" offset="0" id="stop3811-3" />
+      <stop style="stop-color:#85acd5;stop-opacity:1" offset="1" id="stop3813-5" />
     </linearGradient>
   </defs>
   <metadata id="metadata2865">
@@ -54,21 +54,21 @@
       <g transform="matrix(0.94877631,0,0,0.94877631,0.22494458,3.1949428)" id="g2671">
         <path style="fill:none;stroke:#000000;stroke-width:7;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" d="M 9.466838,26.650801 14.178715,32 9.418501,37.380527" id="path3907-3-0" />
         <path style="fill:none;stroke:#000000;stroke-width:7;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" d="M 56.058735,32 H 7.9412655" id="path3881" />
-        <path style="fill:none;stroke:#729fcf;stroke-width:3;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" d="M 56.058735,32 H 7.9412655" id="path3881-0" />
-        <path style="fill:none;stroke:#729fcf;stroke-width:3;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" d="M 9.466838,26.650801 14.178715,32 9.418501,37.380527" id="path3907-9-6-6" />
+        <path style="fill:none;stroke:#85acd5;stroke-width:3;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" d="M 56.058735,32 H 7.9412655" id="path3881-0" />
+        <path style="fill:none;stroke:#85acd5;stroke-width:3;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" d="M 9.466838,26.650801 14.178715,32 9.418501,37.380527" id="path3907-9-6-6" />
       </g>
       <g transform="matrix(0.94877631,0,0,0.94877631,0.22494458,3.5249658)" id="g2665">
         <g id="g2643" transform="translate(0,2.7272727)">
           <path id="path3907-3" d="m 7.9412655,45.365964 h 7.1285135 l 0.891065,7.128514" style="fill:none;stroke:#000000;stroke-width:7;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
           <path id="path3861-1" d="M 56.058735,40.019578 H 27.544679 c -10.692771,0 -15.148092,8.019578 -19.6034135,16.039157" style="fill:none;stroke:#000000;stroke-width:7;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
-          <path id="path3861-1-7" d="M 56.058735,40.019578 H 27.544679 c -10.692771,0 -15.148092,8.019578 -19.6034135,16.039157" style="fill:none;stroke:#729fcf;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
-          <path id="path3907-9-6" d="m 7.9412655,45.365964 h 7.1285135 l 0.891065,7.128514" style="fill:none;stroke:#729fcf;stroke-width:3;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+          <path id="path3861-1-7" d="M 56.058735,40.019578 H 27.544679 c -10.692771,0 -15.148092,8.019578 -19.6034135,16.039157" style="fill:none;stroke:#85acd5;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+          <path id="path3907-9-6" d="m 7.9412655,45.365964 h 7.1285135 l 0.891065,7.128514" style="fill:none;stroke:#85acd5;stroke-width:3;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
         </g>
         <g transform="matrix(1,0,0,-1,0,60.608303)" id="g2653">
           <path style="fill:none;stroke:#000000;stroke-width:7;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" d="m 7.9412655,45.365964 h 7.1285135 l 0.891065,7.128514" id="path2645" />
           <path style="fill:none;stroke:#000000;stroke-width:7;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" d="M 56.058735,40.019578 H 27.544679 c -10.692771,0 -15.148092,8.019578 -19.6034135,16.039157" id="path2647" />
-          <path style="fill:none;stroke:#729fcf;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" d="M 56.058735,40.019578 H 27.544679 c -10.692771,0 -15.148092,8.019578 -19.6034135,16.039157" id="path2649" />
-          <path style="fill:none;stroke:#729fcf;stroke-width:3;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" d="m 7.9412655,45.365964 h 7.1285135 l 0.891065,7.128514" id="path2651" />
+          <path style="fill:none;stroke:#85acd5;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" d="M 56.058735,40.019578 H 27.544679 c -10.692771,0 -15.148092,8.019578 -19.6034135,16.039157" id="path2649" />
+          <path style="fill:none;stroke:#85acd5;stroke-width:3;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" d="m 7.9412655,45.365964 h 7.1285135 l 0.891065,7.128514" id="path2651" />
         </g>
       </g>
     </g>

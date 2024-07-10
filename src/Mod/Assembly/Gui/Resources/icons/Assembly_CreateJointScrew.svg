@@ -30,11 +30,11 @@
     <linearGradient
        id="linearGradient53">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="0"
          id="stop53" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:1;"
+         style="stop-color:#3b72ba;stop-opacity:1;"
          offset="1"
          id="stop52" />
     </linearGradient>
@@ -52,22 +52,22 @@
     <linearGradient
        id="linearGradient6">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1;"
+         style="stop-color:#85acd5;stop-opacity:1;"
          offset="0"
          id="stop6" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:1;"
+         style="stop-color:#3b72ba;stop-opacity:1;"
          offset="1"
          id="stop5" />
     </linearGradient>
     <linearGradient
        id="linearGradient4">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1;"
+         style="stop-color:#85acd5;stop-opacity:1;"
          offset="0"
          id="stop4" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:1;"
+         style="stop-color:#3b72ba;stop-opacity:1;"
          offset="1"
          id="stop1" />
     </linearGradient>
@@ -85,22 +85,22 @@
     <linearGradient
        id="linearGradient35">
       <stop
-         style="stop-color:#3465a4;stop-opacity:1;"
+         style="stop-color:#3b72ba;stop-opacity:1;"
          offset="0"
          id="stop33" />
       <stop
-         style="stop-color:#729fcf;stop-opacity:1;"
+         style="stop-color:#85acd5;stop-opacity:1;"
          offset="1"
          id="stop34" />
     </linearGradient>
     <linearGradient
        id="linearGradient21">
       <stop
-         style="stop-color:#3465a4;stop-opacity:1;"
+         style="stop-color:#3b72ba;stop-opacity:1;"
          offset="0"
          id="stop21" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:0;"
+         style="stop-color:#3b72ba;stop-opacity:0;"
          offset="1"
          id="stop22" />
     </linearGradient>
@@ -514,11 +514,11 @@
     <path
        id="path11"
        d="M 15,27 V 19 L 0.87149136,31.999999 15,45 v -8 h 14.714369 c 0,2.2e-5 0,0 0,0 V 27 Z"
-       style="fill:#729fcf;fill-opacity:1;stroke:#0c1522;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1" />
+       style="fill:#85acd5;fill-opacity:1;stroke:#0c1522;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1" />
     <path
        id="path12"
        d="m 13.066964,29 0.02232,-5.529467 -9.1754064,8.529466 9.2200494,8.574111 V 35.089285 L 27.762035,35 v -6 0 z"
-       style="fill:#3465a4;stroke:#729fcf;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+       style="fill:#3b72ba;stroke:#85acd5;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
   </g>
   <g
      id="g4"

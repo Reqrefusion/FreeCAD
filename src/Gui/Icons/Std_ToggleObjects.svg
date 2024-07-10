@@ -116,11 +116,11 @@
     <linearGradient
        id="linearGradient3862">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="0"
          id="stop3864" />
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="1"
          id="stop3866" />
     </linearGradient>
@@ -185,7 +185,7 @@
            cy="32"
            cx="32"
            id="path3808"
-           style="fill:url(#radialGradient3868);fill-opacity:1;fill-rule:evenodd;stroke:#204a87;stroke-width:3.03469;stroke-miterlimit:4;stroke-dasharray:none" />
+           style="fill:url(#radialGradient3868);fill-opacity:1;fill-rule:evenodd;stroke:#2b62b6;stroke-width:3.03469;stroke-miterlimit:4;stroke-dasharray:none" />
         <circle
            r="7"
            cy="32"
@@ -201,7 +201,7 @@
            cy="32"
            cx="32"
            id="path3808-0"
-           style="fill:none;stroke:#729fcf;stroke-width:3.03469;stroke-miterlimit:4;stroke-dasharray:none" />
+           style="fill:none;stroke:#85acd5;stroke-width:3.03469;stroke-miterlimit:4;stroke-dasharray:none" />
       </g>
     </g>
   </g>

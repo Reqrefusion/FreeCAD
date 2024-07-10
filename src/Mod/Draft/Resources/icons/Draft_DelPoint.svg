@@ -17,11 +17,11 @@
       <stop
          id="stop3838"
          offset="0"
-         style="stop-color:#3465a4;stop-opacity:1;" />
+         style="stop-color:#3b72ba;stop-opacity:1;" />
       <stop
          id="stop3840"
          offset="1"
-         style="stop-color:#729fcf;stop-opacity:1;" />
+         style="stop-color:#85acd5;stop-opacity:1;" />
     </linearGradient>
     <linearGradient
        id="linearGradient3144-6">
@@ -135,7 +135,7 @@
        gradientUnits="userSpaceOnUse">
       <stop
          offset="0"
-         style="stop-color:#F0F0F0"
+         style="stop-color:#f0f0f0"
          id="stop15566" />
       <stop
          offset="1.0000000"
@@ -152,7 +152,7 @@
        gradientUnits="userSpaceOnUse">
       <stop
          offset="0"
-         style="stop-color:#F0F0F0"
+         style="stop-color:#f0f0f0"
          id="stop15573" />
       <stop
          offset="1.0000000"
@@ -280,7 +280,7 @@
       <path
          id="rect3558"
          d="m 154.44439,141.22016 0,0 -10,0 0,10 10,0 0,0 10,0 0,0 10,0 0,-10 -10,0 0,0 z"
-         style="color:#000000;fill:url(#linearGradient3850);fill-opacity:1;fill-rule:evenodd;stroke:#0b1521;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" />
+         style="color:#000000;fill:url(#linearGradient3850);fill-opacity:1;fill-rule:evenodd;stroke:#1e3a5c;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate" />
       <g
          transform="translate(0,-21)"
          id="g3912">
@@ -304,11 +304,11 @@
         <g
            transform="matrix(1.2349522,0.01894995,-0.0189508,1.2348959,-7.1881028,-111.34439)"
            id="g4312"
-           style="stroke:#3465a4;stroke-width:0.8096711">
+           style="stroke:#3b72ba;stroke-width:0.8096711">
           <g
              id="g4248"
              transform="matrix(-0.1153544,-0.09575809,0.09575809,-0.1153544,98.667777,319.83687)"
-             style="stroke:#3465a4;stroke-width:0.8096711">
+             style="stroke:#3b72ba;stroke-width:0.8096711">
             <g
                style="stroke-width:0.8096711"
                id="g3906"
@@ -316,11 +316,11 @@
               <path
                  d="m 147.07465,535.89484 a 48.571431,48.571431 0 1 1 -97.14285,0 48.571431,48.571431 0 1 1 97.14285,0 z"
                  id="path4250"
-                 style="fill:#3465a4;fill-opacity:1;stroke:#0b1521;stroke-width:10.80131626;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+                 style="fill:#3b72ba;fill-opacity:1;stroke:#1e3a5c;stroke-width:10.80131626;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
               <path
                  d="m 136.22359,535.86575 a 37.80547,37.803747 49.467268 1 1 -75.60894,-0.002 37.80547,37.803747 49.467268 0 1 75.60894,0.002 z"
                  id="path4250-7"
-                 style="fill:url(#linearGradient3922);fill-opacity:1;stroke:#729fcf;stroke-width:10.80131435;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+                 style="fill:url(#linearGradient3922);fill-opacity:1;stroke:#85acd5;stroke-width:10.80131435;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
             </g>
           </g>
         </g>
@@ -329,7 +329,7 @@
          transform="translate(127.44439,128.22016)"
          id="path3826"
          d="m 19,15 10,0 0,0 6,0 0,0 10,0 0,6 -10,0 0,0 -6,0 0,0 -10,0 z"
-         style="fill:none;stroke:#729fcf;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+         style="fill:none;stroke:#85acd5;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
     </g>
   </g>
   <metadata

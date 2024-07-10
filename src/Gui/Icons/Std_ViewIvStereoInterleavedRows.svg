@@ -17,11 +17,11 @@
     <linearGradient
        id="linearGradient952">
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="0"
          id="stop948" />
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="1"
          id="stop950" />
     </linearGradient>
@@ -81,11 +81,11 @@
     <linearGradient
        id="linearGradient3767">
       <stop
-         style="stop-color:#3465a4;stop-opacity:1"
+         style="stop-color:#3b72ba;stop-opacity:1"
          offset="0"
          id="stop3769" />
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="1"
          id="stop3771" />
     </linearGradient>
@@ -101,11 +101,11 @@
     <linearGradient
        id="linearGradient3777">
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="0"
          id="stop3779" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:1"
+         style="stop-color:#3b72ba;stop-opacity:1"
          offset="1"
          id="stop3781" />
     </linearGradient>
@@ -194,7 +194,7 @@
   <path
      id="path921-8"
      d="M 32.632737,21.859905 H 55.906651 V 38.360987 H 40.636993 l -6.834934,-6.652253 z"
-     style="fill:url(#linearGradient954);fill-opacity:1;stroke:#0b1521;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none" />
+     style="fill:url(#linearGradient954);fill-opacity:1;stroke:#1e3a5c;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none" />
   <path
      style="fill:none;stroke:#babdb6;stroke-width:4;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
      d="M 32.017025,33.189006 V 17.857777"
@@ -204,7 +204,7 @@
      d="M 5.051724,17.655172 H 59 V 44 L 43.235996,43.938429 C 36.666589,28.519738 26.039445,30.454028 20.661358,44.030786 L 5.051724,44 Z"
      id="path1020-3" />
   <path
-     style="fill:none;stroke:#0b1521;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+     style="fill:none;stroke:#1e3a5c;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
      d="m 35.004082,21.643537 0.06531,10.144218 c 3.212544,1.029984 5.005244,3.076287 7.22721,6.160544"
      id="path956" />
   <path

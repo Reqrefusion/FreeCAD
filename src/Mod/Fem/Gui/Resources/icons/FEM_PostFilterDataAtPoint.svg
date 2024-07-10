@@ -12,12 +12,12 @@
   </metadata>
   <defs id="defs6">
     <linearGradient id="linearGradient4739">
-      <stop style="stop-color:#204a87;stop-opacity:1" offset="0" id="stop4735" />
-      <stop style="stop-color:#729fcf;stop-opacity:1" offset="1" id="stop4737" />
+      <stop style="stop-color:#2b62b6;stop-opacity:1" offset="0" id="stop4735" />
+      <stop style="stop-color:#85acd5;stop-opacity:1" offset="1" id="stop4737" />
     </linearGradient>
     <linearGradient id="linearGradient3797">
-      <stop style="stop-color:#3465a4;stop-opacity:1" offset="0" id="stop3799-3" />
-      <stop style="stop-color:#729fcf;stop-opacity:1" offset="1" id="stop3801" />
+      <stop style="stop-color:#3b72ba;stop-opacity:1" offset="0" id="stop3799-3" />
+      <stop style="stop-color:#85acd5;stop-opacity:1" offset="1" id="stop3801" />
     </linearGradient>
     <linearGradient xlink:href="#linearGradient3797" id="linearGradient4687-1-6-6" x1="18.145235" y1="51.499367" x2="44.398445" y2="51.499367" gradientUnits="userSpaceOnUse" gradientTransform="matrix(1,0,0,1.0981138,0.14321474,-55.839871)" />
     <linearGradient xlink:href="#linearGradient3797" id="linearGradient4695-7-8-7-0" x1="0.18017258" y1="36.248028" x2="14.623517" y2="36.248028" gradientUnits="userSpaceOnUse" gradientTransform="matrix(-1,0,0,1,57.200391,-43.587124)" />
@@ -36,13 +36,13 @@
       <path id="path985" d="M 5.0087548,45.522186 28.503171,61.390143 59.378032,45.522186 31.947378,32.852423 5.0087548,45.522186" style="fill:#73d216;stroke:#172a04;stroke-width:1.96811867;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     </g>
     <g id="g933" transform="matrix(0.84067711,0,0,0.84067711,4.792689,5.8630294)">
-      <path id="path1141-6" d="m 30.22554,16.840233 0.0435,12.023068 -13.02134,-6.795248 -1.78936,3.371558 12.74569,6.66474 -7.87506,3.13105 1.2679,3.20128 8.26338,-3.22048 -0.0652,10.71529 h 3.93624 l 0.0435,-10.82401 12.43586,6.653 1.78935,-3.37156 -11.30661,-5.93357 7.82767,-3.09799 -1.26789,-3.20128 -9.46037,3.68691 V 16.840233 Z" style="fill:#729fcf;stroke:#0b1521;stroke-width:1.96811867;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
-      <circle r="5.7813487" cy="42.533432" cx="51.573566" id="path1066-18-6" style="opacity:1;fill:#729fcf;fill-opacity:1;fill-rule:nonzero;stroke:#0b1521;stroke-width:1.96811867;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none" />
-      <circle r="5.7813487" cy="10.997398" cx="32.070637" id="path1066-4" style="opacity:1;fill:#729fcf;fill-opacity:1;fill-rule:nonzero;stroke:#0b1521;stroke-width:1.96811867;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none" />
-      <circle r="5.7813487" cy="51.589821" cx="31.824636" id="path1066-1-1" style="opacity:1;fill:#729fcf;fill-opacity:1;fill-rule:nonzero;stroke:#0b1521;stroke-width:1.96811867;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none" />
-      <circle r="5.7813487" cy="21.43528" cx="11.288991" id="path1066-6-2" style="opacity:1;fill:#729fcf;fill-opacity:1;fill-rule:nonzero;stroke:#0b1521;stroke-width:1.96811867;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none" />
-      <circle r="5.7813487" cy="25.436317" cx="49.38596" id="path1066-5-2" style="opacity:1;fill:#729fcf;fill-opacity:1;fill-rule:nonzero;stroke:#0b1521;stroke-width:1.96811867;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none" />
-      <circle r="5.7813487" cy="38.570221" cx="15.377019" id="path1066-2-5" style="opacity:1;fill:#729fcf;fill-opacity:1;fill-rule:nonzero;stroke:#0b1521;stroke-width:1.96811867;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none" />
+      <path id="path1141-6" d="m 30.22554,16.840233 0.0435,12.023068 -13.02134,-6.795248 -1.78936,3.371558 12.74569,6.66474 -7.87506,3.13105 1.2679,3.20128 8.26338,-3.22048 -0.0652,10.71529 h 3.93624 l 0.0435,-10.82401 12.43586,6.653 1.78935,-3.37156 -11.30661,-5.93357 7.82767,-3.09799 -1.26789,-3.20128 -9.46037,3.68691 V 16.840233 Z" style="fill:#85acd5;stroke:#1e3a5c;stroke-width:1.96811867;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+      <circle r="5.7813487" cy="42.533432" cx="51.573566" id="path1066-18-6" style="opacity:1;fill:#85acd5;fill-opacity:1;fill-rule:nonzero;stroke:#1e3a5c;stroke-width:1.96811867;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none" />
+      <circle r="5.7813487" cy="10.997398" cx="32.070637" id="path1066-4" style="opacity:1;fill:#85acd5;fill-opacity:1;fill-rule:nonzero;stroke:#1e3a5c;stroke-width:1.96811867;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none" />
+      <circle r="5.7813487" cy="51.589821" cx="31.824636" id="path1066-1-1" style="opacity:1;fill:#85acd5;fill-opacity:1;fill-rule:nonzero;stroke:#1e3a5c;stroke-width:1.96811867;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none" />
+      <circle r="5.7813487" cy="21.43528" cx="11.288991" id="path1066-6-2" style="opacity:1;fill:#85acd5;fill-opacity:1;fill-rule:nonzero;stroke:#1e3a5c;stroke-width:1.96811867;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none" />
+      <circle r="5.7813487" cy="25.436317" cx="49.38596" id="path1066-5-2" style="opacity:1;fill:#85acd5;fill-opacity:1;fill-rule:nonzero;stroke:#1e3a5c;stroke-width:1.96811867;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none" />
+      <circle r="5.7813487" cy="38.570221" cx="15.377019" id="path1066-2-5" style="opacity:1;fill:#85acd5;fill-opacity:1;fill-rule:nonzero;stroke:#1e3a5c;stroke-width:1.96811867;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none" />
     </g>
   </g>
 </svg>

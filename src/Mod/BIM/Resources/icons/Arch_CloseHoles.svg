@@ -3,8 +3,8 @@
 <svg xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:svg="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="64px" height="64px" id="svg2980" sodipodi:version="0.32" inkscape:version="0.48.5 r10040" sodipodi:docname="Arch_CloseHoles.svg" inkscape:output_extension="org.inkscape.output.svg.inkscape" version="1.1">
   <defs id="defs2982">
     <linearGradient inkscape:collect="always" id="linearGradient3777">
-      <stop style="stop-color:#204a87;stop-opacity:1" offset="0" id="stop3779"/>
-      <stop style="stop-color:#3465a4;stop-opacity:1" offset="1" id="stop3781"/>
+      <stop style="stop-color:#2b62b6;stop-opacity:1" offset="0" id="stop3779"/>
+      <stop style="stop-color:#3b72ba;stop-opacity:1" offset="1" id="stop3781"/>
     </linearGradient>
     <linearGradient inkscape:collect="always" id="linearGradient3767">
       <stop style="stop-color:#a40000;stop-opacity:1" offset="0" id="stop3769"/>
@@ -58,10 +58,10 @@
     </rdf:RDF>
   </metadata>
   <g id="layer1" inkscape:label="Layer 1" inkscape:groupmode="layer">
-    <path style="fill:#729fcf;stroke:#0b1521;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1" d="M 3,17 37,23 61,15 31,11 z" id="path2993" inkscape:connector-curvature="0" sodipodi:nodetypes="ccccc"/>
-    <path style="fill:url(#linearGradient3783);stroke:#0b1521;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1;fill-opacity:1" d="M 61,15 61,51 37,61 37,23 z" id="path2995" inkscape:connector-curvature="0"/>
+    <path style="fill:#85acd5;stroke:#1e3a5c;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1" d="M 3,17 37,23 61,15 31,11 z" id="path2993" inkscape:connector-curvature="0" sodipodi:nodetypes="ccccc"/>
+    <path style="fill:url(#linearGradient3783);stroke:#1e3a5c;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1;fill-opacity:1" d="M 61,15 61,51 37,61 37,23 z" id="path2995" inkscape:connector-curvature="0"/>
     <path inkscape:connector-curvature="0" sodipodi:nodetypes="ccccc" id="path3825" d="M 3,17 37,23 37,61 3,55 z" style="fill:url(#linearGradient3773);fill-opacity:1;fill-rule:evenodd;stroke:#280000;stroke-width:2;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"/>
     <path style="fill:none;stroke:#ef2929;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 5,19.42772 0.00867,33.919116 30.0086711,5.268799 -0.0087,-33.933614 z" id="path3765" inkscape:connector-curvature="0" sodipodi:nodetypes="ccccc"/>
-    <path style="fill:none;stroke:#3465a4;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 39.01243,24.433833 -0.01226,33.535301 20.001105,-8.300993 3.6e-4,-31.867363 z" id="path3775" inkscape:connector-curvature="0" sodipodi:nodetypes="ccccc"/>
+    <path style="fill:none;stroke:#3b72ba;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 39.01243,24.433833 -0.01226,33.535301 20.001105,-8.300993 3.6e-4,-31.867363 z" id="path3775" inkscape:connector-curvature="0" sodipodi:nodetypes="ccccc"/>
   </g>
 </svg>

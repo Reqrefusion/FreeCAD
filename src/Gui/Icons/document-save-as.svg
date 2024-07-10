@@ -92,7 +92,7 @@
          d="m 35.638801,21.628897 4.593745,-0.0015 c 0.754817,0 1.366667,-0.539369 1.368609,-1.203677 l -0.0075,-8.093548 c -0.0017,-0.662477 -0.613717,-1.200749 -1.371418,-1.198897 l -4.588994,0.0015 c -0.757692,0 -1.370951,0.538821 -1.370951,1.201351 l 0.0067,8.095463 c 0.0017,0.664448 0.614733,1.201762 1.369476,1.199706"
          style="fill:#2e3436;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.133333" />
       <rect
-         style="display:inline;fill:#eeeeec;fill-rule:evenodd;stroke:#204a87;stroke-width:2;stroke-linecap:square;stroke-linejoin:round"
+         style="display:inline;fill:#eeeeec;fill-rule:evenodd;stroke:#2b62b6;stroke-width:2;stroke-linecap:square;stroke-linejoin:round"
          id="rect16"
          width="28.636192"
          height="17.675844"

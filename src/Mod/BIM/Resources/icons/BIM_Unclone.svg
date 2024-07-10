@@ -50,22 +50,22 @@
        inkscape:collect="always"
        id="linearGradient4739">
       <stop
-         style="stop-color:#204a87;stop-opacity:1;"
+         style="stop-color:#2b62b6;stop-opacity:1;"
          offset="0"
          id="stop4735" />
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="1"
          id="stop4737" />
     </linearGradient>
     <linearGradient
        id="linearGradient3797">
       <stop
-         style="stop-color:#3465a4;stop-opacity:1;"
+         style="stop-color:#3b72ba;stop-opacity:1;"
          offset="0"
          id="stop3799-3" />
       <stop
-         style="stop-color:#729fcf;stop-opacity:1;"
+         style="stop-color:#85acd5;stop-opacity:1;"
          offset="1"
          id="stop3801" />
     </linearGradient>
@@ -406,7 +406,7 @@
            sodipodi:cx="-49.113506"
            sodipodi:type="arc"
            id="path4557-8-0-0"
-           style="opacity:1;fill:#0b1521;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1.88976383;stroke-miterlimit:4;stroke-dasharray:none" />
+           style="opacity:1;fill:#1e3a5c;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1.88976383;stroke-miterlimit:4;stroke-dasharray:none" />
         <path
            transform="matrix(-0.40001972,-0.91650653,-0.91650653,0.40001972,0,0)"
            d="m -59.260518,11.320401 a 2,4.375 0 0 1 -2.419975,-3.1744 2,4.375 0 0 1 1.439682,-5.3086639 2,4.375 0 0 1 2.433606,3.12414 2,4.375 0 0 1 -1.416642,5.3382419"
@@ -419,7 +419,7 @@
            sodipodi:cx="-59.741486"
            sodipodi:type="arc"
            id="path4557-4-5-6-1"
-           style="opacity:1;fill:#0b1521;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1.88976383;stroke-miterlimit:4;stroke-dasharray:none" />
+           style="opacity:1;fill:#1e3a5c;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1.88976383;stroke-miterlimit:4;stroke-dasharray:none" />
         <path
            transform="rotate(0.20338494)"
            d="m 13.954073,67.074179 a 2,4.375 0 0 1 -2.419975,-3.1744 2,4.375 0 0 1 1.439682,-5.308663 2,4.375 0 0 1 2.433606,3.12414 2,4.375 0 0 1 -1.416642,5.338241"
@@ -432,7 +432,7 @@
            sodipodi:cx="13.473105"
            sodipodi:type="arc"
            id="path4557-3-1-2-9"
-           style="opacity:1;fill:#0b1521;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1.88976383;stroke-miterlimit:4;stroke-dasharray:none" />
+           style="opacity:1;fill:#1e3a5c;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1.88976383;stroke-miterlimit:4;stroke-dasharray:none" />
       </g>
       <path
          sodipodi:nodetypes="ccsc"
@@ -466,7 +466,7 @@
            sodipodi:cx="34.347431"
            sodipodi:type="arc"
            id="path5083-8-6"
-           style="opacity:1;fill:#0b1521;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1.49930751;stroke-miterlimit:4;stroke-dasharray:none" />
+           style="opacity:1;fill:#1e3a5c;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1.49930751;stroke-miterlimit:4;stroke-dasharray:none" />
         <path
            transform="matrix(-0.02973672,0.99955777,0.99924923,0.03874253,0,0)"
            d="M -7.5008603,28.528731 A 3.0267222,3.5582526 0 0 1 -4.71668,24.7253 a 3.0267222,3.5582526 0 0 1 3.2509404,3.251596 3.0267222,3.5582526 0 0 1 -2.7474785,3.84014 3.0267222,3.5582526 0 0 1 -3.2819583,-3.208242"
@@ -491,7 +491,7 @@
            sodipodi:cx="30.375454"
            sodipodi:type="arc"
            id="path5083-8-1-8"
-           style="opacity:1;fill:#0b1521;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1.11623406;stroke-miterlimit:4;stroke-dasharray:none" />
+           style="opacity:1;fill:#1e3a5c;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1.11623406;stroke-miterlimit:4;stroke-dasharray:none" />
       </g>
       <path
          style="fill:none;fill-opacity:1;stroke:#210b11;stroke-width:2.21032572;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;font-variant-east_asian:normal;opacity:1;vector-effect:none;stroke-dashoffset:0"

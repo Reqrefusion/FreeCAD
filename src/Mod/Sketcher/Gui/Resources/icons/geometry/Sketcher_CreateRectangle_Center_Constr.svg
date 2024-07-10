@@ -164,11 +164,11 @@
     <linearGradient
        id="linearGradient3809">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="0"
          id="stop3811" />
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="1"
          id="stop3813" />
     </linearGradient>
@@ -493,14 +493,14 @@
       <path
          id="rect2233"
          d="M 971.31351,415.98456 V 752.81085 H 1336.8902 V 415.98456 Z m 43.86919,44.36492 274.0236,-0.43105 V 708.877 l -274.0236,0.0646 z"
-         style="fill:#3465a4;fill-opacity:1;stroke:#091425;stroke-width:15.2568;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+         style="fill:#3b72ba;fill-opacity:1;stroke:#091425;stroke-width:15.2568;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
       <path
-         style="fill:none;stroke:#729fcf;stroke-width:2.08668019;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-dasharray:none"
+         style="fill:none;stroke:#85acd5;stroke-width:2.08668019;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-dasharray:none"
          d="M 55.913045,10.935149 H 9.1739164 v 43.063378"
          id="path3040"
          transform="matrix(7.3115342,0,0,7.3115342,920.13275,350.67648)" />
       <path
-         style="fill:none;stroke:#729fcf;stroke-width:2.08668;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1"
+         style="fill:none;stroke:#85acd5;stroke-width:2.08668;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1"
          d="m 13,51 39.685575,0.03219 -0.06987,-36.128755"
          id="path3042"
          transform="matrix(7.3115342,0,0,7.3115342,920.13275,350.67648)" />

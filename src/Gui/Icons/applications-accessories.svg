@@ -53,10 +53,10 @@
      gradientUnits="userSpaceOnUse"
      id="XMLID_45_"><stop
        id="stop695"
-       style="stop-color:#BABDB6"
+       style="stop-color:#babdb6"
        offset="0" /><stop
        id="stop697"
-       style="stop-color:#EEEEEC"
+       style="stop-color:#eeeeec"
        offset="1" /></linearGradient><radialGradient
      gradientUnits="userSpaceOnUse"
      gradientTransform="matrix(1,0,0,1.0103,0,-0.159801)"
@@ -65,7 +65,7 @@
      cx="165.06104"
      id="XMLID_52_"><stop
        id="stop812"
-       style="stop-color:#EF3535"
+       style="stop-color:#ef3535"
        offset="0" /><stop
        offset="0"
        style="stop-color:#c91a1a;stop-opacity:1;"
@@ -81,10 +81,10 @@
      gradientUnits="userSpaceOnUse"
      id="path3311_1_"><stop
        id="stop4970"
-       style="stop-color:#C4A000"
+       style="stop-color:#c4a000"
        offset="0" /><stop
        id="stop4972"
-       style="stop-color:#957A00"
+       style="stop-color:#957a00"
        offset="1" /></linearGradient><linearGradient
      gradientTransform="matrix(1.2138,0,0.2825,-1.6712,46.72625,447.9442)"
      y2="175.78883"
@@ -94,10 +94,10 @@
      gradientUnits="userSpaceOnUse"
      id="path3230_2_"><stop
        id="stop4977"
-       style="stop-color:#FFFFFF"
+       style="stop-color:#ffffff"
        offset="0" /><stop
        id="stop4979"
-       style="stop-color:#CFCFCF"
+       style="stop-color:#cfcfcf"
        offset="1" /></linearGradient><linearGradient
      y2="10.711433"
      x2="296.93979"
@@ -106,7 +106,7 @@
      gradientUnits="userSpaceOnUse"
      id="XMLID_897_"><stop
        id="stop45093"
-       style="stop-color:#EEEEEC"
+       style="stop-color:#eeeeec"
        offset="0" /><stop
        id="stop45095"
        style="stop-color:#ffffff;stop-opacity:1;"
@@ -118,7 +118,7 @@
      gradientTransform="matrix(1,0,0,1.0103,0,-0.159801)"
      gradientUnits="userSpaceOnUse"><stop
        offset="0"
-       style="stop-color:#EF3535"
+       style="stop-color:#ef3535"
        id="stop16852" /><stop
        offset="1"
        style="stop-color:#a40000;stop-opacity:0"

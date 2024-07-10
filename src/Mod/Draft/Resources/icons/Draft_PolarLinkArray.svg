@@ -58,11 +58,11 @@
     <linearGradient
        id="linearGradient3791-6">
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="0"
          id="stop3793-7" />
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="1"
          id="stop3795-5" />
     </linearGradient>
@@ -77,11 +77,11 @@
     <linearGradient
        id="linearGradient3791-0">
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="0"
          id="stop3793-6" />
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="1"
          id="stop3795-2" />
     </linearGradient>
@@ -96,11 +96,11 @@
     <linearGradient
        id="linearGradient3791-6-9">
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="0"
          id="stop3793-7-7" />
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="1"
          id="stop3795-5-3" />
     </linearGradient>
@@ -116,11 +116,11 @@
     <linearGradient
        id="linearGradient3791-2">
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="0"
          id="stop3793-9" />
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="1"
          id="stop3795-3" />
     </linearGradient>
@@ -221,7 +221,7 @@
          d="M 1002.6968,1351.5215 1222.017,1234.5507"
          style="fill:none;fill-rule:evenodd;stroke:#0c1622;stroke-width:14.62134731;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:43.86404194,14.62134731;stroke-opacity:0.50196078;stroke-dashoffset:0" />
       <path
-         style="opacity:0.5;fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#0b1521;stroke-width:14.62134743;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         style="opacity:0.5;fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#1e3a5c;stroke-width:14.62134743;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
          id="path944"
          d="m 943.94776,1099.3995 a 285.37994,281.36465 0 0 1 285.37994,281.3647" />
       <g
@@ -232,7 +232,7 @@
            height="73.106735"
            width="73.106735"
            id="rect3808-6-1-20"
-           style="fill:url(#linearGradient3834-6);fill-opacity:1;fill-rule:nonzero;stroke:#729fcf;stroke-width:14.62134743;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+           style="fill:url(#linearGradient3834-6);fill-opacity:1;fill-rule:nonzero;stroke:#85acd5;stroke-width:14.62134743;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
       </g>
       <g
          id="g916"
@@ -243,9 +243,9 @@
            height="102.34943"
            width="102.34941"
            id="rect3808-2-6"
-           style="fill:#3465a4;fill-opacity:1;fill-rule:nonzero;stroke:#0b1521;stroke-width:14.62134838;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+           style="fill:#3b72ba;fill-opacity:1;fill-rule:nonzero;stroke:#1e3a5c;stroke-width:14.62134838;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
         <rect
-           style="fill:url(#linearGradient911);fill-opacity:1;fill-rule:nonzero;stroke:#729fcf;stroke-width:14.62134743;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:url(#linearGradient911);fill-opacity:1;fill-rule:nonzero;stroke:#85acd5;stroke-width:14.62134743;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect905"
            width="73.106735"
            height="73.106735"
@@ -256,7 +256,7 @@
          id="g922"
          transform="translate(-29.242576,-131.59199)">
         <rect
-           style="fill:#3465a4;fill-opacity:1;fill-rule:nonzero;stroke:#0b1521;stroke-width:14.62134838;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:#3b72ba;fill-opacity:1;fill-rule:nonzero;stroke:#1e3a5c;stroke-width:14.62134838;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect918"
            width="102.34941"
            height="102.34943"
@@ -268,7 +268,7 @@
            height="73.106735"
            width="73.106735"
            id="rect920"
-           style="fill:url(#linearGradient926);fill-opacity:1;fill-rule:nonzero;stroke:#729fcf;stroke-width:14.62134743;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+           style="fill:url(#linearGradient926);fill-opacity:1;fill-rule:nonzero;stroke:#85acd5;stroke-width:14.62134743;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
       </g>
       <g
          transform="translate(-153.52403,-248.56277)"
@@ -279,9 +279,9 @@
            height="102.34943"
            width="102.34941"
            id="rect928"
-           style="fill:#3465a4;fill-opacity:1;fill-rule:nonzero;stroke:#0b1521;stroke-width:14.62134838;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+           style="fill:#3b72ba;fill-opacity:1;fill-rule:nonzero;stroke:#1e3a5c;stroke-width:14.62134838;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
         <rect
-           style="fill:url(#linearGradient934);fill-opacity:1;fill-rule:nonzero;stroke:#729fcf;stroke-width:14.62134743;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:url(#linearGradient934);fill-opacity:1;fill-rule:nonzero;stroke:#85acd5;stroke-width:14.62134743;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect930"
            width="73.106735"
            height="73.106735"
@@ -292,7 +292,7 @@
          id="g940"
          transform="translate(-307.04835,-292.42682)">
         <rect
-           style="fill:#3465a4;fill-opacity:1;fill-rule:nonzero;stroke:#0b1521;stroke-width:14.62134838;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:#3b72ba;fill-opacity:1;fill-rule:nonzero;stroke:#1e3a5c;stroke-width:14.62134838;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="rect936"
            width="102.34941"
            height="102.34943"
@@ -304,7 +304,7 @@
            height="73.106735"
            width="73.106735"
            id="rect938"
-           style="fill:url(#linearGradient942);fill-opacity:1;fill-rule:nonzero;stroke:#729fcf;stroke-width:14.62134743;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+           style="fill:url(#linearGradient942);fill-opacity:1;fill-rule:nonzero;stroke:#85acd5;stroke-width:14.62134743;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
       </g>
     </g>
   </g>

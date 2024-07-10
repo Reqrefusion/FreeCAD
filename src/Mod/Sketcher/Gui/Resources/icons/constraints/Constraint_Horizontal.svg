@@ -198,7 +198,7 @@
      transform="matrix(0.92387705,0,0,0.63435949,2.4482999,11.707345)"
      style="stroke-width:1.30623">
     <rect
-       style="fill:#280000;fill-opacity:1;stroke:#3465a4;stroke-width:0;stroke-linecap:square;stroke-linejoin:round;stroke-miterlimit:100;stroke-dasharray:none;stroke-dashoffset:3.45"
+       style="fill:#280000;fill-opacity:1;stroke:#3b72ba;stroke-width:0;stroke-linecap:square;stroke-linejoin:round;stroke-miterlimit:100;stroke-dasharray:none;stroke-dashoffset:3.45"
        id="rect2"
        width="51.954964"
        height="12.611144"
@@ -207,7 +207,7 @@
        rx="2.1647902"
        ry="3.1527863" />
     <rect
-       style="fill:#cc0000;fill-opacity:1;stroke:#3465a4;stroke-width:0;stroke-linecap:square;stroke-linejoin:round;stroke-miterlimit:100;stroke-dasharray:none;stroke-dashoffset:3.45"
+       style="fill:#cc0000;fill-opacity:1;stroke:#3b72ba;stroke-width:0;stroke-linecap:square;stroke-linejoin:round;stroke-miterlimit:100;stroke-dasharray:none;stroke-dashoffset:3.45"
        id="rect2-6"
        width="47.625385"
        height="6.305573"
@@ -217,7 +217,7 @@
        ry="1.5763932" />
     <path
        d="m 9.2563181,28.836417 c -0.599646,0 -1.082395,0.703072 -1.082395,1.576393 v 1.576393 H 55.799308 V 30.41281 c 0,-0.873321 -0.482749,-1.576393 -1.082395,-1.576393 z"
-       style="fill:#ef2929;stroke:#3465a4;stroke-width:0;stroke-linecap:square;stroke-linejoin:round;stroke-miterlimit:100;stroke-dashoffset:3.45"
+       style="fill:#ef2929;stroke:#3b72ba;stroke-width:0;stroke-linecap:square;stroke-linejoin:round;stroke-miterlimit:100;stroke-dashoffset:3.45"
        id="path3" />
   </g>
 </svg>

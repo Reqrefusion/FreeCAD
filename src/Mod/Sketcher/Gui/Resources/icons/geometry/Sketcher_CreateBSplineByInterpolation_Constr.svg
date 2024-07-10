@@ -131,11 +131,11 @@
     <linearGradient
        id="linearGradient3809">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="0"
          id="stop3811" />
       <stop
-         style="stop-color:#204a87;stop-opacity:1"
+         style="stop-color:#2b62b6;stop-opacity:1"
          offset="1"
          id="stop3813" />
     </linearGradient>
@@ -244,11 +244,11 @@
          d="m 12.500671,52.406661 c 0,0 -12.24421333,-15.370698 -5.4089441,-27.285119 7.8516901,-13.686125 20.8842241,-9.769383 25.1009181,-3.726161 6.767251,9.698593 -4.172827,17.402291 5.527679,25.547543 6.809829,5.718029 16.407685,-0.164972 19.131189,-6.657181 C 63.79576,23.732244 52.767257,10.457292 52.767257,10.457292"
          id="path7375" />
       <path
-         style="fill:none;stroke:#3465a4;stroke-width:4.0424;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         style="fill:none;stroke:#3b72ba;stroke-width:4.0424;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
          d="m 12.500671,52.406661 c 0,0 -12.244213,-15.370698 -5.408944,-27.285119 7.85169,-13.686125 20.884224,-9.769383 25.100918,-3.726161 6.767251,9.698593 -4.172827,17.402291 5.527679,25.547543 6.809829,5.718029 16.407685,-0.164972 19.131189,-6.657181 C 63.79576,23.732244 52.767257,10.457292 52.767257,10.457292"
          id="path7375-2" />
       <path
-         style="fill:none;stroke:#729fcf;stroke-width:2.0212;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         style="fill:none;stroke:#85acd5;stroke-width:2.0212;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
          d="m 11.778227,52.959118 c 0,0 -11.49299943,-15.722366 -5.4973319,-28.080614 C 13.232651,10.549569 27.920721,14.04522 32.884415,20.622013 c 7.124238,9.439471 -4.222846,18.645717 5.96962,26.166261 6.153979,4.540733 15.28495,-1.788533 17.363422,-7.275899 6.166738,-16.280778 -4.172644,-28.502626 -4.172644,-28.502626"
          id="path7375-2-5" />
     </g>

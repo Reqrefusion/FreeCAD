@@ -205,7 +205,7 @@
        id="aigrd2">
       <stop
          id="stop15566"
-         style="stop-color:#F0F0F0"
+         style="stop-color:#f0f0f0"
          offset="0" />
       <stop
          id="stop15568"
@@ -222,7 +222,7 @@
        id="aigrd3">
       <stop
          id="stop15573"
-         style="stop-color:#F0F0F0"
+         style="stop-color:#f0f0f0"
          offset="0" />
       <stop
          id="stop15575"
@@ -385,11 +385,11 @@
     <linearGradient
        id="linearGradient3895-5">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1;"
+         style="stop-color:#85acd5;stop-opacity:1;"
          offset="0"
          id="stop3897-6" />
       <stop
-         style="stop-color:#204a87;stop-opacity:1;"
+         style="stop-color:#2b62b6;stop-opacity:1;"
          offset="1"
          id="stop3899-2" />
     </linearGradient>
@@ -451,7 +451,7 @@
     <linearGradient
        id="linearGradient2831-2">
       <stop
-         style="stop-color:#3465a4;stop-opacity:1;"
+         style="stop-color:#3b72ba;stop-opacity:1;"
          offset="0"
          id="stop2833-3" />
       <stop
@@ -484,11 +484,11 @@
     <linearGradient
        id="linearGradient2380-9">
       <stop
-         style="stop-color:#729fcf;stop-opacity:1"
+         style="stop-color:#85acd5;stop-opacity:1"
          offset="0"
          id="stop2382-4" />
       <stop
-         style="stop-color:#3465a4;stop-opacity:1"
+         style="stop-color:#3b72ba;stop-opacity:1"
          offset="1"
          id="stop2384-6" />
     </linearGradient>
@@ -696,7 +696,7 @@
        id="g4290"
        transform="matrix(1.7087069,0,0,1.8600443,-34.530991,-34.001815)">
       <rect
-         style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:#3465a4;stroke:#0b1521;stroke-width:1.12184942;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker:none;enable-background:accumulate"
+         style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:#3b72ba;stroke:#1e3a5c;stroke-width:1.12184942;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker:none;enable-background:accumulate"
          id="rect4258-1-7-4-7-3-6"
          width="24"
          height="10"
@@ -710,7 +710,7 @@
          height="6"
          width="20"
          id="rect3852-5-0"
-         style="fill:#3465a4;fill-opacity:1;stroke:#729fcf;stroke-width:1.99999988;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+         style="fill:#3b72ba;fill-opacity:1;stroke:#85acd5;stroke-width:1.99999988;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     </g>
     <g
        transform="matrix(-0.54545355,0,0,0.54545355,64.986726,31.476274)"
@@ -743,7 +743,7 @@
        transform="matrix(-0.3768852,-0.31576768,-0.31842237,0.3737431,72.125829,8.4065273)"
        inkscape:r_cx="true"
        inkscape:r_cy="true"
-       style="fill:url(#linearGradient4587);fill-opacity:1;stroke:#204a87;stroke-width:0.73280919;stroke-opacity:1">
+       style="fill:url(#linearGradient4587);fill-opacity:1;stroke:#2b62b6;stroke-width:0.73280919;stroke-opacity:1">
       <path
          sodipodi:nodetypes="ccccccc"
          id="path1880-27"
@@ -754,7 +754,7 @@
          inkscape:connector-curvature="0" />
     </g>
     <g
-       style="fill:none;stroke:#729fcf;stroke-width:0.73280919;stroke-opacity:1"
+       style="fill:none;stroke:#85acd5;stroke-width:0.73280919;stroke-opacity:1"
        inkscape:r_cy="true"
        inkscape:r_cx="true"
        transform="matrix(-0.33098931,-0.27731425,-0.27964567,0.32822985,69.603922,8.440857)"
@@ -773,7 +773,7 @@
        transform="matrix(0.3768852,0.31576768,0.31842237,-0.3737431,29.695206,21.287244)"
        inkscape:r_cx="true"
        inkscape:r_cy="true"
-       style="fill:url(#linearGradient3858-1);fill-opacity:1;stroke:#204a87;stroke-width:0.73280919;stroke-opacity:1">
+       style="fill:url(#linearGradient3858-1);fill-opacity:1;stroke:#2b62b6;stroke-width:0.73280919;stroke-opacity:1">
       <path
          sodipodi:nodetypes="ccccccc"
          id="path1880-2"
@@ -784,7 +784,7 @@
          inkscape:connector-curvature="0" />
     </g>
     <g
-       style="fill:none;stroke:#729fcf;stroke-width:0.73280919;stroke-opacity:1"
+       style="fill:none;stroke:#85acd5;stroke-width:0.73280919;stroke-opacity:1"
        inkscape:r_cy="true"
        inkscape:r_cx="true"
        transform="matrix(0.33098931,0.27731425,0.27964567,-0.32822985,32.217113,21.252914)"
