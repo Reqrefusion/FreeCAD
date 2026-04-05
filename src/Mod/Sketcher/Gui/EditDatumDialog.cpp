@@ -75,20 +75,22 @@ bool SketcherGui::checkConstraintName(const Sketcher::SketchObject* sketch, std:
 }
 
 
-EditDatumDialog::EditDatumDialog(int tid, ViewProviderSketch* vp, int ConstrNbr)
+EditDatumDialog::EditDatumDialog(int tid, ViewProviderSketch* vp, int ConstrNbr, bool bindDatumToConstraintPath)
     : ConstrNbr(ConstrNbr)
     , success(false)
     , transactionID(tid)
+    , bindDatumToConstraintPath(bindDatumToConstraintPath)
 {
     sketch = vp->getSketchObject();
     const std::vector<Sketcher::Constraint*>& Constraints = sketch->Constraints.getValues();
     Constr = Constraints[ConstrNbr];
 }
 
-EditDatumDialog::EditDatumDialog(int tid, Sketcher::SketchObject* pcSketch, int ConstrNbr)
+EditDatumDialog::EditDatumDialog(int tid, Sketcher::SketchObject* pcSketch, int ConstrNbr, bool bindDatumToConstraintPath)
     : sketch(pcSketch)
     , ConstrNbr(ConstrNbr)
     , transactionID(tid)
+    , bindDatumToConstraintPath(bindDatumToConstraintPath)
 {
     const std::vector<Sketcher::Constraint*>& Constraints = sketch->Constraints.getValues();
     Constr = Constraints[ConstrNbr];
@@ -185,7 +187,9 @@ int EditDatumDialog::exec(bool atCursor)
         ui_ins_datum->labelEdit->setValue(init_val);
         ui_ins_datum->labelEdit->pushToHistory();
         ui_ins_datum->labelEdit->selectNumber();
-        ui_ins_datum->labelEdit->bind(sketch->Constraints.createPath(ConstrNbr));
+        if (bindDatumToConstraintPath) {
+            ui_ins_datum->labelEdit->bind(sketch->Constraints.createPath(ConstrNbr));
+        }
         ui_ins_datum->name->setText(QString::fromStdString(Constr->Name));
 
         ui_ins_datum->cbDriving->setChecked(!Constr->isDriving);
@@ -279,6 +283,10 @@ void EditDatumDialog::accepted()
             }*/
 
             if (!ui_ins_datum->cbDriving->isChecked()) {
+                if (!bindDatumToConstraintPath) {
+                    ui_ins_datum->labelEdit->bind(sketch->Constraints.createPath(ConstrNbr));
+                }
+
                 if (ui_ins_datum->labelEdit->hasExpression()) {
                     ui_ins_datum->labelEdit->apply();
                 }

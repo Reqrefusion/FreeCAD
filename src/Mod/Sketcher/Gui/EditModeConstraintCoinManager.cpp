@@ -24,28 +24,41 @@
 
 #include <FCConfig.h>
 
+#include <QApplication>
 #include <QPainter>
+#include <QFontInfo>
+#include <QLineF>
+#include <QLocale>
+#include <algorithm>
 #include <QRegularExpression>
 #include <Bnd_Box.hxx>
 #include <limits>
+#include <numeric>
 #include <memory>
 #include <map>
+#include <numbers>
 #include <stack>
 #include <cmath>
 
 #include <Inventor/SbImage.h>
 #include <Inventor/SbVec3f.h>
 #include <Inventor/SoPickedPoint.h>
+#include <Inventor/SoPath.h>
+#include <Inventor/actions/SoRayPickAction.h>
 #include <Inventor/nodes/SoAnnotation.h>
+#include <Inventor/nodes/SoBaseColor.h>
+#include <Inventor/nodes/SoCoordinate3.h>
 #include <Inventor/nodes/SoDepthBuffer.h>
 #include <Inventor/nodes/SoDrawStyle.h>
 #include <Inventor/nodes/SoGroup.h>
 #include <Inventor/nodes/SoImage.h>
+#include <Inventor/nodes/SoLineSet.h>
 #include <Inventor/nodes/SoInfo.h>
 #include <Inventor/nodes/SoMaterial.h>
 #include <Inventor/nodes/SoMaterialBinding.h>
 #include <Inventor/nodes/SoPickStyle.h>
 #include <Inventor/nodes/SoSeparator.h>
+#include <Inventor/nodes/SoText2.h>
 #include <Inventor/nodes/SoTranslation.h>
 
 #include <BRepBndLib.hxx>
@@ -64,10 +77,13 @@
 #include <Mod/Sketcher/App/Constraint.h>
 #include <Mod/Sketcher/App/GeoEnum.h>
 #include <Mod/Sketcher/App/GeoList.h>
+#include <Mod/Sketcher/App/SketchObject.h>
 #include <Mod/Sketcher/App/GeometryFacade.h>
 #include <Mod/Sketcher/App/SolverGeometryExtension.h>
 
 #include "EditModeConstraintCoinManager.h"
+#include "DimensionConstraintBuilder.h"
+#include "DimensionGeometry.h"
 #include "SoZoomTranslation.h"
 #include "Utils.h"
 #include "ViewProviderSketch.h"
@@ -77,6 +93,669 @@
 using namespace Gui;
 using namespace SketcherGui;
 using namespace Sketcher;
+
+namespace SketcherGui::EditModeConstraintPreviewDetail {
+
+constexpr int kBasePreviewHitTolerancePx = 10;
+constexpr int kBasePreviewLineHitTolerancePx = 12;
+constexpr int kPreviewArcSamples = 12;
+
+using namespace DimensionGeometry;
+
+
+QFont previewFont(const DrawingParameters& drawingParameters)
+{
+    QFont font = QApplication::font();
+    int defaultPx = QFontInfo(font).pixelSize();
+    if (defaultPx <= 0) {
+        defaultPx = QFontMetrics(font).height();
+    }
+    font.setPixelSize(static_cast<int>(std::max(defaultPx,
+        static_cast<int>(std::lround(drawingParameters.constraintIconSize)))));
+    font.setBold(true);
+    return font;
+}
+
+
+QSize previewLabelSize(const DrawingParameters& drawingParameters,
+                       const Gui::SoDatumLabel& datum)
+{
+    const QFontMetrics metrics(previewFont(drawingParameters));
+    const QString text = datum.string.getNum() > 0
+        ? QString::fromUtf8(datum.string[0].getString())
+        : QString();
+    const QRect textRect = metrics.boundingRect(text);
+    const int defaultPx = std::max(12, metrics.height());
+    const int width = std::max(defaultPx * 3, textRect.width() + 16);
+    const int height = std::max(defaultPx + 8, textRect.height() + 8);
+    return QSize(width, height);
+}
+
+Base::Vector2d previewLabelCenterSketch(const DrawingParameters& drawingParameters,
+                                        const DimensionCandidate& candidate,
+                                        const Gui::SoDatumLabel& datum)
+{
+    Base::Vector2d center = candidate.labelPos;
+    const QSize labelSize = previewLabelSize(drawingParameters, datum);
+    const double imgWidth = static_cast<double>(labelSize.width());
+    const double imgHeight = static_cast<double>(labelSize.height());
+
+    const int pointCount = datum.pnts.getNum();
+    const auto* verts = datum.pnts.getValues(0);
+    const double param1 = static_cast<double>(datum.param1.getValue());
+    const double param2 = static_cast<double>(datum.param2.getValue());
+
+    if (pointCount >= 2) {
+        const Base::Vector2d p1(verts[0][0], verts[0][1]);
+        const Base::Vector2d p2(verts[1][0], verts[1][1]);
+
+        if (datum.datumtype.getValue() == Gui::SoDatumLabel::DISTANCE
+            || datum.datumtype.getValue() == Gui::SoDatumLabel::DISTANCEX
+            || datum.datumtype.getValue() == Gui::SoDatumLabel::DISTANCEY) {
+            Base::Vector2d dir(0.0, 0.0);
+            if (datum.datumtype.getValue() == Gui::SoDatumLabel::DISTANCE) {
+                dir = normalized(Base::Vector2d(p2.x - p1.x, p2.y - p1.y), Base::Vector2d(1.0, 0.0));
+            }
+            else if (datum.datumtype.getValue() == Gui::SoDatumLabel::DISTANCEX) {
+                dir = Base::Vector2d((p2.x - p1.x >= 0.0) ? 1.0 : -1.0, 0.0);
+            }
+            else {
+                dir = Base::Vector2d(0.0, (p2.y - p1.y >= 0.0) ? 1.0 : -1.0);
+            }
+
+            const Base::Vector2d normal(-dir.y, dir.x);
+            const double normproj12 = (p2.x - p1.x) * normal.x + (p2.y - p1.y) * normal.y;
+            const Base::Vector2d p1proj(p1.x + normproj12 * normal.x,
+                                        p1.y + normproj12 * normal.y);
+            const Base::Vector2d mid((p1proj.x + p2.x) * 0.5, (p1proj.y + p2.y) * 0.5);
+            center = Base::Vector2d(mid.x + normal.x * param1 + dir.x * param2,
+                                    mid.y + normal.y * param1 + dir.y * param2);
+        }
+        else if (datum.datumtype.getValue() == Gui::SoDatumLabel::RADIUS
+                 || datum.datumtype.getValue() == Gui::SoDatumLabel::DIAMETER) {
+            const Base::Vector2d dir = normalized(Base::Vector2d(p2.x - p1.x, p2.y - p1.y),
+                                                  Base::Vector2d(1.0, 0.0));
+            center = Base::Vector2d(p2.x + dir.x * param1,
+                                    p2.y + dir.y * param1);
+        }
+    }
+
+    if (datum.datumtype.getValue() == Gui::SoDatumLabel::ANGLE && pointCount >= 1) {
+        const Base::Vector2d vertex(verts[0][0], verts[0][1]);
+        const double midAngle = param2 + static_cast<double>(datum.param3.getValue()) * 0.5;
+        center = Base::Vector2d(vertex.x + std::cos(midAngle) * (2.0 * param1),
+                                vertex.y + std::sin(midAngle) * (2.0 * param1));
+    }
+    else if (datum.datumtype.getValue() == Gui::SoDatumLabel::ARCLENGTH && pointCount >= 3) {
+        const Base::Vector2d ctr(verts[0][0], verts[0][1]);
+        const double startAngle = static_cast<double>(datum.param2.getValue());
+        const double range = static_cast<double>(datum.param3.getValue());
+        const double midAngle = startAngle + range * 0.5;
+        const double labelRadius = std::max(1.0, std::abs(param1));
+        center = Base::Vector2d(ctr.x + std::cos(midAngle) * labelRadius,
+                                ctr.y + std::sin(midAngle) * labelRadius);
+    }
+
+    return center;
+}
+
+double previewLabelAngleRadians(const Gui::SoDatumLabel& datum)
+{
+    const int pointCount = datum.pnts.getNum();
+    if (pointCount < 2) {
+        return 0.0;
+    }
+
+    const auto* verts = datum.pnts.getValues(0);
+    const Base::Vector2d p1(verts[0][0], verts[0][1]);
+    const Base::Vector2d p2(verts[1][0], verts[1][1]);
+    Base::Vector2d dir(1.0, 0.0);
+
+    constexpr double angleSlack = std::numbers::pi / 12.0;
+    if (datum.datumtype.getValue() == Gui::SoDatumLabel::DISTANCE) {
+        dir = normalized(Base::Vector2d(p2.x - p1.x, p2.y - p1.y), Base::Vector2d(1.0, 0.0));
+    }
+    else if (datum.datumtype.getValue() == Gui::SoDatumLabel::DISTANCEX) {
+        dir = Base::Vector2d((p2.x - p1.x >= 0.0) ? 1.0 : -1.0, 0.0);
+    }
+    else if (datum.datumtype.getValue() == Gui::SoDatumLabel::DISTANCEY) {
+        dir = Base::Vector2d(0.0, (p2.y - p1.y >= 0.0) ? 1.0 : -1.0);
+    }
+    else if (datum.datumtype.getValue() == Gui::SoDatumLabel::ARCLENGTH && pointCount >= 3) {
+        const double startAngle = static_cast<double>(datum.param2.getValue());
+        const double range = static_cast<double>(datum.param3.getValue());
+        const double midAngle = startAngle + range * 0.5;
+        dir = range >= 0.0 ? Base::Vector2d(-std::sin(midAngle), std::cos(midAngle))
+                           : Base::Vector2d(std::sin(midAngle), -std::cos(midAngle));
+    }
+    else if (datum.datumtype.getValue() == Gui::SoDatumLabel::RADIUS
+             || datum.datumtype.getValue() == Gui::SoDatumLabel::DIAMETER) {
+        dir = normalized(Base::Vector2d(p2.x - p1.x, p2.y - p1.y), Base::Vector2d(1.0, 0.0));
+    }
+    else {
+        return 0.0;
+    }
+
+    double angle = std::atan2(dir.y, dir.x);
+    if (angle > std::numbers::pi / 2.0 + angleSlack) {
+        angle -= std::numbers::pi;
+    }
+    else if (angle <= -std::numbers::pi / 2.0 + angleSlack) {
+        angle += std::numbers::pi;
+    }
+    return angle;
+}
+
+QPoint previewLabelCenter(const ViewProviderSketch& viewProvider,
+                          const DrawingParameters& drawingParameters,
+                          const DimensionCandidate& candidate,
+                          const Gui::SoDatumLabel& datum)
+{
+    return viewProvider.projectSketchPointToScreen(
+        previewLabelCenterSketch(drawingParameters, candidate, datum));
+}
+
+QRect previewLabelRect(const ViewProviderSketch& viewProvider,
+                       const DrawingParameters& drawingParameters,
+                       const DimensionCandidate& candidate,
+                       const Gui::SoDatumLabel& datum)
+{
+    const QPoint pt = previewLabelCenter(viewProvider, drawingParameters, candidate, datum);
+    const QSize baseSize = previewLabelSize(drawingParameters, datum);
+    const double angle = previewLabelAngleRadians(datum);
+    const double c = std::abs(std::cos(angle));
+    const double s = std::abs(std::sin(angle));
+    const int width = static_cast<int>(std::ceil(baseSize.width() * c + baseSize.height() * s)) + 6;
+    const int height = static_cast<int>(std::ceil(baseSize.width() * s + baseSize.height() * c)) + 6;
+    return QRect(pt.x() - width / 2, pt.y() - height / 2, width, height);
+}
+
+int previewLabelHitDistance(const ViewProviderSketch& viewProvider,
+                            const DrawingParameters& drawingParameters,
+                            const DimensionCandidate& candidate,
+                            const Gui::SoDatumLabel& datum,
+                            const QPoint& screenPos,
+                            int tolerancePx)
+{
+    const QRect labelRect = previewLabelRect(viewProvider, drawingParameters, candidate, datum)
+                                .adjusted(-tolerancePx,
+                                          -tolerancePx,
+                                          tolerancePx,
+                                          tolerancePx);
+    const int dx = screenPos.x() < labelRect.left() ? labelRect.left() - screenPos.x()
+                   : screenPos.x() > labelRect.right() ? screenPos.x() - labelRect.right()
+                                                      : 0;
+    const int dy = screenPos.y() < labelRect.top() ? labelRect.top() - screenPos.y()
+                   : screenPos.y() > labelRect.bottom() ? screenPos.y() - labelRect.bottom()
+                                                       : 0;
+    return dx * dx + dy * dy;
+}
+
+
+
+int squaredDistance(const QPoint& a, const QPoint& b)
+{
+    const int dx = a.x() - b.x();
+    const int dy = a.y() - b.y();
+    return dx * dx + dy * dy;
+}
+
+double distancePointToSegment(const QPoint& p, const QPoint& a, const QPoint& b)
+{
+    const double ax = static_cast<double>(a.x());
+    const double ay = static_cast<double>(a.y());
+    const double bx = static_cast<double>(b.x());
+    const double by = static_cast<double>(b.y());
+    const double px = static_cast<double>(p.x());
+    const double py = static_cast<double>(p.y());
+    const double vx = bx - ax;
+    const double vy = by - ay;
+    const double wx = px - ax;
+    const double wy = py - ay;
+    const double vv = vx * vx + vy * vy;
+    if (vv < kEpsilon) {
+        return std::sqrt((px - ax) * (px - ax) + (py - ay) * (py - ay));
+    }
+
+    const double t = std::clamp((wx * vx + wy * vy) / vv, 0.0, 1.0);
+    const double cx = ax + t * vx;
+    const double cy = ay + t * vy;
+    const double dx = px - cx;
+    const double dy = py - cy;
+    return std::sqrt(dx * dx + dy * dy);
+}
+
+int distancePointToRect(const QPoint& p, const QRect& rect)
+{
+    const int dx = p.x() < rect.left() ? rect.left() - p.x()
+                   : p.x() > rect.right() ? p.x() - rect.right()
+                                         : 0;
+    const int dy = p.y() < rect.top() ? rect.top() - p.y()
+                   : p.y() > rect.bottom() ? p.y() - rect.bottom()
+                                          : 0;
+    return dx * dx + dy * dy;
+}
+
+struct PreviewSegment
+{
+    QPoint a;
+    QPoint b;
+};
+
+void appendArcSamples(std::vector<QPoint>& points,
+                      const QPoint& center,
+                      const QPoint& startPoint,
+                      double rangeRadians);
+
+void appendPreviewSegment(std::vector<PreviewSegment>& segments,
+                          const QPoint& a,
+                          const QPoint& b)
+{
+    if (a == b) {
+        return;
+    }
+
+    segments.push_back(PreviewSegment {a, b});
+}
+
+bool previewPointsNear(const QPoint& a, const QPoint& b, int tolerancePx = 2)
+{
+    return std::abs(a.x() - b.x()) <= tolerancePx && std::abs(a.y() - b.y()) <= tolerancePx;
+}
+
+bool previewSegmentsIntersect(const PreviewSegment& lhs, const PreviewSegment& rhs)
+{
+    if (previewPointsNear(lhs.a, rhs.a) || previewPointsNear(lhs.a, rhs.b)
+        || previewPointsNear(lhs.b, rhs.a) || previewPointsNear(lhs.b, rhs.b)) {
+        return false;
+    }
+
+    QPointF intersectionPoint;
+    const QLineF first(lhs.a, lhs.b);
+    const QLineF second(rhs.a, rhs.b);
+    if (first.intersects(second, &intersectionPoint) != QLineF::BoundedIntersection) {
+        return false;
+    }
+
+    const QPoint roundedIntersection(static_cast<int>(std::lround(intersectionPoint.x())),
+                                     static_cast<int>(std::lround(intersectionPoint.y())));
+    if (previewPointsNear(roundedIntersection, lhs.a) || previewPointsNear(roundedIntersection, lhs.b)
+        || previewPointsNear(roundedIntersection, rhs.a)
+        || previewPointsNear(roundedIntersection, rhs.b)) {
+        return false;
+    }
+
+    return true;
+}
+
+bool previewSegmentIntersectsRect(const PreviewSegment& segment, const QRect& rect)
+{
+    if (rect.contains(segment.a) || rect.contains(segment.b)) {
+        return true;
+    }
+
+    const QPoint topLeft = rect.topLeft();
+    const QPoint topRight(rect.right(), rect.top());
+    const QPoint bottomLeft(rect.left(), rect.bottom());
+    const QPoint bottomRight = rect.bottomRight();
+    const PreviewSegment edges[] {{topLeft, topRight},
+                                  {topRight, bottomRight},
+                                  {bottomRight, bottomLeft},
+                                  {bottomLeft, topLeft}};
+    return std::any_of(std::begin(edges), std::end(edges), [&](const PreviewSegment& edge) {
+        return previewSegmentsIntersect(segment, edge);
+    });
+}
+
+void appendSourceGeometrySegments(const ViewProviderSketch& viewProvider,
+                                const DimensionCandidate& candidate,
+                                std::vector<PreviewSegment>& segments)
+{
+    auto* sketch = viewProvider.getSketchObject();
+    if (!sketch) {
+        return;
+    }
+
+    auto appendSketchSegment = [&](const Base::Vector2d& a, const Base::Vector2d& b) {
+        const QPoint screenA = viewProvider.projectSketchPointToScreen(a);
+        const QPoint screenB = viewProvider.projectSketchPointToScreen(b);
+        appendPreviewSegment(segments, screenA, screenB);
+    };
+
+    switch (candidate.semantic) {
+        case DimensionSemantic::ProjectedX:
+        case DimensionSemantic::ProjectedY:
+        case DimensionSemantic::DirectLength:
+        case DimensionSemantic::DirectDistance: {
+            if (candidate.refs.size() < 2) {
+                break;
+            }
+            const auto segment = directDistanceSegment(*sketch, candidate.refs[0], candidate.refs[1]);
+            if (!segment.valid) {
+                break;
+            }
+            appendSketchSegment(segment.a, segment.b);
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+void appendDatumSegments(const ViewProviderSketch& viewProvider,
+                         const DrawingParameters& drawingParameters,
+                         const Gui::SoDatumLabel& datum,
+                         std::vector<PreviewSegment>& segments)
+{
+    const int pointCount = datum.pnts.getNum();
+    const auto* verts = datum.pnts.getValues(0);
+    const QSize labelSize = previewLabelSize(drawingParameters, datum);
+    const double imgWidth = static_cast<double>(labelSize.width());
+    const double imgHeight = static_cast<double>(labelSize.height());
+
+    const auto toScreenSketchPoint = [&](const Base::Vector2d& point) {
+        return viewProvider.projectSketchPointToScreen(point);
+    };
+    const auto appendSketchSegment = [&](const Base::Vector2d& a, const Base::Vector2d& b) {
+        appendPreviewSegment(segments, toScreenSketchPoint(a), toScreenSketchPoint(b));
+    };
+    const auto appendArrowSegments = [&](const Base::Vector2d& base,
+                                         const Base::Vector2d& dir,
+                                         double width,
+                                         double length) {
+        const Base::Vector2d unitDir = normalized(dir, Base::Vector2d(1.0, 0.0));
+        const Base::Vector2d perp(-unitDir.y, unitDir.x);
+        const Base::Vector2d tip(base.x + unitDir.x * length, base.y + unitDir.y * length);
+        const Base::Vector2d p1(base.x + perp.x * (width * 0.5), base.y + perp.y * (width * 0.5));
+        const Base::Vector2d p2(base.x - perp.x * (width * 0.5), base.y - perp.y * (width * 0.5));
+        appendSketchSegment(tip, p1);
+        appendSketchSegment(tip, p2);
+    };
+    const auto appendArcSegmentsSketch = [&](const Base::Vector2d& center,
+                                             double radius,
+                                             double startAngle,
+                                             double endAngle) {
+        const double span = endAngle - startAngle;
+        const int segmentCount = std::max(6,
+                                          std::abs(static_cast<int>(50.0 * span
+                                                                    / (2.0 * std::numbers::pi))));
+        if (segmentCount < 2 || radius < kEpsilon) {
+            return;
+        }
+
+        Base::Vector2d previous(center.x + std::cos(startAngle) * radius,
+                                center.y + std::sin(startAngle) * radius);
+        for (int i = 1; i < segmentCount; ++i) {
+            const double t = static_cast<double>(i) / static_cast<double>(segmentCount - 1);
+            const double angle = startAngle + span * t;
+            const Base::Vector2d current(center.x + std::cos(angle) * radius,
+                                         center.y + std::sin(angle) * radius);
+            appendSketchSegment(previous, current);
+            previous = current;
+        }
+    };
+
+    switch (datum.datumtype.getValue()) {
+        case Gui::SoDatumLabel::DISTANCE:
+        case Gui::SoDatumLabel::DISTANCEX:
+        case Gui::SoDatumLabel::DISTANCEY: {
+            if (pointCount < 2) {
+                break;
+            }
+
+            const Base::Vector2d p1(verts[0][0], verts[0][1]);
+            const Base::Vector2d p2(verts[1][0], verts[1][1]);
+            const double length1 = static_cast<double>(datum.param1.getValue());
+            const double length2 = static_cast<double>(datum.param2.getValue());
+
+            Base::Vector2d dir(1.0, 0.0);
+            if (datum.datumtype.getValue() == Gui::SoDatumLabel::DISTANCE) {
+                dir = normalized(Base::Vector2d(p2.x - p1.x, p2.y - p1.y), Base::Vector2d(1.0, 0.0));
+            }
+            else if (datum.datumtype.getValue() == Gui::SoDatumLabel::DISTANCEX) {
+                dir = Base::Vector2d((p2.x - p1.x >= 0.0) ? 1.0 : -1.0, 0.0);
+            }
+            else {
+                dir = Base::Vector2d(0.0, (p2.y - p1.y >= 0.0) ? 1.0 : -1.0);
+            }
+
+            const Base::Vector2d normal(-dir.y, dir.x);
+            const double normproj12 = (p2.x - p1.x) * normal.x + (p2.y - p1.y) * normal.y;
+            const Base::Vector2d p1proj(p1.x + normal.x * normproj12,
+                                        p1.y + normal.y * normproj12);
+            const Base::Vector2d midpos((p1proj.x + p2.x) * 0.5, (p1proj.y + p2.y) * 0.5);
+            const double margin = imgHeight / 3.0;
+            const double offset1 = ((length1 + normproj12 < 0.0) ? -1.0 : 1.0) * margin;
+            const double offset2 = ((length1 < 0.0) ? -1.0 : 1.0) * margin;
+            const Base::Vector2d perp1(p1proj.x + normal.x * (length1 + offset1),
+                                       p1proj.y + normal.y * (length1 + offset1));
+            const Base::Vector2d perp2(p2.x + normal.x * (length1 + offset2),
+                                       p2.y + normal.y * (length1 + offset2));
+            Base::Vector2d par1(p1proj.x + normal.x * length1, p1proj.y + normal.y * length1);
+            Base::Vector2d par2(midpos.x + normal.x * length1 + dir.x * (length2 - imgWidth / 2.0 - margin),
+                                midpos.y + normal.y * length1 + dir.y * (length2 - imgWidth / 2.0 - margin));
+            Base::Vector2d par3(midpos.x + normal.x * length1 + dir.x * (length2 + imgWidth / 2.0 + margin),
+                                midpos.y + normal.y * length1 + dir.y * (length2 + imgWidth / 2.0 + margin));
+            Base::Vector2d par4(p2.x + normal.x * length1, p2.y + normal.y * length1);
+            bool flipTriang = false;
+            if (((par3.x - par1.x) * dir.x + (par3.y - par1.y) * dir.y)
+                > length(Base::Vector2d(par4.x - par1.x, par4.y - par1.y))) {
+                const double tmpMargin = imgHeight / 0.75;
+                par3 = par4;
+                if (((par2.x - par1.x) * dir.x + (par2.y - par1.y) * dir.y)
+                    > length(Base::Vector2d(par4.x - par1.x, par4.y - par1.y))) {
+                    par3 = par2;
+                    par2 = Base::Vector2d(par1.x - dir.x * tmpMargin, par1.y - dir.y * tmpMargin);
+                    flipTriang = true;
+                }
+            }
+            else if (((par2.x - par1.x) * dir.x + (par2.y - par1.y) * dir.y) < 0.0) {
+                const double tmpMargin = imgHeight / 0.75;
+                par2 = par1;
+                if (((par3.x - par1.x) * dir.x + (par3.y - par1.y) * dir.y) < 0.0) {
+                    par2 = par3;
+                    par3 = Base::Vector2d(par4.x + dir.x * tmpMargin, par4.y + dir.y * tmpMargin);
+                    flipTriang = true;
+                }
+            }
+
+            appendSketchSegment(p1proj, perp1);
+            appendSketchSegment(p2, perp2);
+            appendSketchSegment(par1, par2);
+            appendSketchSegment(par3, par4);
+
+            const double arrowWidth = margin * 0.5;
+            const double arrowLength = 0.866 * 2.0 * margin;
+            const Base::Vector2d arrowDir((flipTriang ? -1.0 : 1.0) * dir.x,
+                                          (flipTriang ? -1.0 : 1.0) * dir.y);
+            appendArrowSegments(par1, arrowDir, arrowWidth, arrowLength);
+            appendArrowSegments(par4, Base::Vector2d(-arrowDir.x, -arrowDir.y), arrowWidth, arrowLength);
+            break;
+        }
+        case Gui::SoDatumLabel::RADIUS:
+        case Gui::SoDatumLabel::DIAMETER: {
+            if (pointCount < 2) {
+                break;
+            }
+
+            const Base::Vector2d p1(verts[0][0], verts[0][1]);
+            Base::Vector2d p2(verts[1][0], verts[1][1]);
+            const Base::Vector2d dir = normalized(Base::Vector2d(p2.x - p1.x, p2.y - p1.y),
+                                                  Base::Vector2d(1.0, 0.0));
+            const Base::Vector2d normal(-dir.y, dir.x);
+            const double margin = imgHeight / 3.0;
+            const double arrowWidth = margin * 0.5;
+            const double arrowLength = 0.866 * 2.0 * margin;
+            const double length1 = static_cast<double>(datum.param1.getValue());
+            const bool isDiameter = datum.datumtype.getValue() == Gui::SoDatumLabel::DIAMETER;
+            const Base::Vector2d pos(p2.x + dir.x * length1, p2.y + dir.y * length1);
+            const Base::Vector2d pnt1(pos.x - dir.x * (margin + imgWidth / 2.0),
+                                      pos.y - dir.y * (margin + imgWidth / 2.0));
+            const Base::Vector2d pnt2(pos.x + dir.x * (margin + imgWidth / 2.0),
+                                      pos.y + dir.y * (margin + imgWidth / 2.0));
+            const Base::Vector2d p3(pos.x + dir.x * (imgWidth / 2.0 + margin),
+                                    pos.y + dir.y * (imgWidth / 2.0 + margin));
+            if (length(Base::Vector2d(p3.x - p1.x, p3.y - p1.y))
+                > length(Base::Vector2d(p2.x - p1.x, p2.y - p1.y))) {
+                p2 = p3;
+            }
+
+            appendSketchSegment(p1, pnt1);
+            appendSketchSegment(pnt2, p2);
+            appendArrowSegments(Base::Vector2d(verts[1][0], verts[1][1]), Base::Vector2d(-dir.x, -dir.y), arrowWidth, arrowLength);
+            if (isDiameter) {
+                appendArrowSegments(p1, dir, arrowWidth, arrowLength);
+            }
+
+            Base::Vector2d center = p1;
+            double radius = length(Base::Vector2d(verts[1][0] - verts[0][0], verts[1][1] - verts[0][1]));
+            if (isDiameter) {
+                center = Base::Vector2d((verts[0][0] + verts[1][0]) * 0.5,
+                                        (verts[0][1] + verts[1][1]) * 0.5);
+                radius *= 0.5;
+            }
+
+            const double startAngle = static_cast<double>(datum.param3.getValue());
+            const double startRange = static_cast<double>(datum.param4.getValue());
+            const double endAngle = static_cast<double>(datum.param5.getValue());
+            const double endRange = static_cast<double>(datum.param6.getValue());
+            if (std::abs(startRange) > kEpsilon) {
+                appendArcSegmentsSketch(center, radius, startAngle, startAngle + startRange);
+            }
+            if (std::abs(endRange) > kEpsilon) {
+                appendArcSegmentsSketch(center, radius, endAngle, endAngle + endRange);
+            }
+            break;
+        }
+        case Gui::SoDatumLabel::ANGLE: {
+            if (pointCount < 1) {
+                break;
+            }
+
+            const Base::Vector2d p0(verts[0][0], verts[0][1]);
+            const double length1 = static_cast<double>(datum.param1.getValue());
+            const double startangle = static_cast<double>(datum.param2.getValue());
+            const double range = static_cast<double>(datum.param3.getValue());
+            const double endangle = startangle + range;
+            const double margin = imgHeight / 3.0;
+            const double r = 2.0 * length1;
+            const double endLineLength1 = std::max(static_cast<double>(datum.param4.getValue()), margin);
+            const double endLineLength2 = std::max(static_cast<double>(datum.param5.getValue()), margin);
+            const double endLineLength12 = std::max(-static_cast<double>(datum.param4.getValue()), margin);
+            const double endLineLength22 = std::max(-static_cast<double>(datum.param5.getValue()), margin);
+            const double textMargin = (std::abs(r) > kEpsilon)
+                ? std::min(0.2 * std::abs(range), imgWidth / (2.0 * std::abs(r)))
+                : 0.0;
+
+            Base::Vector2d v1(std::cos(startangle), std::sin(startangle));
+            Base::Vector2d v2(std::cos(endangle), std::sin(endangle));
+            double signedTextMargin = textMargin;
+            if (range < 0.0 || length1 < 0.0) {
+                std::swap(v1, v2);
+                signedTextMargin = -signedTextMargin;
+            }
+
+            const Base::Vector2d pnt1(p0.x + (r - endLineLength1) * v1.x,
+                                      p0.y + (r - endLineLength1) * v1.y);
+            const Base::Vector2d pnt2(p0.x + (r + endLineLength12) * v1.x,
+                                      p0.y + (r + endLineLength12) * v1.y);
+            const Base::Vector2d pnt3(p0.x + (r - endLineLength2) * v2.x,
+                                      p0.y + (r - endLineLength2) * v2.y);
+            const Base::Vector2d pnt4(p0.x + (r + endLineLength22) * v2.x,
+                                      p0.y + (r + endLineLength22) * v2.y);
+            appendSketchSegment(pnt1, pnt2);
+            appendSketchSegment(pnt3, pnt4);
+
+            appendArcSegmentsSketch(p0,
+                                    std::abs(r),
+                                    startangle,
+                                    startangle + range / 2.0 - signedTextMargin);
+            appendArcSegmentsSketch(p0,
+                                    std::abs(r),
+                                    startangle + range / 2.0 + signedTextMargin,
+                                    endangle);
+
+            const double arrowWidth = margin * 0.5;
+            const double arrowLength = margin * 2.0;
+            const Base::Vector2d startArrowBase(p0.x + r * v1.x, p0.y + r * v1.y);
+            const Base::Vector2d endArrowBase(p0.x + r * v2.x, p0.y + r * v2.y);
+            appendArrowSegments(startArrowBase, Base::Vector2d(v1.y, -v1.x), arrowWidth, arrowLength);
+            appendArrowSegments(endArrowBase, Base::Vector2d(-v2.y, v2.x), arrowWidth, arrowLength);
+            break;
+        }
+        case Gui::SoDatumLabel::ARCLENGTH: {
+            if (pointCount < 3) {
+                break;
+            }
+
+            const Base::Vector2d ctr(verts[0][0], verts[0][1]);
+            const Base::Vector2d p1(verts[1][0], verts[1][1]);
+            const Base::Vector2d p2(verts[2][0], verts[2][1]);
+            const double labelRadius = std::max(1.0, std::abs(static_cast<double>(datum.param1.getValue())));
+            const double margin = imgHeight / 3.0;
+            const double startangle = static_cast<double>(datum.param2.getValue());
+            const double range = static_cast<double>(datum.param3.getValue());
+            const double endangle = startangle + range;
+            const Base::Vector2d dir1(std::cos(startangle), std::sin(startangle));
+            const Base::Vector2d dir2(std::cos(endangle), std::sin(endangle));
+            const Base::Vector2d pnt2(ctr.x + dir1.x * labelRadius, ctr.y + dir1.y * labelRadius);
+            const Base::Vector2d pnt4(ctr.x + dir2.x * labelRadius, ctr.y + dir2.y * labelRadius);
+
+            appendSketchSegment(p1, pnt2);
+            appendSketchSegment(p2, pnt4);
+            appendArcSegmentsSketch(ctr, labelRadius, startangle, endangle);
+
+            const double arrowLength = margin * 2.0;
+            const double arrowWidth = margin * 0.5;
+            const Base::Vector2d startTangent = range >= 0.0
+                ? Base::Vector2d(std::sin(startangle), -std::cos(startangle))
+                : Base::Vector2d(-std::sin(startangle), std::cos(startangle));
+            const Base::Vector2d endTangent = range >= 0.0
+                ? Base::Vector2d(-std::sin(endangle), std::cos(endangle))
+                : Base::Vector2d(std::sin(endangle), -std::cos(endangle));
+            appendArrowSegments(pnt2, startTangent, arrowWidth, arrowLength);
+            appendArrowSegments(pnt4, endTangent, arrowWidth, arrowLength);
+            break;
+        }
+        default:
+            if (pointCount >= 2) {
+                appendPreviewSegment(segments,
+                                     viewProvider.projectSketchPointToScreen(Base::Vector2d(verts[0][0], verts[0][1])),
+                                     viewProvider.projectSketchPointToScreen(Base::Vector2d(verts[1][0], verts[1][1])));
+            }
+            break;
+    }
+}
+
+void appendArcSamples(std::vector<QPoint>& points,
+                      const QPoint& center,
+                      const QPoint& startPoint,
+                      double rangeRadians)
+{
+    if (points.empty()) {
+        return;
+    }
+
+    const double radius = std::sqrt(static_cast<double>(EditModeConstraintPreviewDetail::squaredDistance(center, startPoint)));
+    if (radius < kEpsilon) {
+        return;
+    }
+
+    const double startAngle = std::atan2(static_cast<double>(startPoint.y() - center.y()),
+                                         static_cast<double>(startPoint.x() - center.x()));
+    const int sampleCount = std::max(3, kPreviewArcSamples);
+    for (int i = 1; i <= sampleCount; ++i) {
+        const double t = static_cast<double>(i) / static_cast<double>(sampleCount);
+        const double a = startAngle + rangeRadians * t;
+        points.emplace_back(static_cast<int>(std::lround(center.x() + std::cos(a) * radius)),
+                            static_cast<int>(std::lround(center.y() + std::sin(a) * radius)));
+    }
+}
+
+
+
+
+} // namespace SketcherGui::EditModeConstraintPreviewDetail
 
 //**************************** EditModeConstraintCoinManager class ******************************
 
@@ -964,16 +1643,24 @@ Restart:
                             // arc length
                             auto arc = static_cast<const Part::GeomArcOfCircle*>(geo);
                             int index = static_cast<int>(ConstraintNodePosition::DatumLabelIndex);
-                            auto* asciiText = static_cast<SoDatumLabel*>(sep->getChild(index));
+                            auto* asciiText = static_cast<Gui::SoDatumLabel*>(sep->getChild(index));
                             center1 = arc->getCenter();
                             pnt1 = arc->getStartPoint();
                             pnt2 = arc->getEndPoint();
 
-                            double startAngle, endAngle;
-                            arc->getRange(startAngle, endAngle, /*emulateCCW=*/false);
+                            double startAngle = 0.0;
+                            double range = 0.0;
+                            if (!SketcherGui::DimensionGeometry::resolveArcLengthDatumSweep(*arc,
+                                                                                                Constr->LabelDistance,
+                                                                                                startAngle,
+                                                                                                range)) {
+                                break;
+                            }
 
-                            asciiText->datumtype = SoDatumLabel::ARCLENGTH;
+                            asciiText->datumtype = Gui::SoDatumLabel::ARCLENGTH;
                             asciiText->param1 = Constr->LabelDistance;
+                            asciiText->param2 = static_cast<float>(startAngle);
+                            asciiText->param3 = static_cast<float>(range);
                             asciiText->string = SbString(
                                 getPresentationString(Constr, "◠ ").toUtf8().constData()
                             );
@@ -996,20 +1683,20 @@ Restart:
                     }
 
                     int index = static_cast<int>(ConstraintNodePosition::DatumLabelIndex);
-                    auto* asciiText = static_cast<SoDatumLabel*>(sep->getChild(index));  // NOLINT
+                    auto* asciiText = static_cast<Gui::SoDatumLabel*>(sep->getChild(index));  // NOLINT
 
                     // Get presentation string (w/o units if option is set)
                     asciiText->string = SbString(getPresentationString(Constr).toUtf8().constData());
                     asciiText->strikethrough = !Constr->isActive;
 
                     if (Constr->Type == Distance) {
-                        asciiText->datumtype = SoDatumLabel::DISTANCE;
+                        asciiText->datumtype = Gui::SoDatumLabel::DISTANCE;
                     }
                     else if (Constr->Type == DistanceX) {
-                        asciiText->datumtype = SoDatumLabel::DISTANCEX;
+                        asciiText->datumtype = Gui::SoDatumLabel::DISTANCEX;
                     }
                     else if (Constr->Type == DistanceY) {
-                        asciiText->datumtype = SoDatumLabel::DISTANCEY;
+                        asciiText->datumtype = Gui::SoDatumLabel::DISTANCEY;
                     }
 
                     // Check if arc helpers are needed
@@ -1036,7 +1723,7 @@ Restart:
                                 // otherwise We still use findHelperAngles before to find if helper
                                 // is needed.
                                 helperStartAngle1 = endAngle;
-                                helperRange1 = 2 * pi - (endAngle - startAngle);
+                                helperRange1 = 2 * std::numbers::pi - (endAngle - startAngle);
 
                                 numPoints++;
                             }
@@ -1054,7 +1741,7 @@ Restart:
 
                             if (helperRange2 != 0.) {
                                 helperStartAngle2 = endAngle;
-                                helperRange2 = 2 * pi - (endAngle - startAngle);
+                                helperRange2 = 2 * std::numbers::pi - (endAngle - startAngle);
 
                                 numPoints++;
                             }
@@ -1324,10 +2011,10 @@ Restart:
                     dir.normalize();
                     SbVec3f norm(-dir[1], dir[0], 0);
 
-                    SoDatumLabel* asciiText = static_cast<SoDatumLabel*>(
+                    Gui::SoDatumLabel* asciiText = static_cast<Gui::SoDatumLabel*>(
                         sep->getChild(static_cast<int>(ConstraintNodePosition::DatumLabelIndex))
                     );
-                    asciiText->datumtype = SoDatumLabel::SYMMETRIC;
+                    asciiText->datumtype = Gui::SoDatumLabel::SYMMETRIC;
 
                     asciiText->pnts.setNum(2);
                     SbVec3f* verts = asciiText->pnts.startEditing();
@@ -1491,12 +2178,12 @@ Restart:
                         break;
                     }
 
-                    SoDatumLabel* asciiText = static_cast<SoDatumLabel*>(
+                    Gui::SoDatumLabel* asciiText = static_cast<Gui::SoDatumLabel*>(
                         sep->getChild(static_cast<int>(ConstraintNodePosition::DatumLabelIndex))
                     );
                     asciiText->string = SbString(getPresentationString(Constr).toUtf8().constData());
                     asciiText->strikethrough = !Constr->isActive;
-                    asciiText->datumtype = SoDatumLabel::ANGLE;
+                    asciiText->datumtype = Gui::SoDatumLabel::ANGLE;
                     asciiText->param1 = distance;
                     asciiText->param2 = startangle;
                     asciiText->param3 = range;
@@ -1563,7 +2250,7 @@ Restart:
                     SbVec3f p1(pnt1.x, pnt1.y, zConstrH);
                     SbVec3f p2(pnt2.x, pnt2.y, zConstrH);
 
-                    SoDatumLabel* asciiText = static_cast<SoDatumLabel*>(
+                    Gui::SoDatumLabel* asciiText = static_cast<Gui::SoDatumLabel*>(
                         sep->getChild(static_cast<int>(ConstraintNodePosition::DatumLabelIndex))
                     );
 
@@ -1573,7 +2260,7 @@ Restart:
                     );
                     asciiText->strikethrough = !Constr->isActive;
 
-                    asciiText->datumtype = SoDatumLabel::DIAMETER;
+                    asciiText->datumtype = Gui::SoDatumLabel::DIAMETER;
                     asciiText->param1 = Constr->LabelDistance;
                     asciiText->param2 = Constr->LabelPosition;
                     asciiText->param3 = static_cast<float>(startHelperAngle);
@@ -1640,7 +2327,7 @@ Restart:
                     SbVec3f p1(pnt1.x, pnt1.y, zConstrH);
                     SbVec3f p2(pnt2.x, pnt2.y, zConstrH);
 
-                    SoDatumLabel* asciiText = static_cast<SoDatumLabel*>(
+                    Gui::SoDatumLabel* asciiText = static_cast<Gui::SoDatumLabel*>(
                         sep->getChild(static_cast<int>(ConstraintNodePosition::DatumLabelIndex))
                     );
 
@@ -1657,7 +2344,7 @@ Restart:
                         asciiText->strikethrough = !Constr->isActive;
                     }
 
-                    asciiText->datumtype = SoDatumLabel::RADIUS;
+                    asciiText->datumtype = Gui::SoDatumLabel::RADIUS;
                     asciiText->param1 = Constr->LabelDistance;
                     asciiText->param2 = Constr->LabelPosition;
                     asciiText->param3 = helperStartAngle;
@@ -1701,7 +2388,7 @@ void EditModeConstraintCoinManager::findHelperAngles(
     double angle,
     double startAngle,
     double endAngle
-)
+) const
 {
     using std::numbers::pi;
 
@@ -1836,7 +2523,7 @@ void EditModeConstraintCoinManager::updateConstraintColor(
 
         if (ViewProviderSketchCoinAttorney::isConstraintSelected(viewProvider, i)) {
             if (hasDatumLabel) {
-                SoDatumLabel* l = static_cast<SoDatumLabel*>(
+                Gui::SoDatumLabel* l = static_cast<Gui::SoDatumLabel*>(
                     s->getChild(static_cast<int>(ConstraintNodePosition::DatumLabelIndex))
                 );
                 l->textColor = drawingParameters.SelectColor;
@@ -1872,7 +2559,7 @@ void EditModeConstraintCoinManager::updateConstraintColor(
         }
         else if (ViewProviderSketchCoinAttorney::isConstraintPreselected(viewProvider, i)) {
             if (hasDatumLabel) {
-                SoDatumLabel* l = static_cast<SoDatumLabel*>(
+                Gui::SoDatumLabel* l = static_cast<Gui::SoDatumLabel*>(
                     s->getChild(static_cast<int>(ConstraintNodePosition::DatumLabelIndex))
                 );
                 l->textColor = drawingParameters.PreselectColor;
@@ -1887,7 +2574,7 @@ void EditModeConstraintCoinManager::updateConstraintColor(
                 constraint
             );
             if (hasDatumLabel) {
-                SoDatumLabel* l = static_cast<SoDatumLabel*>(
+                Gui::SoDatumLabel* l = static_cast<Gui::SoDatumLabel*>(
                     s->getChild(static_cast<int>(ConstraintNodePosition::DatumLabelIndex))
                 );
 
@@ -1991,7 +2678,7 @@ void EditModeConstraintCoinManager::rebuildConstraintNodes(
             case Diameter:
             case Weight:
             case Angle: {
-                SoDatumLabel* text = new SoDatumLabel();
+                Gui::SoDatumLabel* text = new Gui::SoDatumLabel();
                 text->norm.setValue(norm);
                 text->string = "";
                 text->textColor = isActive
@@ -2113,7 +2800,7 @@ void EditModeConstraintCoinManager::rebuildConstraintNodes(
                 vConstrType.push_back((*it)->Type);
             } break;
             case Symmetric: {
-                SoDatumLabel* arrows = new SoDatumLabel();
+                Gui::SoDatumLabel* arrows = new Gui::SoDatumLabel();
                 arrows->norm.setValue(norm);
                 arrows->string = "";
                 arrows->textColor = drawingParameters.ConstrDimColor;
@@ -2177,12 +2864,49 @@ QString EditModeConstraintCoinManager::getPresentationString(
         return {vStr};
     };
 
-    // Get the current value string including units
+    // Get the current value string including units.
+    //
+    // Smart-dimension preview must use the same visible precision as the datum dialog,
+    // otherwise the preview text can be much longer than the value that will actually be
+    // accepted when the user simply presses OK. That creates visual drift between preview
+    // and committed constraint, especially for radius/diameter labels.
     double factor {};
     std::string unitStr;  // the actual unit string
-    const auto constrPresValue {constraint->getPresentationValue().getUserString(factor, unitStr)};
+    auto presentationValue = constraint->getPresentationValue();
+    auto quantityFormat = presentationValue.getFormat();
+    quantityFormat.setPrecision(std::max(0, Base::UnitsApi::getDecimals()));
+    presentationValue.setFormat(quantityFormat);
+    const auto constrPresValue {presentationValue.getUserString(factor, unitStr)};
     auto valueStr = QString::fromStdString(constrPresValue);
 
+    auto normalizeScientificNotation = [](const QString& input, int decimals) -> QString {
+        static const QRegularExpression rx {
+            QString::fromUtf8(R"(^\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)(.*)$)")
+        };
+
+        const auto match = rx.match(input);
+        if (!match.hasMatch()) {
+            return input;
+        }
+
+        const QString numericPart = match.captured(1);
+        if (!numericPart.contains(QRegularExpression(QString::fromUtf8("[eE]")))) {
+            return input;
+        }
+
+        bool ok = false;
+        const double numericValue = QLocale::c().toDouble(numericPart, &ok);
+        if (!ok) {
+            return input;
+        }
+
+        QString formatted = QString::number(numericValue, 'f', std::max(0, decimals));
+        formatted.remove(QRegularExpression(QString::fromUtf8("0+$")));
+        formatted.remove(QRegularExpression(QString::fromUtf8("\\.$")));
+        return formatted + match.captured(2);
+    };
+
+    valueStr = normalizeScientificNotation(valueStr, Base::UnitsApi::getDecimals());
     auto fixedValueStr = fixValueStr(valueStr, unitStr).value_or(valueStr);
     if (!prefix.empty()) {
         fixedValueStr.prepend(QString::fromStdString(prefix));
@@ -2338,7 +3062,7 @@ std::set<int> EditModeConstraintCoinManager::detectPreselectionConstr(const SoPi
     }
 
     // Handle selection of datum labels (e.g., radius, distance dimensions).
-    if (dynamic_cast<SoDatumLabel*>(tail)) {
+    if (dynamic_cast<Gui::SoDatumLabel*>(tail)) {
         for (int i = 0; i < editModeScenegraphNodes.constrGroup->getNumChildren(); ++i) {
             if (editModeScenegraphNodes.constrGroup->getChild(i) == sep) {
                 constrIndices.insert(i);
@@ -2832,9 +3556,7 @@ QImage EditModeConstraintCoinManager::renderConstrIcon(
     // The pixmap was already scaled so we don't need to scale the image
     icon.setDevicePixelRatio(1.0f);
 
-    QFont font = ViewProviderSketchCoinAttorney::getApplicationFont(viewProvider);
-    font.setPixelSize(static_cast<int>(1.0 * drawingParameters.constraintIconSize));
-    font.setBold(true);
+    QFont font = EditModeConstraintPreviewDetail::previewFont(drawingParameters);
     QFontMetrics qfm = QFontMetrics(font);
 
     int labelWidth = qfm.boundingRect(labels.join(joinStr)).width();
@@ -3010,6 +3732,1161 @@ int EditModeConstraintCoinManager::constrColorPriority(int constraintId)
     }
     else {
         return 1;
+    }
+}
+
+int EditModeConstraintCoinManager::previewHitTolerancePx() const
+{
+    const int fontBased = std::max(8, ViewProviderSketchCoinAttorney::defaultApplicationFontSizePixels(viewProvider) / 2);
+    const int scaledBase = static_cast<int>(std::lround(EditModeConstraintPreviewDetail::kBasePreviewHitTolerancePx
+                                                        * drawingParameters.pixelScalingFactor));
+    return std::max(fontBased, scaledBase);
+}
+
+int EditModeConstraintCoinManager::previewLineHitTolerancePx() const
+{
+    const int fontBased = std::max(10, static_cast<int>(std::lround(
+                                      0.75 * ViewProviderSketchCoinAttorney::defaultApplicationFontSizePixels(viewProvider))));
+    const int scaledBase = static_cast<int>(std::lround(EditModeConstraintPreviewDetail::kBasePreviewLineHitTolerancePx
+                                                        * drawingParameters.pixelScalingFactor));
+    return std::max(fontBased, scaledBase);
+}
+
+void EditModeConstraintCoinManager::setDimensionCandidates(
+    const std::vector<DimensionCandidate>& candidates)
+{
+    smartDimensionCandidates = candidates;
+
+    std::erase_if(smartDimensionCandidates, [&](const DimensionCandidate& candidate) {
+        Gui::SoDatumLabel* preview = preparePreviewDatum(candidate);
+        if (preview) {
+            preview->unref();
+            return false;
+        }
+        return true;
+    });
+
+    if (smartDimensionActiveCandidate >= static_cast<int>(smartDimensionCandidates.size())) {
+        smartDimensionActiveCandidate = -1;
+    }
+
+    // Once the user grabs a preview, keep every candidate exactly where it was. Re-running the
+    // global layout optimizer on every mouse-move makes the dragged preview feel sticky and also
+    // causes neighboring previews to jump around as the cursor passes over them. During an active
+    // drag we only want the selected candidate's explicit labelPos update to propagate.
+    if (smartDimensionActiveCandidate < 0) {
+        optimizeSmartDimensionPreviewLayout(smartDimensionCandidates);
+    }
+
+    rebuildSmartDimensionNodes();
+}
+
+std::vector<DimensionCandidate>
+EditModeConstraintCoinManager::buildSmartDimensionLayoutVariants(
+    const DimensionCandidate& candidate) const
+{
+    std::vector<DimensionCandidate> variants;
+    variants.reserve(8);
+
+    const auto pushUnique = [&](const Base::Vector2d& labelPos) {
+        constexpr double kMinVariantDistance = 0.25;
+        for (const auto& existing : variants) {
+            const double dx = existing.labelPos.x - labelPos.x;
+            const double dy = existing.labelPos.y - labelPos.y;
+            if ((dx * dx + dy * dy) <= (kMinVariantDistance * kMinVariantDistance)) {
+                return;
+            }
+        }
+
+        auto variant = candidate;
+        variant.labelPos = labelPos;
+        variants.push_back(std::move(variant));
+    };
+
+    pushUnique(candidate.labelPos);
+
+    auto* sketch = viewProvider.getSketchObject();
+    if (!sketch) {
+        return variants;
+    }
+
+    using namespace DimensionGeometry;
+
+    const auto rotated = [](const Base::Vector2d& v, double angle) {
+        const double c = std::cos(angle);
+        const double s = std::sin(angle);
+        return Base::Vector2d(v.x * c - v.y * s, v.x * s + v.y * c);
+    };
+
+    switch (candidate.semantic) {
+        case DimensionSemantic::ProjectedX:
+        case DimensionSemantic::ProjectedY:
+        case DimensionSemantic::DirectLength:
+        case DimensionSemantic::DirectDistance: {
+            if (candidate.refs.size() < 2) {
+                break;
+            }
+
+            const auto frame = makeLinearPreviewFrame(*sketch,
+                                                      candidate.refs[0],
+                                                      candidate.refs[1],
+                                                      candidate.semantic);
+            if (!frame.valid) {
+                break;
+            }
+
+            double signedNormal = 0.0;
+            double along = 0.0;
+            decomposeLinearLabelPosition(frame, candidate.labelPos, signedNormal, along);
+            const double preferredSide = signedNormal < -kEpsilon ? -1.0 : 1.0;
+            const double offset = std::max(6.0,
+                                           std::abs(signedNormal) > kEpsilon ? std::abs(signedNormal) : 8.0);
+            const double slide = std::max(6.0, std::abs(along) + 6.0);
+
+            const auto makeVariant = [&](double slideOffset, double offsetScale = 1.0) {
+                pushUnique(composeLinearLabelPosition(frame,
+                                                      preferredSide * offset * offsetScale,
+                                                      along + slideOffset));
+            };
+
+            // Keep linear previews on the canonical exterior side that was already chosen in
+            // makeStableLinearLabelPos(). Sliding along the measured direction is enough to
+            // resolve most overlaps without reintroducing the side-flip regressions from v112/v113.
+            makeVariant(0.0);
+            makeVariant(slide);
+            makeVariant(-slide);
+            makeVariant(0.0, 1.35);
+
+            if (candidate.semantic == DimensionSemantic::DirectLength
+                || candidate.semantic == DimensionSemantic::DirectDistance) {
+                makeVariant(slide * 0.5, 1.15);
+                makeVariant(-slide * 0.5, 1.15);
+            }
+            break;
+        }
+        case DimensionSemantic::Radius:
+        case DimensionSemantic::Diameter: {
+            if (candidate.refs.empty()) {
+                break;
+            }
+
+            const auto placement = describeRoundPlacement(sketch->getGeometry(candidate.refs.front().geoId),
+                                                          candidate.semantic);
+            if (!placement.valid) {
+                break;
+            }
+
+            // Keep the semantic slot angle fixed for round previews. Radius and diameter already
+            // receive different preferred angles in describeRoundPlacement(); allowing the local
+            // preview optimizer to sweep both candidates through a shared set of angle offsets
+            // lets them drift back into each other, especially on arcs where both are clamped into
+            // the same usable angular interval. Only vary label distance here.
+            const double baseAngle = placement.preferredAngle;
+            const double baseDistance = std::max(6.0,
+                                                 roundConstraintLabelDistance(placement,
+                                                                              candidate.labelPos));
+            if (candidate.semantic == DimensionSemantic::Diameter) {
+                static constexpr double diameterDistanceOffsets[] {0.0, 8.0, 14.0, 20.0};
+                for (double distanceOffset : diameterDistanceOffsets) {
+                    pushUnique(roundLabelPosition(placement,
+                                                  baseAngle,
+                                                  baseDistance + distanceOffset));
+                }
+            }
+            else {
+                static constexpr double radiusDistanceOffsets[] {0.0, 4.0, 8.0, 12.0};
+                for (double distanceOffset : radiusDistanceOffsets) {
+                    pushUnique(roundLabelPosition(placement,
+                                                  baseAngle,
+                                                  baseDistance + distanceOffset));
+                }
+            }
+            break;
+        }
+        case DimensionSemantic::ArcLength: {
+            if (candidate.refs.empty()) {
+                break;
+            }
+
+            ArcLengthPlacementData placement;
+            if (!describeArcLengthPlacement(sketch->getGeometry(candidate.refs.front().geoId),
+                                            placement)) {
+                break;
+            }
+
+            const double baseRadius = std::max(placement.radius + 6.0,
+                                               arcLengthLabelRadius(placement, candidate.labelPos));
+            static constexpr double offsets[] {0.0, 6.0, 12.0, -6.0, 18.0};
+            for (double offset : offsets) {
+                const double radius = std::max(1.0, baseRadius + offset);
+                pushUnique(Base::Vector2d(placement.center.x + placement.visualDir.x * radius,
+                                          placement.center.y + placement.visualDir.y * radius));
+            }
+            break;
+        }
+        case DimensionSemantic::Angle: {
+            if (candidate.refs.size() < 2) {
+                break;
+            }
+
+            const Base::Vector2d vertex = midpoint(sketchPoint(*sketch, candidate.refs[0]),
+                                                   sketchPoint(*sketch, candidate.refs[1]));
+            Base::Vector2d dir(candidate.labelPos.x - vertex.x, candidate.labelPos.y - vertex.y);
+            dir = normalized(dir, Base::Vector2d(1.0, 0.0));
+            const double distance = std::max(10.0,
+                                             length(Base::Vector2d(candidate.labelPos.x - vertex.x,
+                                                                   candidate.labelPos.y - vertex.y)));
+            static constexpr double angleOffsets[] {0.0, 0.25, -0.25};
+            static constexpr double distanceOffsets[] {0.0, 6.0, 12.0};
+            for (double a : angleOffsets) {
+                for (double d : distanceOffsets) {
+                    const Base::Vector2d rotatedDir = rotated(dir, a);
+                    pushUnique(Base::Vector2d(vertex.x + rotatedDir.x * (distance + d),
+                                              vertex.y + rotatedDir.y * (distance + d)));
+                }
+            }
+            break;
+        }
+        case DimensionSemantic::Unknown:
+        default:
+            break;
+    }
+
+    return variants;
+}
+
+void EditModeConstraintCoinManager::optimizeSmartDimensionPreviewLayout(
+    std::vector<DimensionCandidate>& candidates) const
+{
+    if (candidates.empty()) {
+        return;
+    }
+
+    auto* sketch = viewProvider.getSketchObject();
+    if (!sketch) {
+        return;
+    }
+
+    using namespace DimensionGeometry;
+
+    struct CandidateLayoutOption
+    {
+        DimensionCandidate candidate;
+        double displacementPenalty {0.0};
+        double sourceCrossingPenalty {0.0};
+        double sideFlipPenalty {0.0};
+        double compactnessPenalty {0.0};
+    };
+
+    // Keep every preview independently stable. The earlier global optimizer looked at the full
+    // candidate set and happily moved the surviving previews when one sibling candidate was added,
+    // removed, hovered or committed. That made round/arc previews jump around even though the
+    // underlying geometry never changed. Here each candidate still evaluates a few local variants,
+    // but the final choice depends only on that candidate and its source geometry.
+    for (auto& candidate : candidates) {
+        std::vector<CandidateLayoutOption> options;
+        options.reserve(8);
+
+        for (const auto& variant : buildSmartDimensionLayoutVariants(candidate)) {
+            Gui::SoDatumLabel* preview = preparePreviewDatum(variant);
+            if (!preview) {
+                continue;
+            }
+
+            CandidateLayoutOption option;
+            option.candidate = variant;
+
+            std::vector<EditModeConstraintPreviewDetail::PreviewSegment> segments;
+            std::vector<EditModeConstraintPreviewDetail::PreviewSegment> sourceSegments;
+            EditModeConstraintPreviewDetail::appendDatumSegments(viewProvider,
+                                                                 drawingParameters,
+                                                                 *preview,
+                                                                 segments);
+            EditModeConstraintPreviewDetail::appendSourceGeometrySegments(viewProvider,
+                                                                          variant,
+                                                                          sourceSegments);
+            for (const auto& previewSegment : segments) {
+                for (const auto& sourceSegment : sourceSegments) {
+                    if (EditModeConstraintPreviewDetail::previewSegmentsIntersect(previewSegment,
+                                                                                 sourceSegment)) {
+                        option.sourceCrossingPenalty += 9000.0;
+                    }
+                }
+            }
+
+            const double dx = variant.labelPos.x - candidate.labelPos.x;
+            const double dy = variant.labelPos.y - candidate.labelPos.y;
+            option.displacementPenalty = dx * dx + dy * dy;
+
+            if (candidate.refs.size() >= 2
+                && (candidate.semantic == DimensionSemantic::ProjectedX
+                    || candidate.semantic == DimensionSemantic::ProjectedY
+                    || candidate.semantic == DimensionSemantic::DirectLength
+                    || candidate.semantic == DimensionSemantic::DirectDistance)) {
+                const auto frame = makeLinearPreviewFrame(*sketch,
+                                                          candidate.refs[0],
+                                                          candidate.refs[1],
+                                                          candidate.semantic);
+                if (frame.valid) {
+                    double originalSignedNormal = 0.0;
+                    double originalAlong = 0.0;
+                    double variantSignedNormal = 0.0;
+                    double variantAlong = 0.0;
+                    decomposeLinearLabelPosition(frame,
+                                                 candidate.labelPos,
+                                                 originalSignedNormal,
+                                                 originalAlong);
+                    decomposeLinearLabelPosition(frame,
+                                                 variant.labelPos,
+                                                 variantSignedNormal,
+                                                 variantAlong);
+                    if (originalSignedNormal * variantSignedNormal < -kEpsilon) {
+                        option.sideFlipPenalty += (candidate.semantic == DimensionSemantic::DirectLength
+                                                       || candidate.semantic == DimensionSemantic::DirectDistance)
+                            ? 2500.0
+                            : 3000.0;
+                    }
+
+                    const double bboxMinX = std::min(frame.a.x, frame.b.x);
+                    const double bboxMaxX = std::max(frame.a.x, frame.b.x);
+                    const double bboxMinY = std::min(frame.a.y, frame.b.y);
+                    const double bboxMaxY = std::max(frame.a.y, frame.b.y);
+                    switch (candidate.semantic) {
+                        case DimensionSemantic::ProjectedX: {
+                            const double preferredY = bboxMinY - 8.0;
+                            const double yDelta = variant.labelPos.y - preferredY;
+                            option.compactnessPenalty += yDelta * yDelta * 3.0;
+                            break;
+                        }
+                        case DimensionSemantic::ProjectedY: {
+                            const Base::Vector2d stableNormal = stableNormalFromLine(frame.a, frame.b);
+                            const double preferredX = stableNormal.x >= 0.0 ? (bboxMinX - 8.0)
+                                                                             : (bboxMaxX + 8.0);
+                            const double xDelta = variant.labelPos.x - preferredX;
+                            option.compactnessPenalty += xDelta * xDelta * 3.0;
+                            break;
+                        }
+                        case DimensionSemantic::DirectLength:
+                        case DimensionSemantic::DirectDistance: {
+                            const Base::Vector2d stableNormal = stableNormalFromLine(frame.a, frame.b);
+                            const Base::Vector2d center = midpoint(frame.a, frame.b);
+                            const Base::Vector2d preferred(center.x + stableNormal.x * 10.0,
+                                                           center.y + stableNormal.y * 10.0);
+                            const double px = variant.labelPos.x - preferred.x;
+                            const double py = variant.labelPos.y - preferred.y;
+                            option.compactnessPenalty += (px * px + py * py) * 0.75;
+                            break;
+                        }
+                        default:
+                            break;
+                    }
+                }
+            }
+
+            options.push_back(std::move(option));
+            preview->unref();
+        }
+
+        if (options.empty()) {
+            continue;
+        }
+
+        const auto bestIt = std::min_element(options.begin(),
+                                             options.end(),
+                                             [](const CandidateLayoutOption& lhs,
+                                                const CandidateLayoutOption& rhs) {
+            const double lhsScore = lhs.displacementPenalty + lhs.sourceCrossingPenalty
+                + lhs.sideFlipPenalty + lhs.compactnessPenalty;
+            const double rhsScore = rhs.displacementPenalty + rhs.sourceCrossingPenalty
+                + rhs.sideFlipPenalty + rhs.compactnessPenalty;
+            if (lhsScore != rhsScore) {
+                return lhsScore < rhsScore;
+            }
+            return lhs.displacementPenalty < rhs.displacementPenalty;
+        });
+        candidate = bestIt->candidate;
+    }
+}
+
+void EditModeConstraintCoinManager::clearDimensionCandidates()
+{
+    smartDimensionCandidates.clear();
+    smartDimensionActiveCandidate = -1;
+    rebuildSmartDimensionNodes();
+}
+
+void EditModeConstraintCoinManager::setSmartDimensionActiveCandidate(int index)
+{
+    if (index < 0 || index >= static_cast<int>(smartDimensionCandidates.size())) {
+        index = -1;
+    }
+
+    if (smartDimensionActiveCandidate == index) {
+        return;
+    }
+
+    smartDimensionActiveCandidate = index;
+    rebuildSmartDimensionNodes();
+}
+
+Gui::SoDatumLabel*
+EditModeConstraintCoinManager::preparePreviewDatum(
+    const DimensionCandidate& candidate) const
+{
+    auto* sketch = viewProvider.getSketchObject();
+    if (!sketch) {
+        return nullptr;
+    }
+
+    auto constraint = buildDimensionConstraint(*sketch, candidate);
+    if (!constraint) {
+        return nullptr;
+    }
+
+    constraint->isActive = true;
+
+    auto* datum = new Gui::SoDatumLabel();
+    datum->ref();
+    if (!configurePreviewDatumLabel(candidate, *constraint, *datum)) {
+        datum->unref();
+        return nullptr;
+    }
+
+    return datum;
+}
+
+bool EditModeConstraintCoinManager::resolveDimensionCandidate(
+    int index,
+    DimensionCandidate& candidate) const
+{
+    if (index < 0 || index >= static_cast<int>(smartDimensionCandidates.size())) {
+        return false;
+    }
+
+    candidate = smartDimensionCandidates[index];
+    if (isLinearDimensionSemantic(candidate.semantic)) {
+        return true;
+    }
+
+    Gui::SoDatumLabel* preview = preparePreviewDatum(candidate);
+    if (!preview) {
+        return false;
+    }
+
+    const SbVec3f center = preview->getLabelTextCenter();
+    preview->unref();
+    candidate.labelPos = Base::Vector2d(center[0], center[1]);
+    return true;
+}
+
+void EditModeConstraintCoinManager::initializePreviewDatumStyle(
+    Gui::SoDatumLabel& datum,
+    const Sketcher::Constraint& constraint) const
+{
+    Base::Vector3d sketchNormal(0.0, 0.0, 1.0);
+    Base::Placement placement = ViewProviderSketchCoinAttorney::getEditingPlacement(viewProvider);
+    Base::Rotation rotation(placement.getRotation());
+    rotation.multVec(sketchNormal, sketchNormal);
+
+    datum.norm.setValue(SbVec3f(sketchNormal.x, sketchNormal.y, sketchNormal.z));
+    datum.size.setValue(drawingParameters.labelFontSize);
+    // Keep previews visually closer to FreeCAD's temporary on-screen dimension feedback while
+    // sketching. That feedback is calmer than the final dimensional-constraint styling, so use a
+    // thinner stroke and the coordinate/cursor text palette as the normal preview tone.
+    datum.lineWidth = 1 * drawingParameters.pixelScalingFactor;
+    datum.useAntialiasing = false;
+    datum.strikethrough = !constraint.isActive;
+
+    datum.textColor = constraint.isActive
+        ? drawingParameters.CursorTextColor
+        : drawingParameters.DeactivatedConstrDimColor;
+}
+
+int EditModeConstraintCoinManager::pickDimensionCandidate(const QPoint& screenPos) const
+{
+    if (smartDimensionRoot && !smartDimensionCandidates.empty()) {
+        auto rayPickAction = ViewProviderSketchCoinAttorney::getRayPickAction(viewProvider);
+        if (rayPickAction) {
+            const auto clampCoord = [](int value) {
+                return static_cast<short>(std::clamp(value,
+                                                     static_cast<int>(std::numeric_limits<short>::min()),
+                                                     static_cast<int>(std::numeric_limits<short>::max())));
+            };
+
+            rayPickAction->setPoint(SbVec2s(clampCoord(screenPos.x()), clampCoord(screenPos.y())));
+            rayPickAction->setRadius(static_cast<float>(previewLineHitTolerancePx()));
+            rayPickAction->apply(smartDimensionRoot);
+
+            if (const SoPickedPoint* pickedPoint = rayPickAction->getPickedPoint()) {
+                SoPath* path = pickedPoint->getPath();
+                if (path && path->getLength() >= 2
+                    && dynamic_cast<Gui::SoDatumLabel*>(path->getTail())) {
+                    if (auto* sep = dynamic_cast<SoSeparator*>(path->getNode(path->getLength() - 2))) {
+                        for (int i = 0; i < smartDimensionRoot->getNumChildren(); ++i) {
+                            if (smartDimensionRoot->getChild(i) == sep) {
+                                return i;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    int bestIndex = -1;
+    int bestDistance = std::numeric_limits<int>::max();
+
+    for (int i = 0; i < static_cast<int>(smartDimensionCandidates.size()); ++i) {
+        Gui::SoDatumLabel* preview = preparePreviewDatum(smartDimensionCandidates[i]);
+        if (!preview) {
+            continue;
+        }
+
+        const int labelHitDistance = EditModeConstraintPreviewDetail::previewLabelHitDistance(
+            viewProvider,
+            drawingParameters,
+            smartDimensionCandidates[i],
+            *preview,
+            screenPos,
+            previewHitTolerancePx());
+        preview->unref();
+
+        if (labelHitDistance < bestDistance
+            || (labelHitDistance == bestDistance && labelHitDistance <= 0 && bestIndex > i)) {
+            bestDistance = labelHitDistance;
+            bestIndex = i;
+        }
+    }
+
+    if (bestIndex >= 0 && bestDistance <= 0) {
+        return bestIndex;
+    }
+
+    bestIndex = -1;
+    bestDistance = std::numeric_limits<int>::max();
+
+    for (int i = 0; i < static_cast<int>(smartDimensionCandidates.size()); ++i) {
+        const int hitDistance = candidateHitDistance(smartDimensionCandidates[i], screenPos);
+        if (hitDistance > previewLineHitTolerancePx()) {
+            continue;
+        }
+
+        if (hitDistance < bestDistance || (hitDistance == bestDistance && bestIndex > i)) {
+            bestDistance = hitDistance;
+            bestIndex = i;
+        }
+    }
+
+    return bestIndex;
+}
+
+int EditModeConstraintCoinManager::candidateHitDistance(
+    const DimensionCandidate& candidate, const QPoint& screenPos) const
+{
+    Gui::SoDatumLabel* preview = preparePreviewDatum(candidate);
+    if (!preview) {
+        return std::numeric_limits<int>::max();
+    }
+
+    int bestDistance2 = EditModeConstraintPreviewDetail::previewLabelHitDistance(
+        viewProvider,
+        drawingParameters,
+        candidate,
+        *preview,
+        screenPos,
+        previewHitTolerancePx());
+    {
+        const int datumDistance = datumHitDistance(*preview, screenPos);
+        const int datumDistance2 = datumDistance * datumDistance;
+        if (datumDistance2 < bestDistance2) {
+            bestDistance2 = datumDistance2;
+        }
+    }
+
+    const int result = static_cast<int>(std::lround(std::sqrt(static_cast<double>(bestDistance2))));
+    preview->unref();
+    return result;
+}
+
+int EditModeConstraintCoinManager::datumHitDistance(const Gui::SoDatumLabel& datum,
+                                                    const QPoint& screenPos) const
+{
+    int bestDistance2 = std::numeric_limits<int>::max();
+    std::vector<EditModeConstraintPreviewDetail::PreviewSegment> segments;
+    EditModeConstraintPreviewDetail::appendDatumSegments(viewProvider,
+                                                         drawingParameters,
+                                                         datum,
+                                                         segments);
+
+    for (const auto& segment : segments) {
+        const int d2 = static_cast<int>(std::lround(
+            std::pow(EditModeConstraintPreviewDetail::distancePointToSegment(screenPos,
+                                                                             segment.a,
+                                                                             segment.b),
+                     2.0)));
+        if (d2 < bestDistance2) {
+            bestDistance2 = d2;
+        }
+    }
+
+    if (bestDistance2 == std::numeric_limits<int>::max()) {
+        return std::numeric_limits<int>::max() / 2;
+    }
+
+    return static_cast<int>(std::lround(std::sqrt(static_cast<double>(bestDistance2))));
+}
+
+bool EditModeConstraintCoinManager::configurePreviewDatumLabel(
+    const DimensionCandidate& candidate,
+    const Sketcher::Constraint& constraint,
+    Gui::SoDatumLabel& datum) const
+{
+    auto* sketch = viewProvider.getSketchObject();
+    if (!sketch) {
+        return false;
+    }
+
+    initializePreviewDatumStyle(datum, constraint);
+
+    const auto zConstrH = ViewProviderSketchCoinAttorney::getViewOrientationFactor(viewProvider)
+        * drawingParameters.zConstr;
+    datum.string = SbString(
+        const_cast<EditModeConstraintCoinManager*>(this)->getPresentationString(&constraint)
+            .toUtf8()
+            .constData());
+
+    if (candidate.semantic == DimensionSemantic::Radius
+        || candidate.semantic == DimensionSemantic::Diameter) {
+        const Part::Geometry* geo = sketch->getGeometry(constraint.First);
+        if (!geo) {
+            return false;
+        }
+
+        Base::Vector3d pnt1(0., 0., 0.);
+        Base::Vector3d pnt2(0., 0., 0.);
+        double helperStartAngle = 0.;
+        double helperRange = 0.;
+        double startHelperAngle = 0.;
+        double startHelperRange = 0.;
+        double endHelperAngle = 0.;
+        double endHelperRange = 0.;
+        const double angle = static_cast<double>(constraint.LabelPosition);
+
+        if (candidate.semantic == DimensionSemantic::Radius) {
+            if (geo->is<Part::GeomArcOfCircle>()) {
+                auto* arc = static_cast<const Part::GeomArcOfCircle*>(geo);
+                double startAngle, endAngle;
+                arc->getRange(startAngle, endAngle, /*emulateCCW=*/true);
+                findHelperAngles(helperStartAngle, helperRange, angle, startAngle, endAngle);
+                pnt1 = arc->getCenter();
+                pnt2 = pnt1 + arc->getRadius() * Base::Vector3d(std::cos(angle), std::sin(angle), 0.0);
+            }
+            else if (geo->is<Part::GeomCircle>()) {
+                auto* circle = static_cast<const Part::GeomCircle*>(geo);
+                pnt1 = circle->getCenter();
+                pnt2 = pnt1 + circle->getRadius() * Base::Vector3d(std::cos(angle), std::sin(angle), 0.0);
+            }
+            else {
+                return false;
+            }
+
+            datum.string = SbString(
+                const_cast<EditModeConstraintCoinManager*>(this)
+                    ->getPresentationString(&constraint, "R")
+                    .toUtf8()
+                    .constData());
+            datum.datumtype = Gui::SoDatumLabel::RADIUS;
+            datum.param1 = constraint.LabelDistance;
+            datum.param2 = constraint.LabelPosition;
+            datum.param3 = helperStartAngle;
+            datum.param4 = helperRange;
+        }
+        else {
+            if (geo->is<Part::GeomArcOfCircle>()) {
+                auto* arc = static_cast<const Part::GeomArcOfCircle*>(geo);
+                double startAngle, endAngle;
+                arc->getRange(startAngle, endAngle, /*emulateCCW=*/true);
+                findHelperAngles(startHelperAngle, startHelperRange, angle, startAngle, endAngle);
+                findHelperAngles(endHelperAngle,
+                                 endHelperRange,
+                                 angle + 3.14159265358979323846,
+                                 startAngle,
+                                 endAngle);
+                const auto center = arc->getCenter();
+                pnt1 = center - arc->getRadius() * Base::Vector3d(std::cos(angle), std::sin(angle), 0.0);
+                pnt2 = center + arc->getRadius() * Base::Vector3d(std::cos(angle), std::sin(angle), 0.0);
+            }
+            else if (geo->is<Part::GeomCircle>()) {
+                auto* circle = static_cast<const Part::GeomCircle*>(geo);
+                const auto center = circle->getCenter();
+                pnt1 = center - circle->getRadius() * Base::Vector3d(std::cos(angle), std::sin(angle), 0.0);
+                pnt2 = center + circle->getRadius() * Base::Vector3d(std::cos(angle), std::sin(angle), 0.0);
+            }
+            else {
+                return false;
+            }
+
+            datum.string = SbString(
+                const_cast<EditModeConstraintCoinManager*>(this)
+                    ->getPresentationString(&constraint, "⌀")
+                    .toUtf8()
+                    .constData());
+            datum.datumtype = Gui::SoDatumLabel::DIAMETER;
+            datum.param1 = constraint.LabelDistance;
+            datum.param2 = constraint.LabelPosition;
+            datum.param3 = static_cast<float>(startHelperAngle);
+            datum.param4 = static_cast<float>(startHelperRange);
+            datum.param5 = static_cast<float>(endHelperAngle);
+            datum.param6 = static_cast<float>(endHelperRange);
+        }
+
+        datum.pnts.setNum(2);
+        SbVec3f* verts = datum.pnts.startEditing();
+        verts[0] = SbVec3f(pnt1.x, pnt1.y, zConstrH);
+        verts[1] = SbVec3f(pnt2.x, pnt2.y, zConstrH);
+        datum.pnts.finishEditing();
+        return true;
+    }
+
+    if (candidate.semantic == DimensionSemantic::Angle) {
+        auto angleTangentAtPoint = [](const Part::Geometry* geo,
+                                      Sketcher::PointPos pos,
+                                      const Base::Vector3d& point) -> std::optional<Base::Vector3d> {
+            if (!geo) {
+                return std::nullopt;
+            }
+
+            if (geo->is<Part::GeomLineSegment>()) {
+                auto* line = static_cast<const Part::GeomLineSegment*>(geo);
+                Base::Vector3d dir = line->getEndPoint() - line->getStartPoint();
+                if (dir.Length() <= Precision::Confusion()) {
+                    return std::nullopt;
+                }
+                dir.Normalize();
+                if (pos == Sketcher::PointPos::end) {
+                    dir *= -1.0;
+                }
+                return dir;
+            }
+
+            (void)point;
+            return std::nullopt;
+        };
+
+        const double distance = constraint.LabelDistance;
+        double startAngle = 0.0;
+        double range = 0.0;
+        double endLineLength1 = 0.0;
+        double endLineLength2 = 0.0;
+        Base::Vector3d anchor(0.0, 0.0, zConstrH);
+
+        if (constraint.Second != Sketcher::GeoEnum::GeoUndef) {
+            const Part::Geometry* geo1 = sketch->getGeometry(constraint.First);
+            const Part::Geometry* geo2 = sketch->getGeometry(constraint.Second);
+            if (!geo1 || !geo2) {
+                return false;
+            }
+
+            if (constraint.Third == Sketcher::GeoEnum::GeoUndef) {
+                if (!geo1->is<Part::GeomLineSegment>() || !geo2->is<Part::GeomLineSegment>()) {
+                    return false;
+                }
+
+                auto* line1 = static_cast<const Part::GeomLineSegment*>(geo1);
+                auto* line2 = static_cast<const Part::GeomLineSegment*>(geo2);
+                const bool flip1 = (constraint.FirstPos == Sketcher::PointPos::end);
+                const bool flip2 = (constraint.SecondPos == Sketcher::PointPos::end);
+
+                Base::Vector3d dir1 = (flip1 ? -1.0 : 1.0)
+                    * (line1->getEndPoint() - line1->getStartPoint()).Normalize();
+                Base::Vector3d dir2 = (flip2 ? -1.0 : 1.0)
+                    * (line2->getEndPoint() - line2->getStartPoint()).Normalize();
+                Base::Vector3d pnt1 = flip1 ? line1->getEndPoint() : line1->getStartPoint();
+                Base::Vector3d pnt2 = flip2 ? line2->getEndPoint() : line2->getStartPoint();
+                Base::Vector3d pnt12 = flip1 ? line1->getStartPoint() : line1->getEndPoint();
+                Base::Vector3d pnt22 = flip2 ? line2->getStartPoint() : line2->getEndPoint();
+
+                Base::Vector3d intersection;
+                const double det = dir1.x * dir2.y - dir1.y * dir2.x;
+                if ((det > 0 ? det : -det) < 1e-10) {
+                    Base::Vector3d p1[2] = {line1->getStartPoint(), line1->getEndPoint()};
+                    Base::Vector3d p2[2] = {line2->getStartPoint(), line2->getEndPoint()};
+                    double shortest = std::numeric_limits<double>::max();
+                    for (int i = 0; i <= 1; ++i) {
+                        for (int j = 0; j <= 1; ++j) {
+                            const double candidateDistance = (p2[j] - p1[i]).Length();
+                            if (candidateDistance < shortest) {
+                                shortest = candidateDistance;
+                                intersection = Base::Vector3d((p2[j].x + p1[i].x) * 0.5,
+                                                              (p2[j].y + p1[i].y) * 0.5,
+                                                              0.0);
+                            }
+                        }
+                    }
+                }
+                else {
+                    const double c1 = dir1.y * pnt1.x - dir1.x * pnt1.y;
+                    const double c2 = dir2.y * pnt2.x - dir2.x * pnt2.y;
+                    intersection = Base::Vector3d((dir1.x * c2 - dir2.x * c1) / det,
+                                                  (dir1.y * c2 - dir2.y * c1) / det,
+                                                  0.0);
+                }
+
+                anchor = Base::Vector3d(intersection.x, intersection.y, zConstrH);
+                startAngle = std::atan2(dir1.y, dir1.x);
+                range = constraint.getValue();
+                const Base::Vector3d vl1 = dir1 * 2.0 * distance - (pnt1 - intersection);
+                const Base::Vector3d vl2 = dir2 * 2.0 * distance - (pnt2 - intersection);
+                const Base::Vector3d vl12 = dir1 * 2.0 * distance - (pnt12 - intersection);
+                const Base::Vector3d vl22 = dir2 * 2.0 * distance - (pnt22 - intersection);
+                endLineLength1 = vl12.Dot(dir1) > 0.0 ? vl12.Length()
+                               : vl1.Dot(dir1) < 0.0 ? -vl1.Length()
+                                                     : 0.0;
+                endLineLength2 = vl22.Dot(dir2) > 0.0 ? vl22.Length()
+                               : vl2.Dot(dir2) < 0.0 ? -vl2.Length()
+                                                     : 0.0;
+            }
+            else {
+                const Base::Vector3d point = sketch->getPoint(constraint.Third, constraint.ThirdPos);
+                const auto dir1Opt = angleTangentAtPoint(geo1, constraint.FirstPos, point);
+                const auto dir2Opt = angleTangentAtPoint(geo2, constraint.SecondPos, point);
+                if (!dir1Opt || !dir2Opt) {
+                    return false;
+                }
+
+                Base::Vector3d dir1 = *dir1Opt;
+                Base::Vector3d dir2 = *dir2Opt;
+                anchor = Base::Vector3d(point.x, point.y, zConstrH);
+                startAngle = std::atan2(dir1.y, dir1.x);
+                range = std::atan2(dir1.x * dir2.y - dir1.y * dir2.x,
+                                   dir1.x * dir2.x + dir1.y * dir2.y);
+            }
+        }
+        else if (constraint.First != Sketcher::GeoEnum::GeoUndef) {
+            const Part::Geometry* geo = sketch->getGeometry(constraint.First);
+            if (!geo) {
+                return false;
+            }
+
+            if (geo->is<Part::GeomLineSegment>()) {
+                auto* lineSeg = static_cast<const Part::GeomLineSegment*>(geo);
+                anchor = Base::Vector3d((lineSeg->getEndPoint().x + lineSeg->getStartPoint().x) / 2.0,
+                                        (lineSeg->getEndPoint().y + lineSeg->getStartPoint().y) / 2.0,
+                                        zConstrH);
+                const double l1 = 2.0 * distance
+                    - (lineSeg->getEndPoint() - lineSeg->getStartPoint()).Length() / 2.0;
+                endLineLength1 = 2.0 * distance;
+                endLineLength2 = l1 > 0.0 ? l1 : 0.0;
+
+                const Base::Vector3d dir = lineSeg->getEndPoint() - lineSeg->getStartPoint();
+                startAngle = 0.0;
+                range = std::atan2(dir.y, dir.x);
+            }
+            else if (geo->is<Part::GeomArcOfCircle>()) {
+                auto* arc = static_cast<const Part::GeomArcOfCircle*>(geo);
+                anchor = Base::Vector3d(arc->getCenter().x, arc->getCenter().y, zConstrH);
+                endLineLength1 = 2.0 * distance - arc->getRadius();
+                endLineLength2 = endLineLength1;
+
+                double endAngle = 0.0;
+                arc->getRange(startAngle, endAngle, /*emulateCCWXY=*/true);
+                range = endAngle - startAngle;
+            }
+            else {
+                return false;
+            }
+        }
+        else {
+            return false;
+        }
+
+        datum.datumtype = Gui::SoDatumLabel::ANGLE;
+        datum.param1 = constraint.LabelDistance;
+        datum.param2 = static_cast<float>(startAngle);
+        datum.param3 = static_cast<float>(range);
+        datum.param4 = static_cast<float>(endLineLength1);
+        datum.param5 = static_cast<float>(endLineLength2);
+        datum.pnts.setNum(2);
+        SbVec3f* verts = datum.pnts.startEditing();
+        verts[0] = SbVec3f(anchor.x, anchor.y, anchor.z);
+        datum.pnts.finishEditing();
+        return true;
+    }
+
+    double helperStartAngle1 = 0.;
+    double helperStartAngle2 = 0.;
+    double helperRange1 = 0.;
+    double helperRange2 = 0.;
+    double radius1 = 0.;
+    double radius2 = 0.;
+    Base::Vector3d center1(0., 0., 0.);
+    Base::Vector3d center2(0., 0., 0.);
+
+    int numPoints = 2;
+    Base::Vector3d pnt1 = sketch->getPoint(constraint.First, constraint.FirstPos);
+    Base::Vector3d pnt2(0., 0., 0.);
+
+    if (constraint.SecondPos != Sketcher::PointPos::none) {
+        pnt2 = sketch->getPoint(constraint.Second, constraint.SecondPos);
+    }
+    else if (constraint.Second != Sketcher::GeoEnum::GeoUndef) {
+        auto geo1 = sketch->getGeometry(constraint.First);
+        auto geo2 = sketch->getGeometry(constraint.Second);
+        if (!geo2) {
+            return false;
+        }
+
+        if (isLineSegment(*geo2)) {
+            auto lineSeg = static_cast<const Part::GeomLineSegment*>(geo2);
+            Base::Vector3d l2p1 = lineSeg->getStartPoint();
+            Base::Vector3d l2p2 = lineSeg->getEndPoint();
+
+            if (constraint.FirstPos != Sketcher::PointPos::none) {
+                pnt2.ProjectToLine(pnt1 - l2p1, l2p2 - l2p1);
+                pnt2 += pnt1;
+            }
+            else if (geo1 && isCircleOrArc(*geo1)) {
+                auto [radius, ct] = getRadiusCenterCircleArc(geo1);
+                pnt1.ProjectToLine(ct - l2p1, l2p2 - l2p1);
+                Base::Vector3d dir = pnt1;
+                dir.Normalize();
+                pnt1 += ct;
+                pnt2 = ct + dir * radius;
+            }
+            else {
+                return false;
+            }
+        }
+        else if (isCircleOrArc(*geo2)) {
+            if (constraint.FirstPos != Sketcher::PointPos::none) {
+                auto [rad, ct] = getRadiusCenterCircleArc(geo2);
+                Base::Vector3d v = pnt1 - ct;
+                v = v.Normalize();
+                pnt2 = ct + rad * v;
+            }
+            else if (geo1 && isCircleOrArc(*geo1)) {
+                GetCirclesMinimalDistance(geo1, geo2, pnt1, pnt2);
+            }
+            else {
+                return false;
+            }
+        }
+        else {
+            return false;
+        }
+    }
+    else if (constraint.FirstPos != Sketcher::PointPos::none) {
+        pnt1 = Base::Vector3d(0., 0., 0.);
+        pnt2 = sketch->getPoint(constraint.First, constraint.FirstPos);
+    }
+    else if (constraint.First != Sketcher::GeoEnum::GeoUndef) {
+        auto geo = sketch->getGeometry(constraint.First);
+        if (!geo) {
+            return false;
+        }
+
+        if (isLineSegment(*geo)) {
+            auto lineSeg = static_cast<const Part::GeomLineSegment*>(geo);
+            pnt1 = lineSeg->getStartPoint();
+            pnt2 = lineSeg->getEndPoint();
+        }
+        else if (isArcOfCircle(*geo)) {
+            auto arc = static_cast<const Part::GeomArcOfCircle*>(geo);
+            center1 = arc->getCenter();
+            pnt1 = arc->getStartPoint();
+            pnt2 = arc->getEndPoint();
+
+            double startAngle = 0.0;
+            double range = 0.0;
+            if (!SketcherGui::DimensionGeometry::resolveArcLengthDatumSweep(*arc,
+                                                                                constraint.LabelDistance,
+                                                                                startAngle,
+                                                                                range)) {
+                return false;
+            }
+
+            datum.datumtype = Gui::SoDatumLabel::ARCLENGTH;
+            datum.param1 = constraint.LabelDistance;
+            datum.param2 = static_cast<float>(startAngle);
+            datum.param3 = static_cast<float>(range);
+            datum.string = SbString(
+                const_cast<EditModeConstraintCoinManager*>(this)
+                    ->getPresentationString(&constraint, "◠ ")
+                    .toUtf8()
+                    .constData());
+            datum.strikethrough = !constraint.isActive;
+
+            datum.pnts.setNum(3);
+            SbVec3f* verts = datum.pnts.startEditing();
+            verts[0] = SbVec3f(center1.x, center1.y, zConstrH);
+            verts[1] = SbVec3f(pnt1.x, pnt1.y, zConstrH);
+            verts[2] = SbVec3f(pnt2.x, pnt2.y, zConstrH);
+            datum.pnts.finishEditing();
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+    else {
+        return false;
+    }
+
+    if (constraint.Type == Sketcher::ConstraintType::Distance) {
+        datum.datumtype = Gui::SoDatumLabel::DISTANCE;
+    }
+    else if (constraint.Type == Sketcher::ConstraintType::DistanceX) {
+        datum.datumtype = Gui::SoDatumLabel::DISTANCEX;
+    }
+    else {
+        datum.datumtype = Gui::SoDatumLabel::DISTANCEY;
+    }
+
+    if (constraint.Second != Sketcher::GeoEnum::GeoUndef) {
+        auto geo1 = sketch->getGeometry(constraint.First);
+        auto geo2 = sketch->getGeometry(constraint.Second);
+
+        if (geo1 && isArcOfCircle(*geo1) && constraint.FirstPos == Sketcher::PointPos::none) {
+            auto arc = static_cast<const Part::GeomArcOfCircle*>(geo1);
+            radius1 = arc->getRadius();
+            center1 = arc->getCenter();
+
+            double angle = toVector2d(isLineSegment(*geo2) ? pnt2 - center1 : pnt1 - center1).Angle();
+            double startAngle, endAngle;
+            arc->getRange(startAngle, endAngle, /*emulateCCW=*/true);
+            findHelperAngles(helperStartAngle1, helperRange1, angle, startAngle, endAngle);
+
+            if (helperRange1 != 0.) {
+                helperStartAngle1 = endAngle;
+                helperRange1 = 2 * std::numbers::pi - (endAngle - startAngle);
+                numPoints++;
+            }
+        }
+        if (geo2 && isArcOfCircle(*geo2) && constraint.SecondPos == Sketcher::PointPos::none) {
+            auto arc = static_cast<const Part::GeomArcOfCircle*>(geo2);
+            radius2 = arc->getRadius();
+            center2 = arc->getCenter();
+
+            double angle = toVector2d(pnt2 - center2).Angle();
+            double startAngle, endAngle;
+            arc->getRange(startAngle, endAngle, /*emulateCCW=*/true);
+            findHelperAngles(helperStartAngle2, helperRange2, angle, startAngle, endAngle);
+
+            if (helperRange2 != 0.) {
+                helperStartAngle2 = endAngle;
+                helperRange2 = 2 * std::numbers::pi - (endAngle - startAngle);
+                numPoints++;
+            }
+        }
+    }
+
+    datum.pnts.setNum(numPoints);
+    SbVec3f* verts = datum.pnts.startEditing();
+    verts[0] = SbVec3f(pnt1.x, pnt1.y, zConstrH);
+    verts[1] = SbVec3f(pnt2.x, pnt2.y, zConstrH);
+
+    if (numPoints > 2) {
+        if (helperRange1 != 0.) {
+            verts[2] = SbVec3f(center1.x, center1.y, zConstrH);
+            datum.param3 = helperStartAngle1;
+            datum.param4 = helperRange1;
+            datum.param5 = radius1;
+        }
+        else {
+            verts[2] = SbVec3f(center2.x, center2.y, zConstrH);
+            datum.param3 = helperStartAngle2;
+            datum.param4 = helperRange2;
+            datum.param5 = radius2;
+        }
+        if (numPoints > 3) {
+            verts[3] = SbVec3f(center2.x, center2.y, zConstrH);
+            datum.param6 = helperStartAngle2;
+            datum.param7 = helperRange2;
+            datum.param8 = radius2;
+        }
+        else {
+            datum.param6 = 0.;
+            datum.param7 = 0.;
+            datum.param8 = 0.;
+        }
+    }
+    else {
+        datum.param3 = 0.;
+        datum.param4 = 0.;
+        datum.param5 = 0.;
+        datum.param6 = 0.;
+        datum.param7 = 0.;
+        datum.param8 = 0.;
+    }
+
+    datum.pnts.finishEditing();
+    datum.param1 = constraint.LabelDistance;
+    datum.param2 = constraint.LabelPosition;
+    return true;
+}
+
+void EditModeConstraintCoinManager::ensureSmartDimensionRoot()
+{
+    if (smartDimensionRoot) {
+        return;
+    }
+
+    if (!editModeScenegraphNodes.EditRoot) {
+        return;
+    }
+
+    smartDimensionRoot = new SoSeparator;
+    smartDimensionRoot->setName("SmartDimensionRoot");
+
+    int insertIndex = -1;
+    for (int i = 0; i < editModeScenegraphNodes.EditRoot->getNumChildren(); ++i) {
+        if (editModeScenegraphNodes.EditRoot->getChild(i) == editModeScenegraphNodes.constrGroup) {
+            insertIndex = i + 1;
+            break;
+        }
+    }
+
+    if (insertIndex >= 0) {
+        editModeScenegraphNodes.EditRoot->insertChild(smartDimensionRoot, insertIndex);
+    }
+    else {
+        editModeScenegraphNodes.EditRoot->addChild(smartDimensionRoot);
+    }
+}
+
+void EditModeConstraintCoinManager::rebuildSmartDimensionNodes()
+{
+    ensureSmartDimensionRoot();
+    if (!smartDimensionRoot) {
+        return;
+    }
+
+    smartDimensionRoot->removeAllChildren();
+
+    for (int i = 0; i < static_cast<int>(smartDimensionCandidates.size()); ++i) {
+        Gui::SoDatumLabel* preview = preparePreviewDatum(smartDimensionCandidates[i]);
+        if (!preview) {
+            continue;
+        }
+
+        auto* sep = new SoSeparator;
+        sep->renderCaching = SoSeparator::OFF;
+
+        auto* pickStyle = new SoPickStyle;
+        pickStyle->style = SoPickStyle::SHAPE;
+        sep->addChild(pickStyle);
+
+        sep->addChild(editModeScenegraphNodes.ConstraintDrawStyle);
+
+        if (i == smartDimensionActiveCandidate) {
+            // Hovered preview should follow the same global preselection color language used by
+            // the rest of Sketcher/FreeCAD, while the normal state keeps the pale temporary style.
+            preview->textColor = drawingParameters.PreselectColor;
+        }
+        sep->addChild(preview);
+        preview->unref();
+
+        smartDimensionRoot->addChild(sep);
     }
 }
 

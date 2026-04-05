@@ -30,6 +30,7 @@
 #include <QColor>
 #include <QImage>
 #include <QRect>
+#include <QPoint>
 
 #include <Inventor/nodes/SoImage.h>
 #include <Inventor/nodes/SoInfo.h>
@@ -38,12 +39,20 @@
 #include <Mod/Sketcher/App/Constraint.h>
 
 #include "EditModeCoinManagerParameters.h"
+#include "DimensionCandidate.h"
+
+#include <memory>
 
 
 class SbVec3f;
 class SoRayPickAction;
 class SoPickedPoint;
 class SbVec3s;
+class SoSeparator;
+namespace Gui
+{
+class SoDatumLabel;
+}
 
 namespace Base
 {
@@ -138,10 +147,18 @@ public:
 
     SoSeparator* getConstraintIdSeparator(int i);
 
+    void setDimensionCandidates(const std::vector<DimensionCandidate>& candidates);
+    void clearDimensionCandidates();
+    void setSmartDimensionActiveCandidate(int index);
+    int pickDimensionCandidate(const QPoint& screenPos) const;
+
     void createEditModeInventorNodes();
 
 private:
     void rebuildConstraintNodes(const GeoListFacade& geolistfacade);  // with specific geometry
+
+    int previewHitTolerancePx() const;
+    int previewLineHitTolerancePx() const;
 
     void rebuildConstraintNodes(
         const GeoListFacade& geolistfacade,
@@ -261,8 +278,26 @@ private:
         double angle,
         double startAngle,
         double endAngle
-    );
+    ) const;
     //@}
+
+    void ensureSmartDimensionRoot();
+    void rebuildSmartDimensionNodes();
+    std::vector<DimensionCandidate> buildSmartDimensionLayoutVariants(
+        const DimensionCandidate& candidate) const;
+    void optimizeSmartDimensionPreviewLayout(std::vector<DimensionCandidate>& candidates) const;
+    Gui::SoDatumLabel* preparePreviewDatum(
+        const DimensionCandidate& candidate) const;
+    int candidateHitDistance(const DimensionCandidate& candidate, const QPoint& screenPos) const;
+    int datumHitDistance(const Gui::SoDatumLabel& datum, const QPoint& screenPos) const;
+    bool configurePreviewDatumLabel(const DimensionCandidate& candidate,
+                                    const Sketcher::Constraint& constraint,
+                                    Gui::SoDatumLabel& datum) const;
+    void initializePreviewDatumStyle(Gui::SoDatumLabel& datum,
+                                     const Sketcher::Constraint& constraint) const;
+
+public:
+    bool resolveDimensionCandidate(int index, DimensionCandidate& candidate) const;
 
 private:
     ViewProviderSketch& viewProvider;
@@ -274,6 +309,9 @@ private:
     EditModeScenegraphNodes& editModeScenegraphNodes;
 
     CoinMapping& coinMapping;
+    std::vector<DimensionCandidate> smartDimensionCandidates;
+    SoSeparator* smartDimensionRoot {nullptr};
+    int smartDimensionActiveCandidate {-1};
 };
 
 

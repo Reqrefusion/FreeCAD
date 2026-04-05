@@ -1136,6 +1136,32 @@ void EditModeCoinManager::drawConstraintIcons(const GeoListFacade& geolistfacade
     pEditModeConstraintCoinManager->drawConstraintIcons(geolistfacade);
 }
 
+void EditModeCoinManager::setDimensionCandidates(
+    const std::vector<DimensionCandidate>& candidates)
+{
+    pEditModeConstraintCoinManager->setDimensionCandidates(candidates);
+}
+
+void EditModeCoinManager::clearDimensionCandidates()
+{
+    pEditModeConstraintCoinManager->clearDimensionCandidates();
+}
+
+void EditModeCoinManager::setSmartDimensionActiveCandidate(int index)
+{
+    pEditModeConstraintCoinManager->setSmartDimensionActiveCandidate(index);
+}
+
+int EditModeCoinManager::pickDimensionCandidate(const QPoint& screenPos) const
+{
+    return pEditModeConstraintCoinManager->pickDimensionCandidate(screenPos);
+}
+
+bool EditModeCoinManager::resolveDimensionCandidate(int index, DimensionCandidate& candidate) const
+{
+    return pEditModeConstraintCoinManager->resolveDimensionCandidate(index, candidate);
+}
+
 void EditModeCoinManager::updateVirtualSpace()
 {
     pEditModeConstraintCoinManager->updateVirtualSpace();

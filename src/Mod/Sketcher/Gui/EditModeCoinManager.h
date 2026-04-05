@@ -30,6 +30,8 @@
 #include <App/Application.h>
 #include <Mod/Sketcher/App/GeoList.h>
 #include "GeometryCreationMode.h"
+#include <QPoint>
+#include "DimensionCandidate.h"
 
 #include "EditModeCoinManagerParameters.h"
 
@@ -240,6 +242,11 @@ public:
 
     // This specific overload is to use a specific geometry list, which may be a temporal one
     void drawConstraintIcons(const GeoListFacade& geolistfacade);
+    void setDimensionCandidates(const std::vector<DimensionCandidate>& candidates);
+    void clearDimensionCandidates();
+    void setSmartDimensionActiveCandidate(int index);
+    int pickDimensionCandidate(const QPoint& screenPos) const;
+    bool resolveDimensionCandidate(int index, DimensionCandidate& candidate) const;
 
     void updateGeometryLayersConfiguration();
     //@}

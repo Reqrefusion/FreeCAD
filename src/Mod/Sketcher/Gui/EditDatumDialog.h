@@ -46,8 +46,8 @@ class EditDatumDialog: public QObject
     Q_OBJECT
 
 public:
-    EditDatumDialog(int tid, ViewProviderSketch* vp, int ConstrNbr);
-    EditDatumDialog(int tid, Sketcher::SketchObject* pcSketch, int ConstrNbr);
+    EditDatumDialog(int tid, ViewProviderSketch* vp, int ConstrNbr, bool bindDatumToConstraintPath = true);
+    EditDatumDialog(int tid, Sketcher::SketchObject* pcSketch, int ConstrNbr, bool bindDatumToConstraintPath = true);
     ~EditDatumDialog() override;
 
     int exec(bool atCursor = true);
@@ -60,6 +60,7 @@ private:
     bool success;
     std::unique_ptr<Ui_InsertDatum> ui_ins_datum;
     int transactionID;
+    bool bindDatumToConstraintPath;
 
 private Q_SLOTS:
     void accepted();

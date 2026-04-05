@@ -23,7 +23,6 @@
  ***************************************************************************/
 
 #include <boost/bind/bind.hpp>
-#include <boost/core/ignore_unused.hpp>
 #include <Inventor/SbBox3f.h>
 #include <Inventor/SbLine.h>
 #include <Inventor/SbTime.h>
@@ -34,11 +33,15 @@
 #include <Inventor/nodes/SoCamera.h>
 #include <Inventor/nodes/SoShapeHints.h>
 
+#include <algorithm>
+#include <cmath>
 #include <QApplication>
+#include <QEvent>
 #include <QFontMetricsF>
 #include <QHelpEvent>
 #include <QListWidget>
 #include <QMenu>
+#include <QMouseEvent>
 #include <QMessageBox>
 #include <QScreen>
 #include <QTextStream>
@@ -49,6 +52,7 @@
 
 #include <fmt/format.h>
 
+#include <App/Application.h>
 #include <Base/Console.h>
 #include <Base/ServiceProvider.h>
 #include <Base/Vector3D.h>
@@ -72,16 +76,21 @@
 #include <Mod/Sketcher/App/SketchObject.h>
 #include <Mod/Sketcher/App/SolverGeometryExtension.h>
 
+#include "DimensionSelectionEngine.h"
 #include "DrawSketchHandler.h"
 #include "EditDatumDialog.h"
 #include "EditTextDialog.h"
 #include "EditModeCoinManager.h"
+#include "DimensionConstraintBuilder.h"
+#include "DimensionCandidate.h"
+#include "DimensionGeometry.h"
 #include "SnapManager.h"
 #include "StyleParameters.h"
 #include "TaskDlgEditSketch.h"
 #include "TaskSketcherValidation.h"
 #include "Utils.h"
 #include "ViewProviderSketch.h"
+
 #include "ViewProviderSketchGeometryExtension.h"
 #include "Workbench.h"
 
@@ -94,6 +103,67 @@ FC_LOG_LEVEL_INIT("Sketch", true, true)
 using namespace SketcherGui;
 using namespace Sketcher;
 namespace sp = std::placeholders;
+
+namespace SketcherGui {
+
+class SmartDimensionReleaseFilter : public QObject
+{
+public:
+    explicit SmartDimensionReleaseFilter(ViewProviderSketch* owner, QObject* parent = nullptr)
+        : QObject(parent), owner(owner)
+    {}
+
+protected:
+    bool eventFilter(QObject* watched, QEvent* event) override
+    {
+        Q_UNUSED(watched);
+
+        if (!owner || !owner->smartDimensionInteraction.active
+            || owner->smartDimensionInteraction.finalizing) {
+            return QObject::eventFilter(watched, event);
+        }
+
+        if (event->type() == QEvent::MouseButtonRelease) {
+            auto* mouseEvent = static_cast<QMouseEvent*>(event);
+            if (mouseEvent->button() == Qt::LeftButton) {
+                const QPoint releasePos = mouseEvent->position().toPoint();
+                owner->finalizeSmartDimensionInteraction(&releasePos);
+                return true;
+            }
+        }
+        else if (event->type() == QEvent::WindowDeactivate
+                 || event->type() == QEvent::ApplicationDeactivate) {
+            owner->cancelSmartDimensionInteraction();
+        }
+
+        return QObject::eventFilter(watched, event);
+    }
+
+private:
+    ViewProviderSketch* owner;
+};
+
+} // namespace SketcherGui
+
+void ViewProviderSketch::updateOrderedSelectionItem(Selection& selection,
+                                                    Selection::OrderedItem::Kind kind,
+                                                    int id,
+                                                    bool isSelected)
+{
+    std::erase_if(selection.SelOrder, [kind, id](const Selection::OrderedItem& item) {
+        return item.kind == kind && item.id == id;
+    });
+
+    if (!isSelected) {
+        return;
+    }
+
+    selection.SelOrder.push_back({kind, id});
+
+    // Keep the full active selection order. Preview is limited to 1-2 selections,
+    // but we must still see the entire active set so any extra picks suppress
+    // preview instead of reviving last-selected subset behavior.
+}
 
 /************** ViewProviderSketch::ParameterObserver *********************/
 
@@ -684,6 +754,14 @@ void ViewProviderSketch::slotUndoDocument(const Gui::Document& /*doc*/)
         resetPositionText();
     }
 
+    // Smart-dimension previews cache geometry references. Undo can remove the selected
+    // geometry before the next mouse-move, leaving stale preview candidates behind and causing
+    // follow-up hit-tests / redraws to query invalid GeoIds. Drop the whole preview state here
+    // so the next refresh starts from the post-undo sketch state only.
+    cancelSmartDimensionInteraction();
+    smartDimensionPreviewRefreshPending = false;
+    clearDimensionCandidates();
+
     // Note 1: this slot is only operative during edit mode (see signal connection/disconnection)
     // Note 2: ViewProviderSketch::UpdateData does not generate updates during undo/redo
     //         transactions as mid-transaction data may not be in a valid state (e.g. constraints
@@ -702,6 +780,12 @@ void ViewProviderSketch::slotRedoDocument(const Gui::Document& /*doc*/)
         setSketchMode(STATUS_NONE);
         resetPositionText();
     }
+
+    // Redo invalidates the same cached preview references as undo. Reset preview state before
+    // the next event callback so smart-dimension hover/pick never touches pre-redo GeoIds.
+    cancelSmartDimensionInteraction();
+    smartDimensionPreviewRefreshPending = false;
+    clearDimensionCandidates();
 
     // Note 1: this slot is only operative during edit mode (see signal connection/disconnection)
     // Note 2: ViewProviderSketch::UpdateData does not generate updates during undo/redo
@@ -850,8 +934,20 @@ void ViewProviderSketch::preselectAtPoint(Base::Vector2d point)
 
 void ViewProviderSketch::setSketchMode(SketchMode mode)
 {
+    const SketchMode previousMode = Mode;
     Mode = mode;
     Gui::Application::Instance->commandManager().testActive();
+
+    if (mode == STATUS_NONE && previousMode != STATUS_NONE && smartDimensionPreviewRefreshPending) {
+        smartDimensionPreviewRefreshPending = false;
+        refreshSmartDimensionPreview();
+
+        if (auto* view = qobject_cast<Gui::View3DInventor*>(this->getActiveView())) {
+            if (auto* viewer = view->getViewer()) {
+                const_cast<Gui::View3DInventorViewer*>(viewer)->redraw();
+            }
+        }
+    }
 }
 
 bool ViewProviderSketch::keyPressed(bool pressed, int key)
@@ -1030,6 +1126,12 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
             // Do things depending on the mode of the user interaction
             switch (Mode) {
                 case STATUS_NONE: {
+                    if (beginSmartDimensionInteraction(QPoint(cursorPos[0], cursorPos[1]))) {
+                        const_cast<Gui::View3DInventorViewer*>(viewer)->redraw();
+                        setSketchMode(STATUS_NONE);
+                        return true;
+                    }
+
                     bool done = false;
                     if (preselection.isPreselectPointValid()) {
                         setSketchMode(STATUS_SELECT_Point);
@@ -1088,6 +1190,17 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
             }
         }
         else {// Button 1 released
+            // Smart-dimension preview must be committable with a plain click. Some selection-side
+            // updates can temporarily drift Mode away from STATUS_NONE before release arrives,
+            // even though the smart-dimension interaction is still the active gesture. When that
+            // happens, the old code would enter the regular selection release branches and never
+            // call finalizeSmartDimensionInteraction(), making drag appear mandatory. If the
+            // interaction is active, it owns the release regardless of the transient mode.
+            if (smartDimensionInteraction.active) {
+                const QPoint releasePos(cursorPos[0], cursorPos[1]);
+                return finalizeSmartDimensionInteraction(&releasePos);
+            }
+
             // Do things depending on the mode of the user interaction
             switch (Mode) {
                 case STATUS_SELECT_Point:
@@ -1213,6 +1326,11 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                     return sketchHandler->releaseButton(snappedPos);
                 }
                 case STATUS_NONE:
+                    if (smartDimensionInteraction.active) {
+                        const QPoint releasePos(cursorPos[0], cursorPos[1]);
+                return finalizeSmartDimensionInteraction(&releasePos);
+                    }
+                    return false;
                 default:
                     return false;
             }
@@ -1555,17 +1673,21 @@ bool ViewProviderSketch::mouseMove(const SbVec2s& cursorPos, Gui::View3DInventor
     getProjectingLine(cursorPos, viewer, line);
 
     std::unique_ptr<SnapManager::SnapHandle> snapHandle;
+    Base::Vector2d rawOnSketchPos;
     try {
         double x, y;
         getCoordsOnSketchPlane(line.getPosition(), line.getDirection(), x, y);
-        snapHandle = std::make_unique<SnapManager::SnapHandle>(snapManager.get(), Base::Vector2d(x, y));
+        rawOnSketchPos = Base::Vector2d(x, y);
+        snapHandle = std::make_unique<SnapManager::SnapHandle>(snapManager.get(), rawOnSketchPos);
     }
     catch (const Base::ZeroDivisionError&) {
         return false;
     }
 
+    const bool freezeSmartDimensionPreview = smartDimensionInteraction.active;
+
     bool preselectChanged = false;
-    if (Mode != STATUS_SELECT_Point && Mode != STATUS_SELECT_Edge
+    if (!freezeSmartDimensionPreview && Mode != STATUS_SELECT_Point && Mode != STATUS_SELECT_Edge
         && Mode != STATUS_SELECT_Constraint && Mode != STATUS_SKETCH_Drag
         && Mode != STATUS_SKETCH_DragConstraint && Mode != STATUS_SKETCH_UseRubberBand) {
 
@@ -1574,14 +1696,35 @@ bool ViewProviderSketch::mouseMove(const SbVec2s& cursorPos, Gui::View3DInventor
         preselectChanged = detectAndShowPreselection(Point.get());
     }
 
+    if (!freezeSmartDimensionPreview && Mode != STATUS_NONE && Mode != STATUS_SKETCH_UseHandler) {
+        clearDimensionCandidates();
+    }
+
     switch (Mode) {
-        case STATUS_NONE:
+        case STATUS_NONE: {
+            bool smartPreviewUpdated = false;
+            bool smartHoverChanged = false;
+            if (smartDimensionInteraction.active) {
+                smartPreviewUpdated = updateSmartDimensionInteraction(QPoint(cursorPos[0], cursorPos[1]), rawOnSketchPos);
+            }
+            else if (!smartDimensionPreviewSuspended && editCoinManager
+                     && !smartDimensionCandidates.empty()) {
+                const int hoverIdx = editCoinManager->pickDimensionCandidate(QPoint(cursorPos[0], cursorPos[1]));
+                if (hoverIdx != smartDimensionHoverCandidate) {
+                    smartDimensionHoverCandidate = hoverIdx;
+                    editCoinManager->setSmartDimensionActiveCandidate(hoverIdx);
+                    smartHoverChanged = true;
+                }
+            }
             if (preselectChanged) {
                 editCoinManager->drawConstraintIcons();
                 updateColor();
-                return true;
             }
-            return false;
+            if (smartPreviewUpdated || smartHoverChanged) {
+                viewer->redraw();
+            }
+            return preselectChanged || smartPreviewUpdated || smartHoverChanged;
+        }
         case STATUS_SELECT_Point:
             if (!getSolvedSketch().hasConflicts() && preselection.isPreselectPointValid()) {
                 int geoId;
@@ -2337,6 +2480,7 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                 clearSelectPoints();
                 selection.SelCurvSet.clear();
                 selection.SelConstraintSet.clear();
+                selection.SelOrder.clear();
                 editCoinManager->drawConstraintIcons();
                 updateColor();
             }
@@ -2350,6 +2494,7 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                     if (shapetype.size() > 4 && shapetype.substr(0, 4) == "Edge") {
                         int GeoId = std::atoi(&shapetype[4]) - 1;
                         selection.SelCurvSet.insert(GeoId);
+                        updateOrderedSelectionItem(selection, Selection::OrderedItem::Kind::Geometry, GeoId, true);
 
                         // Check if this is in a group.
                         // If so we cancel this addition and select the group instead
@@ -2365,6 +2510,7 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                         int GeoId = std::atoi(&shapetype[12]) - 1;
                         GeoId = -GeoId - 3;
                         selection.SelCurvSet.insert(GeoId);
+                        updateOrderedSelectionItem(selection, Selection::OrderedItem::Kind::Geometry, GeoId, true);
                     }
                     else if (shapetype.size() > 6 && shapetype.substr(0, 6) == "Vertex") {
                         int VtId = std::atoi(&shapetype[6]) - 1;
@@ -2375,9 +2521,17 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                     }
                     else if (shapetype == "H_Axis") {
                         selection.SelCurvSet.insert(Selection::HorizontalAxis);
+                        updateOrderedSelectionItem(selection,
+                                                Selection::OrderedItem::Kind::Geometry,
+                                                Selection::HorizontalAxis,
+                                                true);
                     }
                     else if (shapetype == "V_Axis") {
                         selection.SelCurvSet.insert(Selection::VerticalAxis);
+                        updateOrderedSelectionItem(selection,
+                                                Selection::OrderedItem::Kind::Geometry,
+                                                Selection::VerticalAxis,
+                                                true);
                     }
                     else if (shapetype.size() > 10 && shapetype.substr(0, 10) == "Constraint") {
                         int ConstrId =
@@ -2403,12 +2557,20 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                         if (shapetype.size() > 4 && shapetype.substr(0, 4) == "Edge") {
                             int GeoId = std::atoi(&shapetype[4]) - 1;
                             selection.SelCurvSet.erase(GeoId);
+                            updateOrderedSelectionItem(selection,
+                                                       Selection::OrderedItem::Kind::Geometry,
+                                                       GeoId,
+                                                       false);
                         }
                         else if (shapetype.size() > 12
                                  && shapetype.substr(0, 12) == "ExternalEdge") {
                             int GeoId = std::atoi(&shapetype[12]) - 1;
                             GeoId = -GeoId - 3;
                             selection.SelCurvSet.erase(GeoId);
+                            updateOrderedSelectionItem(selection,
+                                                       Selection::OrderedItem::Kind::Geometry,
+                                                       GeoId,
+                                                       false);
                         }
                         else if (shapetype.size() > 6 && shapetype.substr(0, 6) == "Vertex") {
                             int VtId = std::atoi(&shapetype[6]) - 1;
@@ -2419,9 +2581,17 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                         }
                         else if (shapetype == "H_Axis") {
                             selection.SelCurvSet.erase(Sketcher::GeoEnum::HAxis);
+                            updateOrderedSelectionItem(selection,
+                                                       Selection::OrderedItem::Kind::Geometry,
+                                                       Sketcher::GeoEnum::HAxis,
+                                                       false);
                         }
                         else if (shapetype == "V_Axis") {
                             selection.SelCurvSet.erase(Sketcher::GeoEnum::VAxis);
+                            updateOrderedSelectionItem(selection,
+                                                       Selection::OrderedItem::Kind::Geometry,
+                                                       Sketcher::GeoEnum::VAxis,
+                                                       false);
                         }
                         else if (shapetype.size() > 10 && shapetype.substr(0, 10) == "Constraint") {
                             int ConstrId =
@@ -2478,6 +2648,33 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
         }
         else if (msg.Type == Gui::SelectionChanges::RmvPreselect) {
             resetPreselectPoint();
+        }
+
+        if (msg.Type == Gui::SelectionChanges::ClrSelection
+            || msg.Type == Gui::SelectionChanges::AddSelection
+            || msg.Type == Gui::SelectionChanges::RmvSelection) {
+            // Clicking a smart-dimension preview can temporarily raise selection updates from the
+            // Coin scene before mouse release arrives. If we cancel the interaction here, a simple
+            // click never reaches finalizeSmartDimensionInteraction() and the user is forced to
+            // drag first. Keep the interaction alive until release while the preview is active.
+            if (smartDimensionInteraction.finalizing) {
+                return;
+            }
+
+            if (smartDimensionInteraction.active) {
+                return;
+            }
+            else {
+                cancelSmartDimensionInteraction();
+                smartDimensionPreviewRefreshPending = false;
+                refreshSmartDimensionPreview();
+
+                if (auto* view = qobject_cast<Gui::View3DInventor*>(this->getActiveView())) {
+                    if (auto* viewer = view->getViewer()) {
+                        const_cast<Gui::View3DInventorViewer*>(viewer)->redraw();
+                    }
+                }
+            }
         }
     }
 }
@@ -4217,6 +4414,453 @@ int ViewProviderSketch::getPreselectCross() const
     return -1;
 }
 
+std::vector<DimensionReference> ViewProviderSketch::getSelectedSmartDimensionRefs() const
+{
+    std::vector<DimensionReference> items;
+
+    if (!isInEditMode()) {
+        return items;
+    }
+
+    const auto* sketch = getSketchObject();
+    if (!sketch) {
+        return items;
+    }
+    items.reserve(selection.SelOrder.size());
+
+    for (const auto& orderedItem : selection.SelOrder) {
+        if (orderedItem.kind == Selection::OrderedItem::Kind::Point) {
+            if (selection.SelPointSet.find(orderedItem.id) == selection.SelPointSet.end()) {
+                continue;
+            }
+
+            int geoId = Sketcher::GeoEnum::GeoUndef;
+            Sketcher::PointPos posId = Sketcher::PointPos::none;
+            if (orderedItem.id == Selection::RootPoint) {
+                geoId = Sketcher::GeoEnum::RtPnt;
+                posId = Sketcher::PointPos::start;
+            }
+            else {
+                sketch->getGeoVertexIndex(orderedItem.id, geoId, posId);
+            }
+
+            const bool validPointRef = geoId == Sketcher::GeoEnum::RtPnt
+                || SketcherGui::DimensionGeometry::isAxisGeoId(geoId)
+                || (geoId != Sketcher::GeoEnum::GeoUndef && sketch->getGeometry(geoId));
+            if (validPointRef) {
+                items.push_back({geoId, posId});
+            }
+            continue;
+        }
+
+        if (selection.SelCurvSet.find(orderedItem.id) == selection.SelCurvSet.end()
+            || orderedItem.id == Sketcher::GeoEnum::GeoUndef) {
+            continue;
+        }
+
+        const bool validGeometry = SketcherGui::DimensionGeometry::isAxisGeoId(orderedItem.id)
+            || sketch->getGeometry(orderedItem.id);
+        if (!validGeometry) {
+            continue;
+        }
+
+        items.push_back({orderedItem.id, Sketcher::PointPos::none});
+    }
+
+    return items;
+}
+
+QPoint ViewProviderSketch::projectSketchPointToScreen(const Base::Vector2d& p) const
+{
+    const SbVec2f screen = getScreenCoordinates(SbVec2f(static_cast<float>(p.x),
+                                                        static_cast<float>(p.y)));
+    return QPoint(static_cast<int>(std::lround(screen[0])),
+                  static_cast<int>(std::lround(screen[1])));
+}
+
+Base::Vector2d ViewProviderSketch::projectScreenPointToSketch(const QPoint& p) const
+{
+    auto* view = qobject_cast<Gui::View3DInventor*>(this->getActiveView());
+    if (!view || !isInEditMode()) {
+        return Base::Vector2d();
+    }
+
+    SbLine line;
+    getProjectingLine(SbVec2s(static_cast<short>(std::clamp(p.x(),
+                                                            static_cast<int>(std::numeric_limits<short>::min()),
+                                                            static_cast<int>(std::numeric_limits<short>::max()))),
+                              static_cast<short>(std::clamp(p.y(),
+                                                            static_cast<int>(std::numeric_limits<short>::min()),
+                                                            static_cast<int>(std::numeric_limits<short>::max())))),
+                      view->getViewer(),
+                      line);
+
+    double x = 0.0;
+    double y = 0.0;
+    getCoordsOnSketchPlane(line.getPosition(), line.getDirection(), x, y);
+    return Base::Vector2d(x, y);
+}
+
+Base::Vector2d ViewProviderSketch::clampSketchPointToViewport(const Base::Vector2d& p, int marginPx) const
+{
+    auto* view = qobject_cast<Gui::View3DInventor*>(this->getActiveView());
+    if (!view || !isInEditMode()) {
+        return p;
+    }
+
+    auto* viewer = view->getViewer();
+    auto* widget = viewer ? viewer->getGLWidget() : nullptr;
+    if (!widget) {
+        return p;
+    }
+
+    const int width = widget->width();
+    const int height = widget->height();
+    if (width <= 0 || height <= 0) {
+        return p;
+    }
+
+    const int safeMarginX = std::clamp(marginPx, 0, std::max(0, width / 2));
+    const int safeMarginY = std::clamp(marginPx, 0, std::max(0, height / 2));
+
+    const QPoint screen = projectSketchPointToScreen(p);
+    const QPoint clamped(std::clamp(screen.x(), safeMarginX, std::max(safeMarginX, width - safeMarginX)),
+                         std::clamp(screen.y(), safeMarginY, std::max(safeMarginY, height - safeMarginY)));
+
+    if (clamped == screen) {
+        return p;
+    }
+
+    try {
+        return projectScreenPointToSketch(clamped);
+    }
+    catch (const Base::ZeroDivisionError&) {
+        return p;
+    }
+}
+
+void ViewProviderSketch::setDimensionCandidates(
+    const std::vector<DimensionCandidate>& candidates)
+{
+    smartDimensionCandidates = candidates;
+    syncDimensionCandidatesToCoinManager();
+    requestSmartDimensionPreviewRedraw();
+}
+
+void ViewProviderSketch::syncDimensionCandidatesToCoinManager()
+{
+    if (editCoinManager) {
+        editCoinManager->setDimensionCandidates(smartDimensionCandidates);
+    }
+}
+
+void ViewProviderSketch::requestSmartDimensionPreviewRedraw()
+{
+    if (auto* view = qobject_cast<Gui::View3DInventor*>(this->getActiveView())) {
+        if (auto* viewer = view->getViewer()) {
+            const_cast<Gui::View3DInventorViewer*>(viewer)->redraw();
+        }
+    }
+}
+
+void ViewProviderSketch::installSmartDimensionReleaseFilter()
+{
+    if (smartDimensionReleaseFilter) {
+        return;
+    }
+
+    auto* app = QCoreApplication::instance();
+    if (!app) {
+        return;
+    }
+
+    auto* filter = new SmartDimensionReleaseFilter(this, app);
+    app->installEventFilter(filter);
+    smartDimensionReleaseFilter = filter;
+}
+
+void ViewProviderSketch::removeSmartDimensionReleaseFilter()
+{
+    auto* filter = smartDimensionReleaseFilter.data();
+    if (!filter) {
+        return;
+    }
+
+    if (auto* app = QCoreApplication::instance()) {
+        app->removeEventFilter(filter);
+    }
+
+    smartDimensionReleaseFilter = nullptr;
+    delete filter;
+}
+
+void ViewProviderSketch::clearDimensionCandidates()
+{
+    removeSmartDimensionReleaseFilter();
+    smartDimensionInteraction = SmartDimensionInteraction();
+    smartDimensionHoverCandidate = -1;
+    setDimensionCandidates({});
+    if (editCoinManager) {
+        editCoinManager->setSmartDimensionActiveCandidate(-1);
+    }
+}
+
+void ViewProviderSketch::setSmartDimensionPreviewSuspended(bool suspended)
+{
+    smartDimensionPreviewSuspended = suspended;
+    if (suspended) {
+        smartDimensionPreviewRefreshPending = false;
+        return;
+    }
+
+    clearDimensionCandidates();
+}
+
+void ViewProviderSketch::showSmartDimensionPinnedPreview(const DimensionCandidate& candidate)
+{
+    smartDimensionPreviewRefreshPending = false;
+    smartDimensionInteraction = SmartDimensionInteraction();
+    smartDimensionHoverCandidate = 0;
+    setDimensionCandidates({candidate});
+    if (editCoinManager) {
+        editCoinManager->setSmartDimensionActiveCandidate(0);
+    }
+}
+
+bool ViewProviderSketch::isSmartDimensionPreviewEnabled() const
+{
+    if (smartDimensionPreviewSuspended) {
+        return false;
+    }
+
+    ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath(
+        "User parameter:BaseApp/Preferences/Mod/Sketcher");
+    return hGrp->GetBool("EnableSmartDimensionPreview", true);
+}
+
+bool ViewProviderSketch::refreshSmartDimensionPreview()
+{
+    if (!isSmartDimensionPreviewEnabled() || !isInEditMode() || getSolvedSketch().hasConflicts()) {
+        clearDimensionCandidates();
+        return false;
+    }
+
+    if (Mode == STATUS_SKETCH_Drag || Mode == STATUS_SKETCH_DragConstraint
+        || Mode == STATUS_SKETCH_UseHandler || Mode == STATUS_SKETCH_StartRubberBand
+        || Mode == STATUS_SKETCH_UseRubberBand || Mode == STATUS_SELECT_Constraint
+        || Mode == STATUS_SELECT_Wire) {
+        clearDimensionCandidates();
+        return false;
+    }
+
+    const auto selectionRefs = getSelectedSmartDimensionRefs();
+    if (selectionRefs.empty()) {
+        clearDimensionCandidates();
+        return false;
+    }
+
+    auto candidates = buildDimensionCandidates(getSketchObject(), selectionRefs);
+    if (candidates.empty()) {
+        clearDimensionCandidates();
+        return false;
+    }
+
+    setDimensionCandidates(candidates);
+    stabilizeDimensionCandidates();
+    if (editCoinManager) {
+        editCoinManager->setSmartDimensionActiveCandidate(-1);
+    }
+    return true;
+}
+
+void ViewProviderSketch::stabilizeDimensionCandidates()
+{
+    bool changed = false;
+    for (auto& candidate : smartDimensionCandidates) {
+        const Base::Vector2d clamped = clampSketchPointToViewport(candidate.labelPos);
+        if (std::abs(clamped.x - candidate.labelPos.x) > SketcherGui::DimensionGeometry::kEpsilon
+            || std::abs(clamped.y - candidate.labelPos.y) > SketcherGui::DimensionGeometry::kEpsilon) {
+            candidate.labelPos = clamped;
+            changed = true;
+        }
+    }
+
+    if (changed) {
+        syncDimensionCandidatesToCoinManager();
+    }
+}
+
+int ViewProviderSketch::pickPressedDimensionCandidate(const QPoint& screenPos) const
+{
+    if (!editCoinManager || smartDimensionCandidates.empty()) {
+        return -1;
+    }
+
+    const int idx = editCoinManager->pickDimensionCandidate(screenPos);
+    if (idx < 0 || idx >= static_cast<int>(smartDimensionCandidates.size())) {
+        return -1;
+    }
+    return idx;
+}
+
+bool ViewProviderSketch::releaseMatchesActiveDimensionCandidate(const QPoint& screenPos,
+                                                                     int candidateIndex) const
+{
+    if (candidateIndex < 0 || candidateIndex >= static_cast<int>(smartDimensionCandidates.size())) {
+        return false;
+    }
+
+    const int hitIndex = pickPressedDimensionCandidate(screenPos);
+    return hitIndex == candidateIndex;
+}
+
+bool ViewProviderSketch::beginSmartDimensionInteraction(const QPoint& screenPos)
+{
+    if (!isSmartDimensionPreviewEnabled() || !isInEditMode() || Mode != STATUS_NONE
+        || getSolvedSketch().hasConflicts() || smartDimensionCandidates.empty()) {
+        return false;
+    }
+
+    // A real sketch point must win over the smart-dimension overlay. When a curve is already
+    // selected, its preview labels can visually sit close to endpoints and otherwise steal the
+    // click before the point-selection branch runs. Keep point/root-point picking authoritative so
+    // users can refine the selection without the preview turning the click into a dimension.
+    if (preselection.isPreselectPointValid()
+        || preselection.PreselectCross == Preselection::Axes::RootPoint) {
+        return false;
+    }
+
+    const int idx = pickPressedDimensionCandidate(screenPos);
+    if (idx < 0 || idx >= static_cast<int>(smartDimensionCandidates.size())) {
+        return false;
+    }
+
+    DimensionCandidate resolvedCandidate = smartDimensionCandidates[idx];
+    if (editCoinManager) {
+        editCoinManager->resolveDimensionCandidate(idx, resolvedCandidate);
+    }
+
+    smartDimensionHoverCandidate = idx;
+    smartDimensionInteraction.active = true;
+    smartDimensionInteraction.dragged = false;
+    smartDimensionInteraction.finalizing = false;
+    smartDimensionInteraction.candidateIndex = idx;
+    smartDimensionInteraction.pressScreenPos = screenPos;
+    smartDimensionInteraction.pressedCandidate = resolvedCandidate;
+    installSmartDimensionReleaseFilter();
+
+    if (editCoinManager) {
+        editCoinManager->setSmartDimensionActiveCandidate(idx);
+    }
+    return true;
+}
+
+bool ViewProviderSketch::updateSmartDimensionInteraction(const QPoint& screenPos,
+                                                       const Base::Vector2d& onSketchPos)
+{
+    if (!smartDimensionInteraction.active || smartDimensionInteraction.finalizing) {
+        return false;
+    }
+
+    const int idx = smartDimensionInteraction.candidateIndex;
+    if (idx < 0 || idx >= static_cast<int>(smartDimensionCandidates.size())) {
+        cancelSmartDimensionInteraction();
+        return false;
+    }
+
+    const int dragDistance = (screenPos - smartDimensionInteraction.pressScreenPos).manhattanLength();
+    if (!smartDimensionInteraction.dragged && dragDistance < 4) {
+        return false;
+    }
+
+    DimensionCandidate updated = smartDimensionCandidates[idx];
+    Base::Vector2d updatedLabelPos = clampSketchPointToViewport(onSketchPos);
+    if (updated.semantic == DimensionSemantic::ArcLength && !updated.refs.empty()) {
+        const Part::Geometry* geometry = getSketchObject()
+            ? getSketchObject()->getGeometry(updated.refs.front().geoId)
+            : nullptr;
+        SketcherGui::DimensionGeometry::ArcLengthPlacementData placement;
+        if (SketcherGui::DimensionGeometry::describeArcLengthPlacement(geometry, placement)) {
+            updatedLabelPos = SketcherGui::DimensionGeometry::projectArcLengthLabelPosition(
+                placement,
+                updatedLabelPos);
+        }
+    }
+    updated.labelPos = updatedLabelPos;
+    smartDimensionCandidates[idx] = updated;
+    smartDimensionInteraction.pressedCandidate = updated;
+    smartDimensionInteraction.dragged = true;
+    setDimensionCandidates(smartDimensionCandidates);
+    if (editCoinManager) {
+        editCoinManager->setSmartDimensionActiveCandidate(idx);
+    }
+    return true;
+}
+
+bool ViewProviderSketch::finalizeSmartDimensionInteraction(const QPoint* releaseScreenPos)
+{
+    Q_UNUSED(releaseScreenPos);
+
+    if (smartDimensionInteraction.finalizing) {
+        return true;
+    }
+
+    if (!smartDimensionInteraction.active) {
+        return false;
+    }
+
+    const int idx = smartDimensionInteraction.candidateIndex;
+    if (idx < 0 || idx >= static_cast<int>(smartDimensionCandidates.size())) {
+        cancelSmartDimensionInteraction();
+        return false;
+    }
+
+    // A press on a preview is already a strong enough intent signal to commit that candidate.
+    // Requiring the release to hit the same preview again makes plain clicks fragile because
+    // the coin scene, label layout, or tiny pointer jitter can move the hit-test under the
+    // cursor between press and release. Dragging still updates the active candidate live, but a
+    // simple click should commit the candidate that was pressed even if release lands a few
+    // pixels away.
+    const DimensionCandidate candidate = smartDimensionInteraction.dragged
+        ? smartDimensionCandidates[idx]
+        : smartDimensionInteraction.pressedCandidate;
+
+    smartDimensionInteraction.finalizing = true;
+    removeSmartDimensionReleaseFilter();
+    smartDimensionInteraction.active = false;
+    if (editCoinManager) {
+        editCoinManager->setSmartDimensionActiveCandidate(-1);
+    }
+
+    const bool ok = commitDimensionCandidate(*this,
+                                             *getSketchObject(),
+                                             candidate);
+
+    smartDimensionInteraction = SmartDimensionInteraction();
+    smartDimensionHoverCandidate = -1;
+    if (ok) {
+        clearDimensionCandidates();
+    }
+    else {
+        refreshSmartDimensionPreview();
+    }
+    return ok;
+}
+
+void ViewProviderSketch::cancelSmartDimensionInteraction()
+{
+    if (!smartDimensionInteraction.active || smartDimensionInteraction.finalizing) {
+        return;
+    }
+
+    removeSmartDimensionReleaseFilter();
+    smartDimensionInteraction = SmartDimensionInteraction();
+    smartDimensionHoverCandidate = -1;
+    if (editCoinManager) {
+        editCoinManager->setSmartDimensionActiveCandidate(-1);
+    }
+}
+
 Sketcher::SketchObject* ViewProviderSketch::getSketchObject() const
 {
     return dynamic_cast<Sketcher::SketchObject*>(pcObject);
@@ -4482,7 +5126,6 @@ void ViewProviderSketch::setPreselectPoint(int PreselectPoint)
     preselection.PreselectPoint = PreselectPoint;
     preselection.PreselectCurve = Preselection::InvalidCurve;
     preselection.PreselectCross = Preselection::Axes::None;
-    ;
     preselection.PreselectConstraintSet.clear();
 }
 
@@ -4500,23 +5143,27 @@ void ViewProviderSketch::resetPreselectPoint()
     preselection.PreselectPoint = Preselection::InvalidPoint;
     preselection.PreselectCurve = Preselection::InvalidCurve;
     preselection.PreselectCross = Preselection::Axes::None;
-    ;
     preselection.PreselectConstraintSet.clear();
 }
 
 void ViewProviderSketch::addSelectPoint(int SelectPoint)
 {
     selection.SelPointSet.insert(SelectPoint);
+    updateOrderedSelectionItem(selection, Selection::OrderedItem::Kind::Point, SelectPoint, true);
 }
 
 void ViewProviderSketch::removeSelectPoint(int SelectPoint)
 {
     selection.SelPointSet.erase(SelectPoint);
+    updateOrderedSelectionItem(selection, Selection::OrderedItem::Kind::Point, SelectPoint, false);
 }
 
 void ViewProviderSketch::clearSelectPoints()
 {
     selection.SelPointSet.clear();
+    std::erase_if(selection.SelOrder, [](const Selection::OrderedItem& item) {
+        return item.kind == Selection::OrderedItem::Kind::Point;
+    });
 }
 
 bool ViewProviderSketch::isSelected(const std::string& subNameSuffix) const
