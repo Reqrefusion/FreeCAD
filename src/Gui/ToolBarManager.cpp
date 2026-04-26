@@ -450,14 +450,14 @@ void installDirectGridToolBarLayoutFilter(QToolBar* toolbar)
     }
 
     auto* existing = toolbar->findChild<QObject*>(
-        QStringLiteral(DirectGridToolBarLayoutObjectName),
+        QString::fromLatin1(DirectGridToolBarLayoutObjectName),
         Qt::FindDirectChildrenOnly);
     if (existing) {
         return;
     }
 
     auto* filter = new DirectGridToolBarLayoutFilter(toolbar);
-    filter->setObjectName(QStringLiteral(DirectGridToolBarLayoutObjectName));
+    filter->setObjectName(QString::fromLatin1(DirectGridToolBarLayoutObjectName));
     toolbar->installEventFilter(filter);
 }
 
@@ -468,7 +468,7 @@ void refreshDirectGridToolBarLayout(QToolBar* toolbar)
     }
 
     auto* object = toolbar->findChild<QObject*>(
-        QStringLiteral(DirectGridToolBarLayoutObjectName),
+        QString::fromLatin1(DirectGridToolBarLayoutObjectName),
         Qt::FindDirectChildrenOnly);
     if (!object) {
         return;
