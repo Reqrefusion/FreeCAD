@@ -312,12 +312,15 @@ public:
                 case QEvent::Resize:
                 case QEvent::Show:
                 case QEvent::StyleChange:
+                case QEvent::ChildAdded:
+                case QEvent::ChildRemoved:
                     scheduleRefresh();
                     return false;
                 case QEvent::Move:
                 case QEvent::ParentChange:
                 case QEvent::WindowStateChange:
                     scheduleRefresh();
+                    enforceGridGeometryNow();
                     scheduleDelayedRefresh();
                     return false;
                 default:
@@ -331,10 +334,12 @@ public:
                 case QEvent::Move:
                 case QEvent::Resize:
                 case QEvent::Show:
-                    // QToolBar's native layout can move the native buttons again
-                    // while the toolbar is dragged between rows/areas. Re-apply
-                    // the two-row geometry after that native pass has finished.
-                    scheduleDelayedRefresh();
+                    // QToolBar's native layout can still move native action
+                    // widgets while the toolbar is dragged between rows/areas.
+                    // Put them back immediately so the toolbar never visibly
+                    // falls back to the single-row native layout.
+                    enforceGridGeometryNow();
+                    scheduleRefresh();
                     break;
                 default:
                     break;
@@ -377,6 +382,22 @@ private:
         QTimer::singleShot(0, toolbar, [this]() {
             refresh();
         });
+    }
+
+    void enforceGridGeometryNow()
+    {
+        auto* toolbar = _toolbar.data();
+        if (!toolbar || _inRelayout) {
+            return;
+        }
+
+        const int mode = directGridModeForToolBar(toolbar);
+        if (mode <= 0) {
+            return;
+        }
+
+        _gridActive = true;
+        relayoutGridButtons(mode);
     }
 
     void scheduleDelayedRefresh()
