@@ -31,10 +31,12 @@
 #include <QMenuBar>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPaintEvent>
 #include <QPointer>
 #include <QPixmap>
 #include <QResizeEvent>
 #include <QStatusBar>
+#include <QStyle>
 #include <QToolBar>
 #include <QToolButton>
 #include <QStyleOption>
@@ -111,6 +113,67 @@ int directGridModeForToolBar(const QToolBar* toolbar)
     return 0;
 }
 
+class DirectGridToolButton: public QToolButton
+{
+public:
+    explicit DirectGridToolButton(QWidget* parent = nullptr)
+        : QToolButton(parent)
+    {}
+
+    void setDirectGridForcedIconSize(const QSize& size)
+    {
+        _forcedIconSize = size;
+        update();
+    }
+
+    void clearDirectGridForcedIconSize()
+    {
+        if (!_forcedIconSize.isEmpty()) {
+            _forcedIconSize = QSize();
+            update();
+        }
+    }
+
+protected:
+    void paintEvent(QPaintEvent* event) override
+    {
+        if (_forcedIconSize.isEmpty()) {
+            QToolButton::paintEvent(event);
+            return;
+        }
+
+        Q_UNUSED(event);
+
+        QStyleOptionToolButton opt;
+        initStyleOption(&opt);
+
+        const QIcon icon = opt.icon;
+        opt.icon = QIcon();
+        opt.iconSize = QSize();
+
+        QPainter painter(this);
+        style()->drawComplexControl(QStyle::CC_ToolButton, &opt, &painter, this);
+
+        if (icon.isNull()) {
+            return;
+        }
+
+        const QRect iconArea = rect().adjusted(1, 1, -1, -1);
+        QSize drawSize = _forcedIconSize;
+        drawSize.scale(iconArea.size(), Qt::KeepAspectRatio);
+
+        QRect iconRect(QPoint(0, 0), drawSize);
+        iconRect.moveCenter(iconArea.center());
+
+        const QIcon::Mode iconMode = isEnabled() ? QIcon::Normal : QIcon::Disabled;
+        const QIcon::State iconState = isChecked() ? QIcon::On : QIcon::Off;
+        icon.paint(&painter, iconRect, Qt::AlignCenter, iconMode, iconState);
+    }
+
+private:
+    QSize _forcedIconSize;
+};
+
 void setDirectGridButtonIcon(QToolButton* button, QAction* action, int iconSize, bool forceScaledIcon)
 {
     if (!button) {
@@ -120,29 +183,19 @@ void setDirectGridButtonIcon(QToolButton* button, QAction* action, int iconSize,
     const QSize requestedSize(iconSize, iconSize);
     button->setIconSize(requestedSize);
 
+    auto* gridButton = static_cast<DirectGridToolButton*>(button);
+    if (forceScaledIcon) {
+        gridButton->setDirectGridForcedIconSize(requestedSize);
+    }
+    else {
+        gridButton->clearDirectGridForcedIconSize();
+    }
+
     if (!action) {
         return;
     }
 
-    if (!forceScaledIcon) {
-        button->setIcon(action->icon());
-        return;
-    }
-
-    const QIcon::Mode iconMode = action->isEnabled() ? QIcon::Normal : QIcon::Disabled;
-    const QIcon::State iconState = action->isChecked() ? QIcon::On : QIcon::Off;
-    QPixmap pixmap = action->icon().pixmap(requestedSize, iconMode, iconState);
-
-    if (pixmap.isNull()) {
-        button->setIcon(action->icon());
-        return;
-    }
-
-    if (pixmap.width() < requestedSize.width() || pixmap.height() < requestedSize.height()) {
-        pixmap = pixmap.scaled(requestedSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    }
-
-    button->setIcon(QIcon(pixmap));
+    button->setIcon(action->icon());
 }
 
 class DirectGridToolBarLayoutFilter: public QObject
@@ -276,6 +329,7 @@ private:
         clearGridButtons();
         _gridActive = false;
         toolbar->setMinimumSize(QSize(0, 0));
+        toolbar->setMaximumHeight(QWIDGETSIZE_MAX);
 
         // With grid mode disabled, ActionAdded events are handled by QToolBar normally.
         for (auto* action : currentActions) {
@@ -290,7 +344,7 @@ private:
             return;
         }
 
-        auto* button = new QToolButton(toolbar);
+        auto* button = new DirectGridToolButton(toolbar);
         button->setDefaultAction(action);
         button->setAutoRaise(true);
         button->setToolButtonStyle(Qt::ToolButtonIconOnly);
@@ -417,6 +471,7 @@ private:
 
         if (visibleActions.isEmpty()) {
             toolbar->setMinimumSize(QSize(0, 0));
+            toolbar->setMaximumHeight(QWIDGETSIZE_MAX);
             toolbar->updateGeometry();
             return;
         }
@@ -473,7 +528,9 @@ private:
             ++smallIndex;
         }
 
-        toolbar->setMinimumSize(gridSizeHint());
+        const QSize hint = gridSizeHint();
+        toolbar->setMinimumSize(QSize(0, hint.height()));
+        toolbar->setMaximumHeight(hint.height());
         toolbar->updateGeometry();
     }
 
