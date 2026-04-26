@@ -406,15 +406,36 @@ public:
 protected:
     void actionEvent(QActionEvent* event) override
     {
-        Gui::ToolBar::actionEvent(event);
-
         if (!event || !event->action()) {
+            Gui::ToolBar::actionEvent(event);
             refreshGridLayout();
             return;
         }
 
+        QAction* action = event->action();
+        const int mode = directGridModeForToolBar(this);
+
+        // In grid mode, do not let QToolBar create native QToolButton items for
+        // command actions. Otherwise QToolBarLayout will keep taking control
+        // while the toolbar is moved/resized and will collapse the grid back
+        // to a single native row. QWidgetAction items such as the custom grip
+        // stay under native QToolBar control.
+        if (mode > 0 && directGridIsCommandAction(action)) {
+            if (event->type() == QEvent::ActionRemoved) {
+                removeGridButton(action);
+            }
+            else {
+                ensureGridButton(action);
+            }
+
+            relayoutGridButtons(mode);
+            return;
+        }
+
+        Gui::ToolBar::actionEvent(event);
+
         if (event->type() == QEvent::ActionRemoved) {
-            removeGridButton(event->action());
+            removeGridButton(action);
         }
 
         refreshGridLayout();
@@ -443,7 +464,12 @@ protected:
             return Gui::ToolBar::minimumSizeHint();
         }
 
-        return gridSizeHint(mode);
+        // Do not force the main window minimum width to the sum of all grid
+        // toolbar contents. The grid toolbar may request its preferred width
+        // through sizeHint(), but its minimum width must remain small enough
+        // for QMainWindow to wrap/rearrange toolbars instead of expanding the
+        // whole window beyond the screen.
+        return QSize(0, gridSizeHint(mode).height());
     }
 
 private:
