@@ -21,28 +21,22 @@
  ***************************************************************************/
 
 
-#include <QAction>
-#include <QActionEvent>
-#include <QApplication>
-#include <QByteArray>
 #include <algorithm>
+
+#include <QAction>
+#include <QApplication>
 #include <QHBoxLayout>
-#include <QHash>
-#include <QIcon>
 #include <QMenuBar>
 #include <QMouseEvent>
 #include <QPainter>
-#include <QPaintEvent>
 #include <QPointer>
-#include <QResizeEvent>
-#include <QSizePolicy>
+#include <QString>
 #include <QStatusBar>
 #include <QToolBar>
 #include <QToolButton>
-#include <QStyle>
-#include <QStyleOption>
 #include <QTimer>
 #include <QWidgetAction>
+#include <QStyleOption>
 
 
 #include <boost/algorithm/string/predicate.hpp>
@@ -63,42 +57,21 @@ using namespace Gui;
 
 namespace
 {
-constexpr int DirectGridRows = 2;
-constexpr int DirectGridMinLargeCount = 1;
-constexpr int DirectGridMaxLargeCount = 3;
-constexpr int DirectGridMargin = 2;
-constexpr int DirectGridSpacing = 2;
+constexpr const char* LayoutOnlyGridObjectName = "_fc_layout_only_grid_toolbar";
+constexpr int LayoutOnlyGridRows = 2;
+constexpr int LayoutOnlyGridMinMode = 1;
+constexpr int LayoutOnlyGridMaxMode = 3;
+constexpr int LayoutOnlyGridMargin = 2;
+constexpr int LayoutOnlyGridSpacing = 2;
+constexpr int LayoutOnlyGridButtonExtra = 8;
+constexpr int LayoutOnlyGridLargeIconPadding = 8;
 
-int clampDirectGridLargeCount(int value)
+int layoutOnlyClamp(int value, int minimum, int maximum)
 {
-    return std::clamp(value, DirectGridMinLargeCount, DirectGridMaxLargeCount);
+    return std::max(minimum, std::min(value, maximum));
 }
 
-int directGridSmallButtonExtra()
-{
-    auto hGrid = App::GetApplication()
-        .GetUserParameter()
-        .GetGroup("BaseApp")
-        ->GetGroup("Preferences")
-        ->GetGroup("ToolbarGrid");
-
-    const int value = static_cast<int>(hGrid->GetInt("SmallButtonExtra", 8));
-    return std::clamp(value, 2, 24);
-}
-
-int directGridLargeIconPadding()
-{
-    auto hGrid = App::GetApplication()
-        .GetUserParameter()
-        .GetGroup("BaseApp")
-        ->GetGroup("Preferences")
-        ->GetGroup("ToolbarGrid");
-
-    const int value = static_cast<int>(hGrid->GetInt("LargeIconPadding", 2));
-    return std::clamp(value, 0, 24);
-}
-
-int directGridModeForToolBar(const QToolBar* toolbar)
+int layoutOnlyGridModeForToolBar(const QToolBar* toolbar)
 {
     if (!toolbar) {
         return 0;
@@ -110,7 +83,10 @@ int directGridModeForToolBar(const QToolBar* toolbar)
         ->GetGroup("Preferences")
         ->GetGroup("ToolbarGrid");
 
-    const int defaultMode = clampDirectGridLargeCount(hGrid->GetInt("LargeCount", 1));
+    const int defaultMode = layoutOnlyClamp(
+        static_cast<int>(hGrid->GetInt("LargeCount", 1)),
+        LayoutOnlyGridMinMode,
+        LayoutOnlyGridMaxMode);
 
     if (hGrid->GetBool("EnableAll", false)) {
         return defaultMode;
@@ -121,12 +97,12 @@ int directGridModeForToolBar(const QToolBar* toolbar)
         return 0;
     }
 
-    // Per-toolbar style:
+    // Per-toolbar integer style:
     //   ToolbarGrid/File = 0, 1, 2 or 3
     // where 0 means native toolbar layout.
-    const int perToolbarMode = hGrid->GetInt(toolbarName.constData(), -1);
+    const int perToolbarMode = static_cast<int>(hGrid->GetInt(toolbarName.constData(), -1));
     if (perToolbarMode >= 0) {
-        return std::clamp(perToolbarMode, 0, DirectGridMaxLargeCount);
+        return layoutOnlyClamp(perToolbarMode, 0, LayoutOnlyGridMaxMode);
     }
 
     // Backward-compatible test style:
@@ -139,109 +115,198 @@ int directGridModeForToolBar(const QToolBar* toolbar)
     return 0;
 }
 
-bool directGridIsCommandAction(QAction* action)
+bool layoutOnlyGridIsCommandAction(QAction* action)
 {
-    if (!action || action->isSeparator()) {
+    if (!action || action->isSeparator() || !action->isVisible()) {
         return false;
     }
 
-    // Keep real widget actions, such as ToolBarGrip, under native QToolBar control.
-    if (qobject_cast<QWidgetAction*>(action)) {
-        return false;
-    }
-
-    return true;
+    // Keep ToolBarGrip and other inserted widgets fully native.
+    return qobject_cast<QWidgetAction*>(action) == nullptr;
 }
 
-class DirectGridToolButton: public QToolButton
+class LayoutOnlyGridToolBarFilter: public QObject
 {
 public:
-    explicit DirectGridToolButton(QWidget* parent = nullptr)
-        : QToolButton(parent)
+    explicit LayoutOnlyGridToolBarFilter(QToolBar* toolbar)
+        : QObject(toolbar)
+        , _toolbar(toolbar)
+    {}
+
+    bool eventFilter(QObject* watched, QEvent* event) override
     {
-        setAutoRaise(true);
-        setToolButtonStyle(Qt::ToolButtonIconOnly);
-        setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        setContentsMargins(0, 0, 0, 0);
+        if (watched != _toolbar) {
+            return QObject::eventFilter(watched, event);
+        }
+
+        switch (event->type()) {
+        case QEvent::ActionAdded:
+        case QEvent::ActionRemoved:
+        case QEvent::ActionChanged:
+        case QEvent::Resize:
+        case QEvent::Show:
+        case QEvent::Move:
+        case QEvent::ParentChange:
+        case QEvent::WindowStateChange:
+            scheduleRefresh();
+            break;
+        default:
+            break;
+        }
+
+        // Do not consume events. The native QToolBar behavior remains unchanged.
+        return QObject::eventFilter(watched, event);
     }
 
-    void setForcedPaintedIconSize(const QSize& size)
+    void scheduleRefresh()
     {
-        _forcedIconSize = size;
-        update();
-    }
-
-    bool hasPopupMenu() const
-    {
-        return menu() || (defaultAction() && defaultAction()->menu());
-    }
-
-protected:
-    void paintEvent(QPaintEvent* event) override
-    {
-        if (_forcedIconSize.isEmpty()) {
-            QToolButton::paintEvent(event);
+        if (_refreshScheduled) {
             return;
         }
 
-        Q_UNUSED(event);
+        _refreshScheduled = true;
+        QPointer<LayoutOnlyGridToolBarFilter> guard(this);
+        QTimer::singleShot(0, [guard] {
+            if (!guard) {
+                return;
+            }
 
-        QPainter painter(this);
+            guard->_refreshScheduled = false;
+            guard->refreshNow();
+        });
+    }
 
-        QStyleOption option;
-        option.initFrom(this);
-        option.rect = rect();
-
-        if (isDown()) {
-            option.state |= QStyle::State_Sunken;
-        }
-        else if (isChecked()) {
-            option.state |= QStyle::State_On;
-        }
-        else {
-            option.state |= QStyle::State_Raised;
-        }
-
-        if (underMouse()) {
-            option.state |= QStyle::State_MouseOver;
-        }
-
-        style()->drawPrimitive(QStyle::PE_PanelButtonTool, &option, &painter, this);
-
-        const QIcon buttonIcon = defaultAction() ? defaultAction()->icon() : icon();
-        if (buttonIcon.isNull()) {
+    void refreshNow()
+    {
+        auto* toolbar = _toolbar.data();
+        if (!toolbar || _refreshing) {
             return;
         }
 
-        QRect iconArea = rect().adjusted(1, 1, -1, -1);
-        const bool hasMenu = hasPopupMenu();
-        if (hasMenu) {
-            iconArea.adjust(0, 0, -10, 0);
+        const bool wasRefreshing = _refreshing;
+        _refreshing = true;
+
+        const int mode = layoutOnlyGridModeForToolBar(toolbar);
+        if (mode <= 0) {
+            toolbar->setMinimumHeight(0);
+            toolbar->setMaximumHeight(QWIDGETSIZE_MAX);
+            _refreshing = wasRefreshing;
+            return;
         }
 
-        QSize drawSize = _forcedIconSize;
-        drawSize.scale(iconArea.size(), Qt::KeepAspectRatio);
+        QList<QAction*> commandActions;
+        int leadingNativeWidth = LayoutOnlyGridMargin;
 
-        QRect iconRect(QPoint(0, 0), drawSize);
-        iconRect.moveCenter(iconArea.center());
+        const QList<QAction*> actions = toolbar->actions();
+        bool seenCommand = false;
+        for (auto* action : actions) {
+            if (layoutOnlyGridIsCommandAction(action)) {
+                seenCommand = true;
+                commandActions.push_back(action);
+                continue;
+            }
 
-        const QIcon::Mode iconMode = isEnabled() ? QIcon::Normal : QIcon::Disabled;
-        const QIcon::State iconState = isChecked() ? QIcon::On : QIcon::Off;
-        buttonIcon.paint(&painter, iconRect, Qt::AlignCenter, iconMode, iconState);
-
-        if (hasMenu) {
-            QStyleOptionToolButton arrowOption;
-            arrowOption.initFrom(this);
-            arrowOption.state = option.state;
-            arrowOption.rect = QRect(width() - 12, height() - 12, 9, 9);
-            style()->drawPrimitive(QStyle::PE_IndicatorArrowDown, &arrowOption, &painter, this);
+            if (!seenCommand) {
+                if (auto* widget = toolbar->widgetForAction(action)) {
+                    if (widget->isVisible()) {
+                        leadingNativeWidth = std::max(
+                            leadingNativeWidth,
+                            widget->geometry().right() + LayoutOnlyGridSpacing);
+                    }
+                }
+            }
         }
+
+        QList<QToolButton*> buttons;
+        buttons.reserve(commandActions.size());
+        for (auto* action : std::as_const(commandActions)) {
+            auto* button = qobject_cast<QToolButton*>(toolbar->widgetForAction(action));
+            if (!button || !button->isVisible()) {
+                continue;
+            }
+            buttons.push_back(button);
+        }
+
+        if (buttons.isEmpty()) {
+            toolbar->setMinimumHeight(0);
+            toolbar->setMaximumHeight(QWIDGETSIZE_MAX);
+            _refreshing = wasRefreshing;
+            return;
+        }
+
+        const int baseIcon = std::max(toolbar->iconSize().width(), 16);
+        int smallButton = baseIcon + LayoutOnlyGridButtonExtra;
+        for (auto* button : std::as_const(buttons)) {
+            const QSize hint = button->sizeHint();
+            smallButton = std::max(smallButton, std::max(hint.width(), hint.height()));
+        }
+
+        const int blockHeight = LayoutOnlyGridRows * smallButton
+            + (LayoutOnlyGridRows - 1) * LayoutOnlyGridSpacing;
+        const int bigButton = blockHeight;
+        const int smallIcon = baseIcon;
+        const int bigIcon = std::max(baseIcon, bigButton - LayoutOnlyGridLargeIconPadding);
+        const int largeCount = std::min(layoutOnlyClamp(mode, 1, 3), buttons.size());
+
+        int x = leadingNativeWidth;
+        const int y = LayoutOnlyGridMargin;
+
+        for (int i = 0; i < largeCount; ++i) {
+            auto* button = buttons[i];
+            button->setIconSize(QSize(bigIcon, bigIcon));
+            button->setGeometry(x, y, bigButton, blockHeight);
+            x += bigButton + LayoutOnlyGridSpacing;
+        }
+
+        int smallIndex = 0;
+        for (int i = largeCount; i < buttons.size(); ++i) {
+            auto* button = buttons[i];
+            const int col = smallIndex / LayoutOnlyGridRows;
+            const int row = smallIndex % LayoutOnlyGridRows;
+            const int bx = x + col * (smallButton + LayoutOnlyGridSpacing);
+            const int by = y + row * (smallButton + LayoutOnlyGridSpacing);
+
+            button->setIconSize(QSize(smallIcon, smallIcon));
+            button->setGeometry(bx, by, smallButton, smallButton);
+            ++smallIndex;
+        }
+
+        const int toolbarHeight = blockHeight + 2 * LayoutOnlyGridMargin;
+        toolbar->setMinimumHeight(toolbarHeight);
+        toolbar->setMaximumHeight(toolbarHeight);
+        toolbar->updateGeometry();
+
+        _refreshing = wasRefreshing;
     }
 
 private:
-    QSize _forcedIconSize;
+    QPointer<QToolBar> _toolbar;
+    bool _refreshScheduled = false;
+    bool _refreshing = false;
 };
 
+void ensureLayoutOnlyGridToolBarFilter(QToolBar* toolbar)
+{
+    if (!toolbar) {
+        return;
+    }
+
+    auto* existing = toolbar->findChild<QObject*>(
+        QString::fromLatin1(LayoutOnlyGridObjectName),
+        Qt::FindDirectChildrenOnly);
+
+    if (existing) {
+        if (auto* filter = dynamic_cast<LayoutOnlyGridToolBarFilter*>(existing)) {
+            filter->scheduleRefresh();
+        }
+        return;
+    }
+
+    auto* filter = new LayoutOnlyGridToolBarFilter(toolbar);
+    filter->setObjectName(QString::fromLatin1(LayoutOnlyGridObjectName));
+    toolbar->installEventFilter(filter);
+    filter->scheduleRefresh();
+}
 } // namespace
 
 ToolBarItem::ToolBarItem()
@@ -420,487 +485,6 @@ void Gui::ToolBar::setupConnections()
     connect(this, &QToolBar::topLevelChanged, this, &ToolBar::updateCustomGripVisibility);
     connect(this, &QToolBar::movableChanged, this, &ToolBar::updateCustomGripVisibility);
 }
-
-namespace
-{
-
-class DirectGridToolBar: public Gui::ToolBar
-{
-public:
-    DirectGridToolBar()
-        : Gui::ToolBar()
-    {
-        setMouseTracking(true);
-    }
-
-    explicit DirectGridToolBar(QWidget* parent)
-        : Gui::ToolBar(parent)
-    {
-        setMouseTracking(true);
-    }
-
-    void refreshGridLayout()
-    {
-        const int mode = directGridModeForToolBar(this);
-        if (mode <= 0) {
-            restoreNativeToolbarButtons();
-            return;
-        }
-
-        relayoutGridButtons(mode);
-    }
-
-protected:
-    void actionEvent(QActionEvent* event) override
-    {
-        if (!event || !event->action()) {
-            Gui::ToolBar::actionEvent(event);
-            refreshGridLayout();
-            return;
-        }
-
-        QAction* action = event->action();
-        const int mode = directGridModeForToolBar(this);
-
-        // In grid mode, do not let QToolBar create native QToolButton items for
-        // command actions. Otherwise QToolBarLayout will keep taking control
-        // while the toolbar is moved/resized and will collapse the grid back
-        // to a single native row. QWidgetAction items such as the custom grip
-        // stay under native QToolBar control.
-        if (mode > 0 && directGridIsCommandAction(action)) {
-            if (event->type() == QEvent::ActionRemoved) {
-                removeGridButton(action);
-            }
-            else {
-                ensureGridButton(action);
-            }
-
-            relayoutGridButtons(mode);
-            return;
-        }
-
-        Gui::ToolBar::actionEvent(event);
-
-        if (event->type() == QEvent::ActionRemoved) {
-            removeGridButton(action);
-        }
-
-        refreshGridLayout();
-    }
-
-    void resizeEvent(QResizeEvent* event) override
-    {
-        Gui::ToolBar::resizeEvent(event);
-        refreshGridLayout();
-    }
-
-    void paintEvent(QPaintEvent* event) override
-    {
-        Gui::ToolBar::paintEvent(event);
-
-        if (directGridModeForToolBar(this) <= 0 || !isMovable() || leadingNativeWidth() > 0) {
-            return;
-        }
-
-        QPainter painter(this);
-        QStyleOptionToolBar option;
-        initStyleOption(&option);
-        option.features = QStyleOptionToolBar::Movable;
-        option.rect = QRect(
-            DirectGridMargin,
-            DirectGridMargin,
-            std::max(0, implicitDragHandleWidth() - DirectGridMargin),
-            std::max(0, height() - DirectGridMargin * 2));
-
-        style()->drawPrimitive(QStyle::PE_IndicatorToolBarHandle, &option, &painter, this);
-    }
-
-    void mousePressEvent(QMouseEvent* event) override
-    {
-        if (event
-            && event->button() == Qt::LeftButton
-            && directGridModeForToolBar(this) > 0
-            && isMovable()
-            && ToolBarManager::getInstance()->toolBarAreaWidget(this)
-            && event->pos().x() <= gridDragHandleWidth()) {
-            _gridDragPressed = true;
-            setCursor(Qt::ClosedHandCursor);
-            event->accept();
-            return;
-        }
-
-        Gui::ToolBar::mousePressEvent(event);
-    }
-
-    void mouseMoveEvent(QMouseEvent* event) override
-    {
-        if (_gridDragPressed && event && (event->buttons() & Qt::LeftButton)) {
-            startGridToolbarDrag();
-            event->accept();
-            return;
-        }
-
-        Gui::ToolBar::mouseMoveEvent(event);
-    }
-
-    void mouseReleaseEvent(QMouseEvent* event) override
-    {
-        if (_gridDragPressed) {
-            _gridDragPressed = false;
-            setCursor(Qt::OpenHandCursor);
-            event->accept();
-            return;
-        }
-
-        Gui::ToolBar::mouseReleaseEvent(event);
-    }
-
-    QSize sizeHint() const override
-    {
-        const int mode = directGridModeForToolBar(this);
-        if (mode <= 0) {
-            return Gui::ToolBar::sizeHint();
-        }
-
-        return gridSizeHint(mode);
-    }
-
-    QSize minimumSizeHint() const override
-    {
-        const int mode = directGridModeForToolBar(this);
-        if (mode <= 0) {
-            return Gui::ToolBar::minimumSizeHint();
-        }
-
-        // Do not force the main window minimum width to the sum of all grid
-        // toolbar contents. The grid toolbar may request its preferred width
-        // through sizeHint(), but its minimum width must remain small enough
-        // for QMainWindow to wrap/rearrange toolbars instead of expanding the
-        // whole window beyond the screen.
-        return QSize(0, gridSizeHint(mode).height());
-    }
-
-private:
-    int implicitDragHandleWidth() const
-    {
-        if (!isMovable()) {
-            return 0;
-        }
-
-        QStyleOptionToolBar option;
-        const_cast<DirectGridToolBar*>(this)->initStyleOption(&option);
-        option.features = QStyleOptionToolBar::Movable;
-
-        const int styleWidth = style()->subElementRect(QStyle::SE_ToolBarHandle, &option, this).width();
-        return std::max(styleWidth, 8) + 8;
-    }
-
-    int gridLeadingWidth() const
-    {
-        return std::max(leadingNativeWidth(), implicitDragHandleWidth());
-    }
-
-    int gridDragHandleWidth() const
-    {
-        return gridLeadingWidth() + DirectGridMargin;
-    }
-
-    void startGridToolbarDrag()
-    {
-        _gridDragPressed = false;
-        setCursor(Qt::OpenHandCursor);
-
-        auto area = ToolBarManager::getInstance()->toolBarAreaWidget(this);
-        if (!area) {
-            return;
-        }
-
-        undock();
-
-        QPointer<DirectGridToolBar> tb(this);
-        QTimer::singleShot(0, [tb] {
-            auto modifiers = QApplication::queryKeyboardModifiers();
-            auto buttons = QApplication::mouseButtons();
-            if (buttons != Qt::LeftButton || QWidget::mouseGrabber() || modifiers != Qt::NoModifier
-                || !tb) {
-                return;
-            }
-
-            QPoint pos(10, 10);
-            QPoint globalPos(tb->mapToGlobal(pos));
-            QMouseEvent mouseEvent(
-                QEvent::MouseButtonPress,
-                pos,
-                globalPos,
-                Qt::LeftButton,
-                buttons,
-                modifiers);
-            QApplication::sendEvent(tb, &mouseEvent);
-
-            QPoint offset(30, 30);
-            QMouseEvent mouseMoveEvent(
-                QEvent::MouseMove,
-                pos + offset,
-                globalPos + offset,
-                Qt::LeftButton,
-                buttons,
-                modifiers);
-            QApplication::sendEvent(tb, &mouseMoveEvent);
-        });
-    }
-
-    DirectGridToolButton* ensureGridButton(QAction* action)
-    {
-        if (!directGridIsCommandAction(action)) {
-            return nullptr;
-        }
-
-        if (auto button = _gridButtons.value(action)) {
-            return button;
-        }
-
-        auto* button = new DirectGridToolButton(this);
-        button->setDefaultAction(action);
-        button->hide();
-        _gridButtons.insert(action, button);
-        return button;
-    }
-
-    void removeGridButton(QAction* action)
-    {
-        QPointer<DirectGridToolButton> button = _gridButtons.take(action);
-        if (button) {
-            button->deleteLater();
-        }
-    }
-
-    QList<QAction*> visibleGridActions() const
-    {
-        QList<QAction*> result;
-        const QList<QAction*> currentActions = actions();
-        for (auto* action : currentActions) {
-            if (!directGridIsCommandAction(action) || !action->isVisible()) {
-                continue;
-            }
-
-            result.push_back(action);
-        }
-
-        return result;
-    }
-
-    int leadingNativeWidth() const
-    {
-        int width = 0;
-        const QList<QAction*> currentActions = actions();
-
-        for (auto* action : currentActions) {
-            if (directGridIsCommandAction(action)) {
-                break;
-            }
-
-            QWidget* widget = QToolBar::widgetForAction(action);
-            if (!widget) {
-                continue;
-            }
-
-            const int nativeWidth = std::max(widget->sizeHint().width(), widget->minimumSizeHint().width());
-            width += nativeWidth + DirectGridSpacing;
-        }
-
-        return width;
-    }
-
-    void raiseLeadingNativeWidgets()
-    {
-        const QList<QAction*> currentActions = actions();
-        for (auto* action : currentActions) {
-            if (directGridIsCommandAction(action)) {
-                break;
-            }
-
-            QWidget* widget = QToolBar::widgetForAction(action);
-            if (!widget) {
-                continue;
-            }
-
-            widget->show();
-            widget->raise();
-        }
-    }
-
-    QSize gridSizeHint(int mode) const
-    {
-        const QList<QAction*> visibleActions = visibleGridActions();
-        if (visibleActions.isEmpty()) {
-            return Gui::ToolBar::sizeHint();
-        }
-
-        const int baseIcon = std::max(iconSize().width(), 16);
-        const int smallButton = baseIcon + directGridSmallButtonExtra();
-        const int blockHeight = DirectGridRows * smallButton
-            + (DirectGridRows - 1) * DirectGridSpacing;
-        const int bigButton = blockHeight;
-
-        const int largeCount = std::min(
-            clampDirectGridLargeCount(mode),
-            static_cast<int>(visibleActions.size()));
-        const int smallCount = static_cast<int>(visibleActions.size()) - largeCount;
-        const int smallColumns = smallCount == 0
-            ? 0
-            : (smallCount + DirectGridRows - 1) / DirectGridRows;
-
-        const int leadingWidth = gridLeadingWidth();
-        const int largeWidth = largeCount * bigButton
-            + std::max(0, largeCount - 1) * DirectGridSpacing;
-        const int smallWidth = smallColumns == 0
-            ? 0
-            : DirectGridSpacing
-                + smallColumns * smallButton
-                + std::max(0, smallColumns - 1) * DirectGridSpacing;
-
-        const int width = DirectGridMargin * 2 + leadingWidth + largeWidth + smallWidth;
-        const int height = DirectGridMargin * 2 + blockHeight;
-
-        return QSize(width, height);
-    }
-
-    void relayoutGridButtons(int mode)
-    {
-        const QList<QAction*> visibleActions = visibleGridActions();
-        if (visibleActions.isEmpty()) {
-            restoreNativeToolbarButtons();
-            return;
-        }
-
-        const QList<QAction*> currentActions = actions();
-        for (auto* action : currentActions) {
-            if (!directGridIsCommandAction(action)) {
-                continue;
-            }
-
-            if (auto* nativeWidget = QToolBar::widgetForAction(action)) {
-                nativeWidget->hide();
-            }
-        }
-
-        const int baseIcon = std::max(iconSize().width(), 16);
-        const int smallButton = baseIcon + directGridSmallButtonExtra();
-        const int smallIcon = std::max(16, smallButton - 6);
-
-        const int blockHeight = DirectGridRows * smallButton
-            + (DirectGridRows - 1) * DirectGridSpacing;
-        const int bigButton = blockHeight;
-        const int bigIcon = std::max(16, bigButton - directGridLargeIconPadding());
-
-        const int largeCount = std::min(
-            clampDirectGridLargeCount(mode),
-            static_cast<int>(visibleActions.size()));
-
-        int x = DirectGridMargin + gridLeadingWidth();
-        const int y = DirectGridMargin;
-
-        for (int i = 0; i < largeCount; ++i) {
-            auto* button = ensureGridButton(visibleActions[i]);
-            if (!button) {
-                continue;
-            }
-
-            button->setToolButtonStyle(Qt::ToolButtonIconOnly);
-            button->setAutoRaise(true);
-            button->setPopupMode(visibleActions[i]->menu()
-                    ? QToolButton::MenuButtonPopup
-                    : QToolButton::DelayedPopup);
-            button->setIconSize(QSize(bigIcon, bigIcon));
-            button->setForcedPaintedIconSize(QSize(bigIcon, bigIcon));
-            button->setFixedSize(bigButton, blockHeight);
-            button->setGeometry(x, y, bigButton, blockHeight);
-            button->raise();
-            button->show();
-
-            x += bigButton + DirectGridSpacing;
-        }
-
-        int smallIndex = 0;
-        for (int i = largeCount; i < visibleActions.size(); ++i) {
-            auto* button = ensureGridButton(visibleActions[i]);
-            if (!button) {
-                continue;
-            }
-
-            const int col = smallIndex / DirectGridRows;
-            const int row = smallIndex % DirectGridRows;
-            const int bx = x + col * (smallButton + DirectGridSpacing);
-            const int by = y + row * (smallButton + DirectGridSpacing);
-
-            button->setToolButtonStyle(Qt::ToolButtonIconOnly);
-            button->setAutoRaise(true);
-            button->setPopupMode(visibleActions[i]->menu()
-                    ? QToolButton::MenuButtonPopup
-                    : QToolButton::DelayedPopup);
-            button->setIconSize(QSize(smallIcon, smallIcon));
-            button->setForcedPaintedIconSize(QSize());
-            button->setFixedSize(smallButton, smallButton);
-            button->setGeometry(bx, by, smallButton, smallButton);
-            button->raise();
-            button->show();
-
-            ++smallIndex;
-        }
-
-        for (auto it = _gridButtons.begin(); it != _gridButtons.end(); ++it) {
-            if (!visibleActions.contains(it.key()) && it.value()) {
-                it.value()->hide();
-            }
-        }
-
-        raiseLeadingNativeWidgets();
-
-        const QSize hint = gridSizeHint(mode);
-        setMinimumSize(QSize(0, hint.height()));
-        setMaximumHeight(hint.height());
-        updateGeometry();
-        update();
-    }
-
-    void restoreNativeToolbarButtons()
-    {
-        for (auto it = _gridButtons.begin(); it != _gridButtons.end(); ++it) {
-            if (it.value()) {
-                it.value()->hide();
-            }
-        }
-
-        const QList<QAction*> currentActions = actions();
-        for (auto* action : currentActions) {
-            if (!directGridIsCommandAction(action)) {
-                continue;
-            }
-
-            if (auto* nativeWidget = QToolBar::widgetForAction(action)) {
-                nativeWidget->show();
-            }
-        }
-
-        setMinimumSize(QSize(0, 0));
-        setMaximumHeight(QWIDGETSIZE_MAX);
-        updateGeometry();
-        update();
-    }
-
-private:
-    QHash<QAction*, QPointer<DirectGridToolButton>> _gridButtons;
-    bool _gridDragPressed {false};
-};
-
-void refreshDirectGridToolBarLayout(QToolBar* toolbar)
-{
-    if (auto* directGridToolBar = dynamic_cast<DirectGridToolBar*>(toolbar)) {
-        directGridToolBar->refreshGridLayout();
-    }
-}
-
-} // namespace
 
 // -----------------------------------------------------------
 
@@ -1336,7 +920,6 @@ void ToolBarManager::setToolBarIconSize(QToolBar* toolbar)
 {
     int s = toolBarIconSize(toolbar);
     toolbar->setIconSize(QSize(s, s));
-    refreshDirectGridToolBarLayout(toolbar);
     if (toolbar->parentWidget() == menuBarLeftAreaWidget) {
         menuBarLeftAreaWidget->adjustParent();
     }
@@ -1378,7 +961,7 @@ void ToolBarManager::setup(ToolBarItem* toolBarItems)
         bool toolbar_added = false;
 
         if (!toolbar) {
-            toolbar = new DirectGridToolBar(getMainWindow());
+            toolbar = new ToolBar(getMainWindow());
             toolbar->setWindowTitle(QApplication::translate("Workbench", toolbarName.c_str()));
             toolbar->setObjectName(name);
 
@@ -1428,12 +1011,11 @@ void ToolBarManager::setup(ToolBarItem* toolBarItems)
 
         // setup the toolbar
         setup(it, toolbar);
+        ensureLayoutOnlyGridToolBarFilter(toolbar);
         auto actions = toolbar->actions();
         for (auto action : actions) {
             actionWidget->addAction(action);
         }
-
-        refreshDirectGridToolBarLayout(toolbar);
 
         // try to add some breaks to avoid to have all toolbars in one line
         if (toolbar_added) {
