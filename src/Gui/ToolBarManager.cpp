@@ -60,7 +60,7 @@ namespace
 constexpr const char* LayoutOnlyGridObjectName = "_fc_layout_only_grid_toolbar";
 constexpr int LayoutOnlyGridRows = 2;
 constexpr int LayoutOnlyGridMinMode = 1;
-constexpr int LayoutOnlyGridMaxMode = 3;
+constexpr int LayoutOnlyGridMaxMode = 1;
 constexpr int LayoutOnlyGridMargin = 2;
 constexpr int LayoutOnlyGridSpacing = 2;
 constexpr int LayoutOnlyGridButtonExtra = 8;
@@ -83,10 +83,9 @@ int layoutOnlyGridModeForToolBar(const QToolBar* toolbar)
         ->GetGroup("Preferences")
         ->GetGroup("ToolbarGrid");
 
-    const int defaultMode = layoutOnlyClamp(
-        static_cast<int>(hGrid->GetInt("LargeCount", 1)),
-        LayoutOnlyGridMinMode,
-        LayoutOnlyGridMaxMode);
+    // Grid layout has one fixed visual mode for now:
+    // first command button large, remaining command buttons in two rows.
+    const int defaultMode = 1;
 
     if (hGrid->GetBool("EnableAll", false)) {
         return defaultMode;
@@ -98,8 +97,8 @@ int layoutOnlyGridModeForToolBar(const QToolBar* toolbar)
     }
 
     // Per-toolbar integer style:
-    //   ToolbarGrid/File = 0, 1, 2 or 3
-    // where 0 means native toolbar layout.
+    //   ToolbarGrid/File = 0 or 1
+    // where 0 means native toolbar layout and 1 enables grid layout.
     const int perToolbarMode = static_cast<int>(hGrid->GetInt(toolbarName.constData(), -1));
     if (perToolbarMode >= 0) {
         return layoutOnlyClamp(perToolbarMode, 0, LayoutOnlyGridMaxMode);
@@ -107,7 +106,6 @@ int layoutOnlyGridModeForToolBar(const QToolBar* toolbar)
 
     // Backward-compatible test style:
     //   ToolbarGrid/File = true
-    //   ToolbarGrid/LargeCount = 1, 2 or 3
     if (hGrid->GetBool(toolbarName.constData(), false)) {
         return defaultMode;
     }
@@ -246,7 +244,7 @@ public:
         const int bigButton = blockHeight;
         const int smallIcon = baseIcon;
         const int bigIcon = std::max(baseIcon, bigButton - LayoutOnlyGridLargeIconPadding);
-        const int largeCount = std::min(layoutOnlyClamp(mode, 1, 3), buttons.size());
+        const int largeCount = std::min(1, buttons.size());
 
         int x = leadingNativeWidth;
         const int y = LayoutOnlyGridMargin;
