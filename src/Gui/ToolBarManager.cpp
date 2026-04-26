@@ -244,7 +244,7 @@ public:
         const int bigButton = blockHeight;
         const int smallIcon = baseIcon;
         const int bigIcon = std::max(baseIcon, bigButton - LayoutOnlyGridLargeIconPadding);
-        const int largeCount = std::min(1, buttons.size());
+        const int largeCount = buttons.isEmpty() ? 0 : 1;
 
         int x = leadingNativeWidth;
         const int y = LayoutOnlyGridMargin;
