@@ -35,6 +35,7 @@
 #include <QPointer>
 #include <QPixmap>
 #include <QResizeEvent>
+#include <QSizePolicy>
 #include <QStatusBar>
 #include <QStyle>
 #include <QToolBar>
@@ -237,7 +238,8 @@ void setDirectGridButtonIcon(QToolButton* button, QAction* action, int iconSize,
     button->setToolButtonStyle(Qt::ToolButtonIconOnly);
     button->setAutoRaise(true);
     button->setIconSize(requestedSize);
-    button->setStyleSheet(QStringLiteral("QToolButton { padding: 0px; margin: 0px; }"));
+    button->setContentsMargins(0, 0, 0, 0);
+    button->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
     if (action) {
         button->setIcon(action->icon());
@@ -264,6 +266,7 @@ void clearDirectGridButtonIcon(QToolButton* button, const QSize& nativeIconSize)
 
     button->setMinimumSize(QSize(0, 0));
     button->setMaximumSize(QSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX));
+    button->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     button->setIconSize(nativeIconSize);
     button->setStyleSheet(QString());
 
@@ -294,7 +297,6 @@ public:
             case QEvent::Resize:
             case QEvent::Show:
             case QEvent::StyleChange:
-            case QEvent::LayoutRequest:
                 scheduleRefresh();
                 return false;
             default:
@@ -444,6 +446,7 @@ private:
             }
 
             setDirectGridButtonIcon(button, visibleActions[i], bigIcon, true);
+            button->setFixedSize(bigButton, blockHeight);
             button->setGeometry(x, y, bigButton, blockHeight);
             button->raise();
             button->show();
@@ -465,6 +468,7 @@ private:
             const int by = y + row * (smallButton + DirectGridSpacing);
 
             setDirectGridButtonIcon(button, visibleActions[i], smallIcon, false);
+            button->setFixedSize(smallButton, smallButton);
             button->setGeometry(bx, by, smallButton, smallButton);
             button->raise();
             button->show();
