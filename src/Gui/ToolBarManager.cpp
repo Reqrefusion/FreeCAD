@@ -385,14 +385,14 @@ private:
         }
 
         const int baseIcon = std::max(toolbar->iconSize().width(), 16);
-        const int smallIcon = baseIcon;
-        const int smallButton = smallIcon + 8;
-        const int bigIcon = baseIcon * 2;
+        const int smallButton = baseIcon + 8;
+        const int smallIcon = std::max(16, smallButton - 6);
 
         // The large button height is exactly the height of the two-row small-button block.
         const int blockHeight = DirectGridRows * smallButton
             + (DirectGridRows - 1) * DirectGridSpacing;
         const int bigButton = blockHeight;
+        const int bigIcon = std::max(16, bigButton - 8);
 
         const int mode = directGridModeForToolBar(toolbar);
         const int largeCount = std::min(clampDirectGridLargeCount(mode), static_cast<int>(visibleActions.size()));
