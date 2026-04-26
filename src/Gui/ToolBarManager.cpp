@@ -27,10 +27,12 @@
 #include <algorithm>
 #include <QHBoxLayout>
 #include <QHash>
+#include <QIcon>
 #include <QMenuBar>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPointer>
+#include <QPixmap>
 #include <QResizeEvent>
 #include <QStatusBar>
 #include <QToolBar>
@@ -107,6 +109,40 @@ int directGridModeForToolBar(const QToolBar* toolbar)
     }
 
     return 0;
+}
+
+void setDirectGridButtonIcon(QToolButton* button, QAction* action, int iconSize, bool forceScaledIcon)
+{
+    if (!button) {
+        return;
+    }
+
+    const QSize requestedSize(iconSize, iconSize);
+    button->setIconSize(requestedSize);
+
+    if (!action) {
+        return;
+    }
+
+    if (!forceScaledIcon) {
+        button->setIcon(action->icon());
+        return;
+    }
+
+    const QIcon::Mode iconMode = action->isEnabled() ? QIcon::Normal : QIcon::Disabled;
+    const QIcon::State iconState = action->isChecked() ? QIcon::On : QIcon::Off;
+    QPixmap pixmap = action->icon().pixmap(requestedSize, iconMode, iconState);
+
+    if (pixmap.isNull()) {
+        button->setIcon(action->icon());
+        return;
+    }
+
+    if (pixmap.width() < requestedSize.width() || pixmap.height() < requestedSize.height()) {
+        pixmap = pixmap.scaled(requestedSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    }
+
+    button->setIcon(QIcon(pixmap));
 }
 
 class DirectGridToolBarLayoutFilter: public QObject
@@ -258,6 +294,7 @@ private:
         button->setDefaultAction(action);
         button->setAutoRaise(true);
         button->setToolButtonStyle(Qt::ToolButtonIconOnly);
+        button->setStyleSheet(QStringLiteral("QToolButton { padding: 0px; margin: 0px; }"));
 
         if (action->menu()) {
             button->setPopupMode(QToolButton::MenuButtonPopup);
@@ -392,7 +429,10 @@ private:
         const int blockHeight = DirectGridRows * smallButton
             + (DirectGridRows - 1) * DirectGridSpacing;
         const int bigButton = blockHeight;
-        const int bigIcon = std::max(16, bigButton - 8);
+        // Use almost the full large button area for the icon.  Some FreeCAD/Qt
+        // styles keep extra padding around QToolButton icons, so forcing the
+        // rendered pixmap below makes the first 1/2/3 icons visibly large.
+        const int bigIcon = std::max(16, bigButton - 2);
 
         const int mode = directGridModeForToolBar(toolbar);
         const int largeCount = std::min(clampDirectGridLargeCount(mode), static_cast<int>(visibleActions.size()));
@@ -406,7 +446,7 @@ private:
                 continue;
             }
 
-            button->setIconSize(QSize(bigIcon, bigIcon));
+            setDirectGridButtonIcon(button, visibleActions[i], bigIcon, true);
             button->setGeometry(x, y, bigButton, blockHeight);
             button->show();
 
@@ -426,7 +466,7 @@ private:
             const int bx = x + col * (smallButton + DirectGridSpacing);
             const int by = y + row * (smallButton + DirectGridSpacing);
 
-            button->setIconSize(QSize(smallIcon, smallIcon));
+            setDirectGridButtonIcon(button, visibleActions[i], smallIcon, false);
             button->setGeometry(bx, by, smallButton, smallButton);
             button->show();
 
