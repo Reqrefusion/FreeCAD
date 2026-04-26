@@ -75,6 +75,24 @@ int clampDirectGridLargeCount(int value)
     return std::clamp(value, DirectGridMinLargeCount, DirectGridMaxLargeCount);
 }
 
+class DirectGridScopedFlag
+{
+public:
+    explicit DirectGridScopedFlag(bool& flag)
+        : _flag(flag)
+    {
+        _flag = true;
+    }
+
+    ~DirectGridScopedFlag()
+    {
+        _flag = false;
+    }
+
+private:
+    bool& _flag;
+};
+
 int directGridModeForToolBar(const QToolBar* toolbar)
 {
     if (!toolbar) {
@@ -286,22 +304,44 @@ public:
     bool eventFilter(QObject* watched, QEvent* event) override
     {
         auto* toolbar = qobject_cast<QToolBar*>(watched);
-        if (!toolbar || toolbar != _toolbar) {
-            return QObject::eventFilter(watched, event);
+        if (toolbar && toolbar == _toolbar) {
+            switch (event->type()) {
+                case QEvent::ActionAdded:
+                case QEvent::ActionRemoved:
+                case QEvent::ActionChanged:
+                case QEvent::Resize:
+                case QEvent::Show:
+                case QEvent::StyleChange:
+                    scheduleRefresh();
+                    return false;
+                case QEvent::Move:
+                case QEvent::ParentChange:
+                case QEvent::WindowStateChange:
+                    scheduleRefresh();
+                    scheduleDelayedRefresh();
+                    return false;
+                default:
+                    return false;
+            }
         }
 
-        switch (event->type()) {
-            case QEvent::ActionAdded:
-            case QEvent::ActionRemoved:
-            case QEvent::ActionChanged:
-            case QEvent::Resize:
-            case QEvent::Show:
-            case QEvent::StyleChange:
-                scheduleRefresh();
-                return false;
-            default:
-                return false;
+        auto* button = qobject_cast<QToolButton*>(watched);
+        if (button && _gridActive && !_inRelayout && isManagedButton(button)) {
+            switch (event->type()) {
+                case QEvent::Move:
+                case QEvent::Resize:
+                case QEvent::Show:
+                    // QToolBar's native layout can move the native buttons again
+                    // while the toolbar is dragged between rows/areas. Re-apply
+                    // the two-row geometry after that native pass has finished.
+                    scheduleDelayedRefresh();
+                    break;
+                default:
+                    break;
+            }
         }
+
+        return QObject::eventFilter(watched, event);
     }
 
     void refresh()
@@ -337,6 +377,67 @@ private:
         QTimer::singleShot(0, toolbar, [this]() {
             refresh();
         });
+    }
+
+    void scheduleDelayedRefresh()
+    {
+        auto* toolbar = _toolbar.data();
+        if (!toolbar || _delayedRefreshScheduled) {
+            return;
+        }
+
+        _delayedRefreshScheduled = true;
+        QTimer::singleShot(60, toolbar, [this]() {
+            _delayedRefreshScheduled = false;
+            refresh();
+        });
+    }
+
+    bool isManagedButton(QToolButton* button) const
+    {
+        if (!button) {
+            return false;
+        }
+
+        for (const auto& managedButton : _managedButtons) {
+            if (managedButton == button) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    void rememberManagedButton(QToolButton* button)
+    {
+        if (!button || isManagedButton(button)) {
+            return;
+        }
+
+        _managedButtons.push_back(button);
+        button->installEventFilter(this);
+    }
+
+    void removeManagedButtonFilters()
+    {
+        for (const auto& managedButton : _managedButtons) {
+            if (managedButton) {
+                managedButton->removeEventFilter(this);
+            }
+        }
+        _managedButtons.clear();
+    }
+
+    void cleanupManagedButtons()
+    {
+        _managedButtons.erase(
+            std::remove_if(
+                _managedButtons.begin(),
+                _managedButtons.end(),
+                [](const QPointer<QToolButton>& button) {
+                    return button.isNull();
+                }),
+            _managedButtons.end());
     }
 
     QToolButton* buttonForAction(QAction* action) const
@@ -416,6 +517,9 @@ private:
             return;
         }
 
+        DirectGridScopedFlag relayoutGuard(_inRelayout);
+        cleanupManagedButtons();
+
         const QList<QAction*> visibleActions = visibleGridActions();
 
         if (visibleActions.isEmpty()) {
@@ -445,6 +549,7 @@ private:
                 continue;
             }
 
+            rememberManagedButton(button);
             setDirectGridButtonIcon(button, visibleActions[i], bigIcon, true);
             button->setFixedSize(bigButton, blockHeight);
             button->setGeometry(x, y, bigButton, blockHeight);
@@ -461,6 +566,7 @@ private:
                 continue;
             }
 
+            rememberManagedButton(button);
             const int col = smallIndex / DirectGridRows;
             const int row = smallIndex % DirectGridRows;
 
@@ -489,6 +595,9 @@ private:
             return;
         }
 
+        DirectGridScopedFlag relayoutGuard(_inRelayout);
+        removeManagedButtonFilters();
+
         const QSize nativeIconSize = toolbar->iconSize();
         const QList<QAction*> currentActions = toolbar->actions();
         for (auto* action : currentActions) {
@@ -503,8 +612,11 @@ private:
 
 private:
     QPointer<QToolBar> _toolbar;
+    QList<QPointer<QToolButton>> _managedButtons;
     bool _gridActive = false;
     bool _refreshScheduled = false;
+    bool _delayedRefreshScheduled = false;
+    bool _inRelayout = false;
 };
 
 void installDirectGridToolBarLayoutFilter(QToolBar* toolbar)
