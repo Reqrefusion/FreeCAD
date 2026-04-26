@@ -466,7 +466,7 @@ private:
 
     void removeGridButton(QAction* action)
     {
-        auto* button = _gridButtons.take(action);
+        QPointer<DirectGridToolButton> button = _gridButtons.take(action);
         if (button) {
             button->deleteLater();
         }
