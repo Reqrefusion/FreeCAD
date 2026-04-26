@@ -82,7 +82,8 @@ int directGridSmallButtonExtra()
         ->GetGroup("Preferences")
         ->GetGroup("ToolbarGrid");
 
-    return std::clamp(hGrid->GetInt("SmallButtonExtra", 8), 2, 24);
+    const int value = static_cast<int>(hGrid->GetInt("SmallButtonExtra", 8));
+    return std::clamp(value, 2, 24);
 }
 
 int directGridLargeIconPadding()
@@ -93,7 +94,8 @@ int directGridLargeIconPadding()
         ->GetGroup("Preferences")
         ->GetGroup("ToolbarGrid");
 
-    return std::clamp(hGrid->GetInt("LargeIconPadding", 2), 0, 24);
+    const int value = static_cast<int>(hGrid->GetInt("LargeIconPadding", 2));
+    return std::clamp(value, 0, 24);
 }
 
 int directGridModeForToolBar(const QToolBar* toolbar)
