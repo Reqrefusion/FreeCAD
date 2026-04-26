@@ -148,8 +148,16 @@ protected:
         initStyleOption(&opt);
 
         const QIcon icon = opt.icon;
+
+        // In direct-grid large-icon mode the default QToolButton style option can
+        // still contain action text (for example "Fillet", "Point", "Mode").
+        // We draw only the button frame/background with the style, then paint the
+        // icon manually at the requested size. Leaving opt.text populated causes
+        // text to be drawn across neighbouring toolbar buttons.
         opt.icon = QIcon();
         opt.iconSize = QSize();
+        opt.text.clear();
+        opt.toolButtonStyle = Qt::ToolButtonIconOnly;
 
         QPainter painter(this);
         style()->drawComplexControl(QStyle::CC_ToolButton, &opt, &painter, this);
