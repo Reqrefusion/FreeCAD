@@ -181,7 +181,7 @@ namespace SketcherGui::LinearDatumLabelPlacement
 
 namespace SketcherGui::AngularDatumLabelPlacement
 {
-[[nodiscard]] bool computeLabelPosition(const Sketcher::SketchObject* sketch,
+[[nodiscard]] std::optional<Base::Vector2d> computeLabelPosition(const Sketcher::SketchObject* sketch,const Sketcher::Constraint* constraint)
                                         const Sketcher::Constraint* constraint,
                                         Base::Vector2d& position)
 {
