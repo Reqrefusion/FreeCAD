@@ -212,7 +212,11 @@ namespace SketcherGui::AngularDatumLabelPlacement
     };
 
     if (constraint->Second == Sketcher::GeoEnum::GeoUndef) {
-        const Part::Geometry* geometry = sketch->getGeometry(constraint->First);
+        const Part::Geometry* arc = freecad_cast<const Part::GeomArcOfCircle*>(sketch->getGeometry(constraint->First));
+        
+        if (!arc) {
+            return false;
+        }
         if (!geometry || !isArcOfCircle(*geometry)) {
             return false;
         }
