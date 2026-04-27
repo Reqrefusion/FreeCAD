@@ -325,7 +325,7 @@ namespace SketcherGui::AngularDatumLabelPlacement
     secondDirection.Normalize();
     position = firstDirection + secondDirection;
     if (position.Length() <= Precision::Confusion()) {
-        position = Base::Vector2d(-firstDirection.y, firstDirection.x);
+        position = firstDirection.Perpendicular(false);
     }
     else {
         position.Normalize();
