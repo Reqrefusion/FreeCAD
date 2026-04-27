@@ -24,6 +24,7 @@
 
 #include <limits>
 #include <cmath>
+#include <optional>
 
 #include <Precision.hxx>
 #include <Bnd_Box.hxx>
@@ -181,12 +182,11 @@ namespace SketcherGui::LinearDatumLabelPlacement
 
 namespace SketcherGui::AngularDatumLabelPlacement
 {
-[[nodiscard]] std::optional<Base::Vector2d> computeLabelPosition(const Sketcher::SketchObject* sketch,const Sketcher::Constraint* constraint)
-                                        const Sketcher::Constraint* constraint,
-                                        Base::Vector2d& position)
+[[nodiscard]] std::optional<Base::Vector2d> computeLabelPosition(const Sketcher::SketchObject* sketch,
+                                                                   const Sketcher::Constraint* constraint)
 {
     if (constraint->Type != Sketcher::Angle) {
-        return false;
+        return std::nullopt;
     }
 
     const bool firstIsAxis = constraint->First == Sketcher::GeoEnum::HAxis
@@ -212,16 +212,13 @@ namespace SketcherGui::AngularDatumLabelPlacement
     };
 
     if (constraint->Second == Sketcher::GeoEnum::GeoUndef) {
-        const Part::Geometry* arc = freecad_cast<const Part::GeomArcOfCircle*>(sketch->getGeometry(constraint->First));
+        const auto* arc = freecad_cast<const Part::GeomArcOfCircle*>(
+            sketch->getGeometry(constraint->First));
 
         if (!arc) {
-            return false;
-        }
-        if (!geometry || !isArcOfCircle(*geometry)) {
-            return false;
+            return std::nullopt;
         }
 
-        const auto* arc = static_cast<const Part::GeomArcOfCircle*>(geometry);
         double startAngle = 0.0;
         double endAngle = 0.0;
         arc->getRange(startAngle, endAngle, true);
@@ -229,19 +226,17 @@ namespace SketcherGui::AngularDatumLabelPlacement
         const Base::Vector2d center(arc->getCenter().x, arc->getCenter().y);
         const double radius = arc->getRadius();
         const double middleAngle = 0.5 * (startAngle + endAngle);
-        position = center + Base::Vector2d(std::cos(middleAngle), std::sin(middleAngle))
+        return center + Base::Vector2d(std::cos(middleAngle), std::sin(middleAngle))
                 * (radius + constraint->LabelDistance);
-        return true;
     }
     else if (firstIsAxis != secondIsAxis) {
         const int axisGeoId = firstIsAxis ? constraint->First : constraint->Second;
-        const Part::Geometry* geometry =
-            sketch->getGeometry(firstIsAxis ? constraint->Second : constraint->First);
-        if (!geometry || !isLineSegment(*geometry)) {
-            return false;
+        const auto* lineSegment = freecad_cast<const Part::GeomLineSegment*>(
+            sketch->getGeometry(firstIsAxis ? constraint->Second : constraint->First));
+        if (!lineSegment) {
+            return std::nullopt;
         }
 
-        const auto* lineSegment = static_cast<const Part::GeomLineSegment*>(geometry);
         const Base::Vector2d startPoint(lineSegment->getStartPoint().x, lineSegment->getStartPoint().y);
         const Base::Vector2d endPoint(lineSegment->getEndPoint().x, lineSegment->getEndPoint().y);
         const Base::Vector2d lineSpan = endPoint - startPoint;
@@ -251,22 +246,18 @@ namespace SketcherGui::AngularDatumLabelPlacement
                                              ? Base::Vector2d(1.0, 0.0)
                                              : Base::Vector2d(0.0, 1.0)),
                             vertex)) {
-            return false;
+            return std::nullopt;
         }
 
         if (vertexOnSegment(startPoint, lineSpan, vertex)) {
-            return false;
+            return std::nullopt;
         }
 
-        const Base::Vector3d vertex3d(vertex.x, vertex.y, lineSegment->getStartPoint().z);
-        rayPoint2 = Base::DistanceP2(vertex3d, lineSegment->getStartPoint())
-                <= Base::DistanceP2(vertex3d, lineSegment->getEndPoint())
-            ? startPoint
-            : endPoint;
+        rayPoint2 = (startPoint - vertex).Sqr() <= (endPoint - vertex).Sqr() ? startPoint : endPoint;
 
         radius = (rayPoint2 - vertex).Length();
         if (radius <= Precision::Confusion()) {
-            return false;
+            return std::nullopt;
         }
 
         rayPoint1 = axisGeoId == Sketcher::GeoEnum::HAxis
@@ -274,15 +265,14 @@ namespace SketcherGui::AngularDatumLabelPlacement
             : vertex + Base::Vector2d(0.0, (rayPoint2 - vertex).y >= 0.0 ? radius : -radius);
     }
     else {
-        const Part::Geometry* firstGeometry = sketch->getGeometry(constraint->First);
-        const Part::Geometry* secondGeometry = sketch->getGeometry(constraint->Second);
-        if (!firstGeometry || !secondGeometry || !isLineSegment(*firstGeometry)
-            || !isLineSegment(*secondGeometry)) {
-            return false;
+        const auto* firstLine =
+            freecad_cast<const Part::GeomLineSegment*>(sketch->getGeometry(constraint->First));
+        const auto* secondLine =
+            freecad_cast<const Part::GeomLineSegment*>(sketch->getGeometry(constraint->Second));
+        if (!firstLine || !secondLine) {
+            return std::nullopt;
         }
 
-        const auto* firstLine = static_cast<const Part::GeomLineSegment*>(firstGeometry);
-        const auto* secondLine = static_cast<const Part::GeomLineSegment*>(secondGeometry);
         const Base::Vector2d firstStart(firstLine->getStartPoint().x, firstLine->getStartPoint().y);
         const Base::Vector2d firstEnd(firstLine->getEndPoint().x, firstLine->getEndPoint().y);
         const Base::Vector2d secondStart(secondLine->getStartPoint().x, secondLine->getStartPoint().y);
@@ -290,27 +280,19 @@ namespace SketcherGui::AngularDatumLabelPlacement
         const Base::Vector2d firstSpan = firstEnd - firstStart;
         const Base::Vector2d secondSpan = secondEnd - secondStart;
         if (!Base::Line2d(firstStart, firstEnd).Intersect(Base::Line2d(secondStart, secondEnd), vertex)) {
-            return false;
+            return std::nullopt;
         }
 
         if (vertexOnSegment(firstStart, firstSpan, vertex)
             && vertexOnSegment(secondStart, secondSpan, vertex)) {
-            return false;
+            return std::nullopt;
         }
 
-        const Base::Vector3d firstVertex3d(vertex.x, vertex.y, firstLine->getStartPoint().z);
-        const Base::Vector3d secondVertex3d(vertex.x, vertex.y, secondLine->getStartPoint().z);
-        rayPoint1 = Base::DistanceP2(firstVertex3d, firstLine->getStartPoint())
-                <= Base::DistanceP2(firstVertex3d, firstLine->getEndPoint())
-            ? firstStart
-            : firstEnd;
-        rayPoint2 = Base::DistanceP2(secondVertex3d, secondLine->getStartPoint())
-                <= Base::DistanceP2(secondVertex3d, secondLine->getEndPoint())
-            ? secondStart
-            : secondEnd;
+        rayPoint1 = (firstStart - vertex).Sqr() <= (firstEnd - vertex).Sqr() ? firstStart : firstEnd;
+        rayPoint2 = (secondStart - vertex).Sqr() <= (secondEnd - vertex).Sqr() ? secondStart : secondEnd;
         radius = std::min((rayPoint1 - vertex).Length(), (rayPoint2 - vertex).Length());
         if (radius <= Precision::Confusion()) {
-            return false;
+            return std::nullopt;
         }
     }
 
@@ -318,12 +300,12 @@ namespace SketcherGui::AngularDatumLabelPlacement
     Base::Vector2d secondDirection = rayPoint2 - vertex;
     if (firstDirection.Length() <= Precision::Confusion()
         || secondDirection.Length() <= Precision::Confusion()) {
-        return false;
+        return std::nullopt;
     }
 
     firstDirection.Normalize();
     secondDirection.Normalize();
-    position = firstDirection + secondDirection;
+    Base::Vector2d position = firstDirection + secondDirection;
     if (position.Length() <= Precision::Confusion()) {
         position = firstDirection.Perpendicular(false);
     }
@@ -331,8 +313,7 @@ namespace SketcherGui::AngularDatumLabelPlacement
         position.Normalize();
     }
 
-    position = vertex + position * (radius + constraint->LabelDistance);
-    return true;
+    return vertex + position * (radius + constraint->LabelDistance);
 }
 }  // namespace SketcherGui::AngularDatumLabelPlacement
 
@@ -418,12 +399,10 @@ void finishDatumConstraint(Gui::Command* cmd,
                 }
             }
             else if (lastConstraintType == Angle) {
-                Base::Vector2d labelPosition;
-
-                if (AngularDatumLabelPlacement::computeLabelPosition(
-                        sketch, ConStr[i], labelPosition)) {
+                if (auto labelPosition = AngularDatumLabelPlacement::computeLabelPosition(
+                        sketch, ConStr[i])) {
                     ViewProviderSketchCommandConstraintsAttorney::moveConstraint(
-                        *vp, i, labelPosition);
+                        *vp, i, *labelPosition);
                 }
             }
             else {
