@@ -787,6 +787,7 @@ public:
     friend class ViewProviderSketchSnapAttorney;
     friend class ViewProviderSketchCommandConstraintsAttorney;
     //@}
+    bool editingCancelled;
 protected:
     /** @name enter/exit edit mode */
     //@{
