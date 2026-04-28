@@ -30,6 +30,8 @@
 #include <Inventor/sensors/SoNodeSensor.h>
 #include <QCoreApplication>
 #include <QMetaObject>
+#include <QPoint>
+#include <QPointer>
 #include <fastsignals/signal.h>
 #include <memory>
 
@@ -45,6 +47,7 @@
 #include <Mod/Sketcher/App/GeoEnum.h>
 
 #include "PropertyVisualLayerList.h"
+#include "DimensionCandidate.h"
 
 #include "ShortcutListener.h"
 #include "Utils.h"
@@ -100,8 +103,7 @@ namespace SketcherGui
 class EditModeCoinManager;
 class SnapManager;
 class DrawSketchHandler;
-class ViewProviderSketchCommandConstraintsAttorney;
-
+class SmartDimensionReleaseFilter;
 using GeoList = Sketcher::GeoList;
 using GeoListFacade = Sketcher::GeoListFacade;
 
@@ -177,6 +179,10 @@ class SketcherGuiExport ViewProviderSketch: public PartGui::ViewProvider2DObject
     PROPERTY_HEADER_WITH_OVERRIDE(SketcherGui::ViewProviderSketch);
 
 private:
+    friend bool commitDimensionCandidate(ViewProviderSketch& viewProvider,
+                                         Sketcher::SketchObject& sketch,
+                                         const DimensionCandidate& candidate);
+
     /**
      * @brief
      * This nested class is responsible for attaching to the parameters relevant for
@@ -438,6 +444,18 @@ private:
             VerticalAxis = -2
         };
 
+        struct OrderedItem
+        {
+            enum class Kind
+            {
+                Point,
+                Geometry,
+            };
+
+            Kind kind {Kind::Geometry};
+            int id {0};
+        };
+
         Selection()
         {
             reset();
@@ -448,11 +466,16 @@ private:
             SelPointSet.clear();
             SelCurvSet.clear();
             SelConstraintSet.clear();
+            SelOrder.clear();
         }
 
         std::set<int> SelPointSet;       // Indices as PreselectPoint (and -1 for rootpoint)
         std::set<int> SelCurvSet;        // also holds cross axes at -1 and -2
         std::set<int> SelConstraintSet;  // ConstraintN, N = index + 1.
+        // Smart-dimension preview only supports 1- and 2-selection groups,
+        // but we still keep the full ordered current selection so any extra picks
+        // suppress preview instead of falling back to a smaller last-selected subset.
+        std::vector<OrderedItem> SelOrder;
         bool selectionBuffering {false};
     };
     //@}
@@ -539,7 +562,6 @@ public:
     //@}
 
     const ToolManager toolManager;
-
     // TODO: It is difficult to imagine that these functions are necessary in the public interface.
     // This requires review at a second stage and possibly refactor it.
     /** @name handler control */
@@ -611,6 +633,33 @@ public:
     /// Observer message from the Selection
     void onSelectionChanged(const Gui::SelectionChanges& msg) override;
     //@}
+
+    std::vector<DimensionReference> getSelectedSmartDimensionRefs() const;
+    QPoint projectSketchPointToScreen(const Base::Vector2d& p) const;
+    Base::Vector2d projectScreenPointToSketch(const QPoint& p) const;
+    Base::Vector2d clampSketchPointToViewport(const Base::Vector2d& p, int marginPx = 20) const;
+    void setDimensionCandidates(const std::vector<DimensionCandidate>& candidates);
+    void syncDimensionCandidatesToCoinManager();
+    void requestSmartDimensionPreviewRedraw();
+    void clearDimensionCandidates();
+    void setSmartDimensionPreviewSuspended(bool suspended);
+    void showSmartDimensionPinnedPreview(const DimensionCandidate& candidate);
+    bool isSmartDimensionPreviewEnabled() const;
+    bool refreshSmartDimensionPreview();
+    void stabilizeDimensionCandidates();
+    int pickPressedDimensionCandidate(const QPoint& screenPos) const;
+    bool releaseMatchesActiveDimensionCandidate(const QPoint& screenPos,
+                                                     int candidateIndex) const;
+    bool beginSmartDimensionInteraction(const QPoint& screenPos);
+    bool updateSmartDimensionInteraction(const QPoint& screenPos, const Base::Vector2d& onSketchPos);
+    bool finalizeSmartDimensionInteraction(const QPoint* releaseScreenPos = nullptr);
+    void cancelSmartDimensionInteraction();
+    void installSmartDimensionReleaseFilter();
+    void removeSmartDimensionReleaseFilter();
+    void updateOrderedSelectionItem(Selection& selection,
+                                    Selection::OrderedItem::Kind kind,
+                                    int id,
+                                    bool isSelected);
 
     /** @name Toggle angle snapping and set the reference point */
     //@{
@@ -735,11 +784,7 @@ public:
     friend class ViewProviderSketchDrawSketchHandlerAttorney;
     friend class ViewProviderSketchCoinAttorney;
     friend class ViewProviderSketchSnapAttorney;
-    friend class ViewProviderSketchCommandConstraintsAttorney;
     //@}
-
-    bool editingCancelled;
-
 protected:
     /** @name enter/exit edit mode */
     //@{
@@ -985,6 +1030,18 @@ private:
     //@}
 
 private:
+    friend class SmartDimensionReleaseFilter;
+
+    struct SmartDimensionInteraction
+    {
+        bool active {false};
+        bool dragged {false};
+        bool finalizing {false};
+        int candidateIndex {-1};
+        QPoint pressScreenPos;
+        DimensionCandidate pressedCandidate;
+    };
+
     fastsignals::connection connectUndoDocument;
     fastsignals::connection connectRedoDocument;
     fastsignals::connection connectSolverUpdate;
@@ -1020,6 +1077,13 @@ private:
 
     std::unique_ptr<DrawSketchHandler> sketchHandler;
 
+    std::vector<DimensionCandidate> smartDimensionCandidates;
+    SmartDimensionInteraction smartDimensionInteraction;
+    int smartDimensionHoverCandidate {-1};
+    bool smartDimensionPreviewRefreshPending {false};
+    bool smartDimensionPreviewSuspended {false};
+    QPointer<QObject> smartDimensionReleaseFilter;
+
     ViewProviderParameters viewProviderParameters;
 
     using Connection = fastsignals::connection;
@@ -1029,7 +1093,6 @@ private:
     int viewOrientationFactor;  // stores if sketch viewed from front or back
 
     bool blockContextMenu;
-    std::stringstream sketchBackup;
 };
 
 }  // namespace SketcherGui

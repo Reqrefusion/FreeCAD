@@ -69,6 +69,18 @@ SET(SketcherGui_SRCS
     DrawSketchHandlerRotate.h
     DrawSketchHandlerScale.h
     DrawSketchHandlerSymmetry.h
+    DimensionCandidate.h
+    DimensionCandidate.cpp
+    DimensionGeometry.h
+    DimensionSelectionEngine.h
+    DimensionSelectionEngineDetails.h
+    DimensionConstraintBuilder.h
+    DimensionResolver.h
+    DimensionSelectionEngine.cpp
+    DimensionSelectionEngineFilters.cpp
+    DimensionSelectionEngineGeometry.cpp
+    DimensionConstraintBuilder.cpp
+    DimensionResolver.cpp
     CommandCreateGeo.cpp
     CommandConstraints.h
     CommandConstraints.cpp

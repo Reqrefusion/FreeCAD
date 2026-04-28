@@ -23,13 +23,15 @@
  ***************************************************************************/
 
 #include <limits>
-#include <cmath>
 
 #include <Precision.hxx>
 #include <Bnd_Box.hxx>
 #include <QPainter>
+#include <QApplication>
 #include <algorithm>
 #include <sstream>
+#include <optional>
+#include <utility>
 
 #include <BRepBndLib.hxx>
 
@@ -54,11 +56,15 @@
 #include <Mod/Sketcher/App/SolverGeometryExtension.h>
 
 #include "CommandConstraints.h"
+#include "DimensionSelectionPattern.h"
+#include "DimensionConstraintBuilder.h"
+#include "DimensionResolver.h"
+#include "DimensionCandidate.h"
+#include "DimensionGeometry.h"
 #include "DrawSketchHandler.h"
 #include "EditDatumDialog.h"
 #include "Utils.h"
 #include "ViewProviderSketch.h"
-#include "ui_InsertDatum.h"
 #include <Inventor/events/SoKeyboardEvent.h>
 #include "SnapManager.h"
 
@@ -80,118 +86,61 @@ enum ConstraintCreationMode
 
 ConstraintCreationMode constraintCreationMode = Driving;
 
-namespace SketcherGui::LinearDatumLabelPlacement
-{
-[[nodiscard]] bool computeLabelPosition(const Sketcher::SketchObject* sketch,
-                                        const Sketcher::Constraint* constraint,
-                                        Base::Vector2d& position)
-{
-    if (constraint->Type != Sketcher::DistanceX && constraint->Type != Sketcher::DistanceY
-        && constraint->Type != Sketcher::Distance) {
-        return false;
-    }
+void finishDatumConstraint(Gui::Command* cmd,
+                           Sketcher::SketchObject* sketch,
+                           bool isDriving = true,
+                           unsigned int numberofconstraints = 1,
+                           std::optional<float> forcedLabelPosition = std::nullopt,
+                           bool showEditDialog = true,
+                           bool bindDatumToConstraintPath = true);
 
-    const auto projectPoint = [](const Base::Vector3d& point) {
-        return Base::Vector2d(point.x, point.y);
-    };
+namespace CommandConstraintsDetail {
 
-    Base::Vector2d firstPoint;
-    Base::Vector2d secondPoint;
-
-    if (constraint->SecondPos != Sketcher::PointPos::none) {
-        firstPoint = projectPoint(sketch->getPoint(constraint->First, constraint->FirstPos));
-        secondPoint = projectPoint(sketch->getPoint(constraint->Second, constraint->SecondPos));
-    }
-    else if (constraint->FirstPos != Sketcher::PointPos::none
-             && constraint->Second == Sketcher::GeoEnum::GeoUndef) {
-        firstPoint = Base::Vector2d(0.0, 0.0);
-        secondPoint = projectPoint(sketch->getPoint(constraint->First, constraint->FirstPos));
-    }
-    else if (constraint->Type == Sketcher::Distance
-             && constraint->Second == Sketcher::GeoEnum::GeoUndef
-             && constraint->First >= 0
-             && constraint->FirstPos == Sketcher::PointPos::none) {
-        const Part::Geometry* geo = sketch->getGeometry(constraint->First);
-
-        if (!geo || !isLineSegment(*geo)) {
-            return false;
-        }
-
-        const auto* lineSegment = static_cast<const Part::GeomLineSegment*>(geo);
-        firstPoint = projectPoint(lineSegment->getStartPoint());
-        secondPoint = projectPoint(lineSegment->getEndPoint());
-    }
-    else {
-        return false;
-    }
-
-    const double eps = Precision::Confusion();
-    Base::Vector2d labelDirection(0.0, 0.0);
-
-    switch (constraint->Type) {
-        case Sketcher::DistanceX:
-            if (secondPoint.x < firstPoint.x - eps) {
-                std::swap(firstPoint, secondPoint);
-            }
-            labelDirection = Base::Vector2d(0.0, -1.0);
-            break;
-        case Sketcher::DistanceY:
-            if (secondPoint.y < firstPoint.y - eps) {
-                std::swap(firstPoint, secondPoint);
-            }
-            if (secondPoint.x > firstPoint.x + eps) {
-                labelDirection = Base::Vector2d(1.0, 0.0);
-            }
-            else if (secondPoint.x < firstPoint.x - eps) {
-                labelDirection = Base::Vector2d(-1.0, 0.0);
-            }
-            else {
-                labelDirection = Base::Vector2d(1.0, 0.0);
-            }
-            break;
-        case Sketcher::Distance:
-            if (secondPoint.y < firstPoint.y - eps
-                || (std::abs(secondPoint.y - firstPoint.y) <= eps
-                    && secondPoint.x < firstPoint.x - eps)) {
-                std::swap(firstPoint, secondPoint);
-            }
-            {
-                const Base::Vector2d span = secondPoint - firstPoint;
-                const double spanLength = span.Length();
-                if (spanLength <= eps) {
-                    return false;
-                }
-                labelDirection = span.x >= 0.0
-                    ? Base::Vector2d(-span.y / spanLength, span.x / spanLength)
-                    : Base::Vector2d(span.y / spanLength, -span.x / spanLength);
-            }
-            break;
-        default:
-            return false;
-    }
-
-    const Base::Vector2d span = secondPoint - firstPoint;
-    position = (firstPoint + secondPoint) * 0.5
-        + labelDirection * (constraint->LabelDistance
-                            + 0.5 * std::abs(span.x * labelDirection.x
-                                             + span.y * labelDirection.y));
-    return true;
-}
-}  // namespace SketcherGui::LinearDatumLabelPlacement
-
-namespace SketcherGui
-{
-class ViewProviderSketchCommandConstraintsAttorney
+class SmartDimensionCommandProxy final : public Gui::Command
 {
 public:
-    static void moveConstraint(ViewProviderSketch& viewProvider,
-                               int constraintIndex,
-                               const Base::Vector2d& position)
+    SmartDimensionCommandProxy()
+        : Gui::Command("Sketcher_SmartDimensionProxy")
     {
-        viewProvider.moveConstraint(constraintIndex, position);
     }
+
+    const char* className() const override
+    {
+        return "SketcherGui::SmartDimensionCommandProxy";
+    }
+
+    void activated(int) override
+    {
+    }
+
+    using Gui::Command::abortCommand;
+    using Gui::Command::commitCommand;
+    using Gui::Command::getActiveGuiDocument;
+    using Gui::Command::getSelection;
+    using Gui::Command::openCommand;
+    using Gui::Command::resetTransactionID;
+    using Gui::Command::transactionID;
 };
-}  // namespace SketcherGui
+
+void showCreatedDimensionDialog(Gui::Command& cmd,
+                                Sketcher::SketchObject& sketch,
+                                bool isDriving,
+                                const DimensionCommitOptions& options)
+{
+    if (options.selectionPolicy == DimensionDialogSelectionPolicy::ClearBeforeDialog) {
+        cmd.getSelection().clearSelection();
+    }
+
+    finishDatumConstraint(&cmd,
+                          &sketch,
+                          isDriving,
+                          1,
+                          options.forcedLabelPosition,
+                          /*showEditDialog=*/true,
+                          /*bindDatumToConstraintPath=*/true);
+}
+
+} // namespace CommandConstraintsDetail
 
 bool isCreateConstraintActive(Gui::Document* doc)
 {
@@ -212,8 +161,11 @@ bool isCreateConstraintActive(Gui::Document* doc)
 // Utility method to avoid repeating the same code over and over again
 void finishDatumConstraint(Gui::Command* cmd,
                            Sketcher::SketchObject* sketch,
-                           bool isDriving = true,
-                           unsigned int numberofconstraints = 1)
+                           bool isDriving,
+                           unsigned int numberofconstraints,
+                           std::optional<float> forcedLabelPosition,
+                           bool showEditDialog,
+                           bool bindDatumToConstraintPath)
 {
     ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath(
         "User parameter:BaseApp/Preferences/Mod/Sketcher");
@@ -230,15 +182,18 @@ void finishDatumConstraint(Gui::Command* cmd,
     float labelPositionRandomness = 0.0;
 
     if (lastConstraintType == Radius || lastConstraintType == Diameter) {
-        // Get radius/diameter constraint display angle
-        labelPosition = Base::toRadians(hGrp->GetFloat("RadiusDiameterConstraintDisplayBaseAngle", 15.0));
-        // Get randomness
+        if (forcedLabelPosition.has_value()) {
+            labelPosition = forcedLabelPosition.value();
+        }
+        else {
+            labelPosition = Base::toRadians(
+                hGrp->GetFloat("RadiusDiameterConstraintDisplayBaseAngle", 15.0));
+        }
+
         labelPositionRandomness =
             Base::toRadians(hGrp->GetFloat("RadiusDiameterConstraintDisplayAngleRandomness", 0.0));
 
-        // Adds a random value around the base angle, so that possibly overlapping labels get likely
-        // a different position.
-        if (labelPositionRandomness != 0.0) {
+        if (!forcedLabelPosition.has_value() && labelPositionRandomness != 0.0) {
             labelPosition = labelPosition
                 + labelPositionRandomness
                     * (static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) - 0.5);
@@ -260,34 +215,42 @@ void finishDatumConstraint(Gui::Command* cmd,
                     ConStr[i]->LabelPosition = labelPosition;
                 }
             }
-            else {
-                Base::Vector2d labelPosition;
-
-                if (LinearDatumLabelPlacement::computeLabelPosition(
-                        sketch, ConStr[i], labelPosition)) {
-                    ViewProviderSketchCommandConstraintsAttorney::moveConstraint(
-                        *vp, i, labelPosition);
-                }
-            }
         }
         vp->draw(false, false);// Redraw
     }
 
-    bool show = hGrp->GetBool("ShowDialogOnDistanceConstraint", true);
+    bool show = showEditDialog && hGrp->GetBool("ShowDialogOnDistanceConstraint", true);
 
     // Ask for the value of the distance immediately
     if (show && isDriving) {
-        EditDatumDialog editDatumDialog(cmd->transactionID(), sketch, ConStr.size() - 1);
+        EditDatumDialog editDatumDialog(cmd->transactionID(),
+                                        sketch,
+                                        ConStr.size() - 1,
+                                        bindDatumToConstraintPath);
         cmd->resetTransactionID();
         editDatumDialog.exec();
+        tryAutoRecompute(sketch);
     }
     else {
-        // no dialog was shown so commit the command
+        // Smart-dimension commits without EditDatumDialog so a normal auto-recompute may be a no-op
+        // when Sketcher auto-recompute is disabled. In that case the constraint is already created,
+        // but the solved sketch / constraint list stays stale until the user presses Recompute.
+        // Force the usual "recompute if not already solved" path for this no-dialog flow.
         cmd->commitCommand();
+        tryAutoRecomputeIfNotSolve(sketch);
     }
 
-    tryAutoRecompute(sketch);
     cmd->getSelection().clearSelection();
+}
+
+
+bool shouldCreateDrivingDimension(const Sketcher::SketchObject* sketch, int geoId1, int geoId2)
+{
+    const bool fixed = geoId2 == Sketcher::GeoEnum::GeoUndef
+        ? isPointOrSegmentFixed(sketch, geoId1)
+        : areBothPointsOrSegmentsFixed(sketch, geoId1, geoId2);
+
+    return !(fixed || constraintCreationMode == Reference);
 }
 
 void showNoConstraintBetweenExternal(const App::DocumentObject* obj)
@@ -404,6 +367,58 @@ void SketcherGui::makeAngleBetweenTwoLines(Sketcher::SketchObject* Obj,
     else {
         finishDatumConstraint(cmd, Obj, true);
     }
+}
+
+bool SketcherGui::commitDimensionCandidate(ViewProviderSketch& viewProvider,
+                                     Sketcher::SketchObject& sketch,
+                                     const SketcherGui::DimensionCandidate& candidate)
+{
+    struct SmartPreviewSuspendGuard
+    {
+        SmartPreviewSuspendGuard(ViewProviderSketch& vp, const DimensionCandidate& pinnedCandidate)
+            : viewProvider(vp)
+        {
+            viewProvider.setSmartDimensionPreviewSuspended(true);
+            viewProvider.showSmartDimensionPinnedPreview(pinnedCandidate);
+        }
+
+        ~SmartPreviewSuspendGuard()
+        {
+            viewProvider.setSmartDimensionPreviewSuspended(false);
+        }
+
+        ViewProviderSketch& viewProvider;
+    } previewSuspendGuard(viewProvider, candidate);
+
+    const int geoId1 = !candidate.refs.empty()
+        ? candidate.refs[0].geoId
+        : Sketcher::GeoEnum::GeoUndef;
+    const int geoId2 = candidate.refs.size() > 1
+        ? candidate.refs[1].geoId
+        : Sketcher::GeoEnum::GeoUndef;
+    const bool isDriving = shouldCreateDrivingDimension(&sketch, geoId1, geoId2);
+
+    CommandConstraintsDetail::SmartDimensionCommandProxy cmd;
+    const int tid = cmd.openCommand(QT_TRANSLATE_NOOP("Command", "Relax dimension"));
+    Q_UNUSED(tid);
+
+    const DimensionCommitOptions options =
+        buildDimensionCommitOptions(sketch,
+                                    candidate,
+                                    DimensionDialogSelectionPolicy::ClearBeforeDialog);
+
+    const int createdIndex = appendDimensionFromCandidate(
+        sketch,
+        candidate,
+        isDriving ? DimensionDrivingPolicy::Driving : DimensionDrivingPolicy::Reference,
+        [&](int index) { viewProvider.moveConstraint(index, candidate.labelPos); });
+    if (createdIndex < 0) {
+        cmd.abortCommand();
+        return false;
+    }
+
+    CommandConstraintsDetail::showCreatedDimensionDialog(cmd, sketch, isDriving, options);
+    return true;
 }
 
 bool SketcherGui::calculateAngle(Sketcher::SketchObject* Obj, int& GeoId1, int& GeoId2, Sketcher::PointPos& PosId1, Sketcher::PointPos& PosId2, double& ActAngle)
@@ -1791,48 +1806,6 @@ public:
 
 // Dimension tool =======================================================
 
-class GeomSelectionSizes
-{
-public:
-    GeomSelectionSizes(size_t s_pts, size_t s_lns, size_t s_cir, size_t s_ell, size_t s_spl) :
-        s_pts(s_pts), s_lns(s_lns), s_cir(s_cir), s_ell(s_ell), s_spl(s_spl) {}
-    ~GeomSelectionSizes() {}
-
-    bool hasPoints()        const { return s_pts > 0; }
-    bool hasLines()         const { return s_lns > 0; }
-    bool hasCirclesOrArcs() const { return s_cir > 0; }
-    bool hasEllipseAndCo()  const { return s_ell > 0; }
-    bool hasSplineAndCo()   const { return s_spl > 0; }
-
-    bool has1Point()             const { return s_pts == 1 && s_lns == 0 && s_cir == 0 && s_ell == 0 && s_spl == 0; }
-    bool has2Points()            const { return s_pts == 2 && s_lns == 0 && s_cir == 0 && s_ell == 0 && s_spl == 0; }
-    bool has1Point1Line()        const { return s_pts == 1 && s_lns == 1 && s_cir == 0 && s_ell == 0 && s_spl == 0; }
-    bool has3Points()            const { return s_pts == 3 && s_lns == 0 && s_cir == 0 && s_ell == 0 && s_spl == 0; }
-    bool has4MorePoints()        const { return s_pts >= 4 && s_lns == 0 && s_cir == 0 && s_ell == 0 && s_spl == 0; }
-    bool has2Points1Line()       const { return s_pts == 2 && s_lns == 1 && s_cir == 0 && s_ell == 0 && s_spl == 0; }
-    bool has3MorePoints1Line()   const { return s_pts >= 3 && s_lns == 1 && s_cir == 0 && s_ell == 0 && s_spl == 0; }
-    bool has1Point1Circle()      const { return s_pts == 1 && s_lns == 0 && s_cir == 1 && s_ell == 0 && s_spl == 0; }
-    bool has1MorePoint1Ellipse() const { return s_pts >= 1 && s_lns == 0 && s_cir == 0 && s_ell == 1 && s_spl == 0; }
-
-    bool has1Line()              const { return s_pts == 0 && s_lns == 1 && s_cir == 0 && s_ell == 0 && s_spl == 0; }
-    bool has2Lines()             const { return s_pts == 0 && s_lns == 2 && s_cir == 0 && s_ell == 0 && s_spl == 0; }
-    bool has3MoreLines()         const { return s_pts == 0 && s_lns >= 3 && s_cir == 0 && s_ell == 0 && s_spl == 0; }
-    bool has1Line1Circle()       const { return s_pts == 0 && s_lns == 1 && s_cir == 1 && s_ell == 0 && s_spl == 0; }
-    bool has1Line2Circles()      const { return s_pts == 0 && s_lns == 1 && s_cir == 2 && s_ell == 0 && s_spl == 0; }
-    bool has1Line1Ellipse()      const { return s_pts == 0 && s_lns == 1 && s_cir == 0 && s_ell == 1 && s_spl == 0; }
-
-    bool has1Circle()            const { return s_pts == 0 && s_lns == 0 && s_cir == 1 && s_ell == 0 && s_spl == 0; }
-    bool has2Circles()           const { return s_pts == 0 && s_lns == 0 && s_cir == 2 && s_ell == 0 && s_spl == 0; }
-    bool has3MoreCircles()       const { return s_pts == 0 && s_lns == 0 && s_cir >= 3 && s_ell == 0 && s_spl == 0; }
-    bool has1Circle1Ellipse()    const { return s_pts == 0 && s_lns == 0 && s_cir == 1 && s_ell == 1 && s_spl == 0; }
-
-    bool has1Ellipse()           const { return s_pts == 0 && s_lns == 0 && s_cir == 0 && s_ell == 1 && s_spl == 0; }
-    bool has2MoreEllipses()      const { return s_pts == 0 && s_lns == 0 && s_cir == 0 && s_ell >= 2 && s_spl == 0; }
-    bool has1Point1Spline1MoreEdge()   const { return s_pts == 1 && s_spl >= 1 && (s_lns + s_cir + s_ell + s_spl) == 2; }
-
-    size_t s_pts, s_lns, s_cir, s_ell, s_spl;
-};
-
 class DrawSketchHandlerDimension : public DrawSketchHandler
 {
 public:
@@ -1911,9 +1884,7 @@ public:
     void deactivated() override
     {
         abortCommand();
-        if (availableConstraint != AvailableConstraint::FIRST) {
-            Obj->solve();
-        }
+        Obj->solve();
         sketchgui->draw(false, false); // Redraw
     }
 
@@ -2293,35 +2264,59 @@ protected:
         return selPoints.empty() && selLine.empty() && selCircleArc.empty() && selEllipseAndCo.empty();
     }
 
+
     bool makeAppropriateConstraint(Base::Vector2d onSketchPos) {
         bool selAllowed = false;
 
         GeomSelectionSizes selection(selPoints.size(), selLine.size(), selCircleArc.size(), selEllipseAndCo.size(), selSplineAndCo.size());
 
+        switch (classifyBasicDimensionSelection(selection)) {
+            case BasicDimensionSelectionPattern::OnePoint:
+                makeCts_1Point(selAllowed, onSketchPos);
+                return selAllowed;
+            case BasicDimensionSelectionPattern::TwoPoints:
+                makeCts_2Point(selAllowed, onSketchPos);
+                return selAllowed;
+            case BasicDimensionSelectionPattern::OnePointOneLine:
+                makeCts_1Point1Line(selAllowed, onSketchPos);
+                return selAllowed;
+            case BasicDimensionSelectionPattern::OnePointOneCircle:
+                makeCts_1Point1Circle(selAllowed, onSketchPos);
+                return selAllowed;
+            case BasicDimensionSelectionPattern::OneLine:
+                makeCts_1Line(selAllowed, onSketchPos);
+                return selAllowed;
+            case BasicDimensionSelectionPattern::TwoLines:
+                makeCts_2Line(selAllowed, onSketchPos);
+                return selAllowed;
+            case BasicDimensionSelectionPattern::OneLineOneCircle:
+                makeCts_1Line1Circle(selAllowed, onSketchPos);
+                return selAllowed;
+            case BasicDimensionSelectionPattern::OneCircle:
+                makeCts_1Circle(selAllowed, onSketchPos);
+                return selAllowed;
+            case BasicDimensionSelectionPattern::TwoCircles:
+                makeCts_2Circle(selAllowed, onSketchPos);
+                return selAllowed;
+            case BasicDimensionSelectionPattern::Unsupported:
+                break;
+        }
+
         if (selection.hasPoints()) {
-            if (selection.has1Point()) { makeCts_1Point(selAllowed, onSketchPos); }
-            else if (selection.has2Points()) { makeCts_2Point(selAllowed, onSketchPos); }
-            else if (selection.has1Point1Line()) { makeCts_1Point1Line(selAllowed, onSketchPos); }
-            else if (selection.has1Point1Spline1MoreEdge()) { makeCts_1Point1Spline1MoreEdge(selAllowed);}
+            if (selection.has1Point1Spline1MoreEdge()) { makeCts_1Point1Spline1MoreEdge(selAllowed);}
             else if (selection.has3Points()) { makeCts_3Point(selAllowed, selection.s_pts); }
             else if (selection.has4MorePoints()) { makeCts_4MorePoint(selAllowed, selection.s_pts); }
             else if (selection.has2Points1Line()) { makeCts_2Point1Line(selAllowed, onSketchPos, selection.s_pts); }
             else if (selection.has3MorePoints1Line()) { makeCts_3MorePoint1Line(selAllowed, onSketchPos, selection.s_pts); }
-            else if (selection.has1Point1Circle()) { makeCts_1Point1Circle(selAllowed, onSketchPos); }
             else if (selection.has1MorePoint1Ellipse()) { makeCts_1MorePoint1Ellipse(selAllowed); }
         }
         else if (selection.hasLines()) {
-            if (selection.has1Line()) { makeCts_1Line(selAllowed, onSketchPos); }
-            else if (selection.has2Lines()) { makeCts_2Line(selAllowed, onSketchPos); }
-            else if (selection.has3MoreLines()) { makeCts_3MoreLine(selAllowed, selection.s_lns); }
-            else if (selection.has1Line1Circle()) { makeCts_1Line1Circle(selAllowed, onSketchPos); }
+            if (selection.has3MoreLines()) { makeCts_3MoreLine(selAllowed, selection.s_lns); }
             else if (selection.has1Line2Circles()) { makeCts_1Line2Circle(selAllowed); }
             else if (selection.has1Line1Ellipse()) { makeCts_1Line1Ellipse(selAllowed); }
         }
         else if (selection.hasCirclesOrArcs()) {
-            if (selection.has1Circle()) { makeCts_1Circle(selAllowed, onSketchPos); }
-            else if (selection.has2Circles()) { makeCts_2Circle(selAllowed, onSketchPos); }
-            else if (selection.has3MoreCircles()) { makeCts_3MoreCircle(selAllowed, selection.s_cir); }
+            if (selection.has3MoreCircles()) { makeCts_3MoreCircle(selAllowed, selection.s_cir); }
             else if (selection.has1Circle1Ellipse()) { makeCts_1Circle1Ellipse(selAllowed); }
         }
         else if (selection.hasEllipseAndCo()) {
@@ -2341,7 +2336,19 @@ protected:
                 return;
             }
             restartCommand(QT_TRANSLATE_NOOP("Command", "Add 'Distance to origin' constraint"));
-            createDistanceConstrain(selPoints[0].GeoId, selPoints[0].PosId, Sketcher::GeoEnum::RtPnt, Sketcher::PointPos::start, onSketchPos);
+            const DimensionReference point {selPoints[0].GeoId, selPoints[0].PosId};
+            const auto resolved = resolvePrimaryDistanceRefs(
+                Obj,
+                BasicDimensionSelectionPattern::OnePoint,
+                point,
+                nullptr);
+            if (resolved) {
+                createDistanceConstrain((*resolved)[0].geoId,
+                                        (*resolved)[0].posId,
+                                        (*resolved)[1].geoId,
+                                        (*resolved)[1].posId,
+                                        onSketchPos);
+            }
         }
         if (availableConstraint == AvailableConstraint::SECOND) {
             restartCommand(QT_TRANSLATE_NOOP("Command", "Add lock constraint"));
@@ -2354,20 +2361,48 @@ protected:
 
     void makeCts_2Point(bool& selAllowed, Base::Vector2d onSketchPos)
     {
-        //distance, horizontal, vertical
-        if (availableConstraint == AvailableConstraint::FIRST) {
-            restartCommand(QT_TRANSLATE_NOOP("Command", "Add Distance constraint"));
-            createDistanceConstrain(selPoints[0].GeoId, selPoints[0].PosId, selPoints[1].GeoId, selPoints[1].PosId, onSketchPos);
-            selAllowed = true;
+        const auto order = buildLinearDimensionSemantics(BasicDimensionSelectionPattern::TwoPoints);
+        const auto index = static_cast<std::size_t>(availableConstraint);
+        if (index >= order.size()) {
+            return;
         }
-        if (availableConstraint == AvailableConstraint::SECOND) {
-            restartCommand(QT_TRANSLATE_NOOP("Command", "Add 'Horizontal' constraints"));
-            createHorizontalConstrain(selPoints[0].GeoId, selPoints[0].PosId, selPoints[1].GeoId, selPoints[1].PosId);
-        }
-        if (availableConstraint == AvailableConstraint::THIRD) {
-            restartCommand(QT_TRANSLATE_NOOP("Command", "Add 'Vertical' constraints"));
-            createVerticalConstrain(selPoints[0].GeoId, selPoints[0].PosId, selPoints[1].GeoId, selPoints[1].PosId);
-            availableConstraint = AvailableConstraint::RESET;
+
+        const DimensionReference first {selPoints[0].GeoId, selPoints[0].PosId};
+        const DimensionReference second {selPoints[1].GeoId, selPoints[1].PosId};
+        switch (order[index]) {
+            case DimensionSemantic::DirectLength: {
+                restartCommand(QT_TRANSLATE_NOOP("Command", "Add Distance constraint"));
+                const auto resolved = resolvePrimaryDistanceRefs(
+                    Obj,
+                    BasicDimensionSelectionPattern::TwoPoints,
+                    first,
+                    &second);
+                if (resolved) {
+                    createDistanceConstrain((*resolved)[0].geoId,
+                                            (*resolved)[0].posId,
+                                            (*resolved)[1].geoId,
+                                            (*resolved)[1].posId,
+                                            onSketchPos);
+                }
+                selAllowed = true;
+                break;
+            }
+            case DimensionSemantic::ProjectedX:
+                restartCommand(QT_TRANSLATE_NOOP("Command", "Add 'Horizontal' constraints"));
+                createHorizontalConstrain(selPoints[0].GeoId, selPoints[0].PosId, selPoints[1].GeoId, selPoints[1].PosId);
+                break;
+            case DimensionSemantic::ProjectedY:
+                restartCommand(QT_TRANSLATE_NOOP("Command", "Add 'Vertical' constraints"));
+                createVerticalConstrain(selPoints[0].GeoId, selPoints[0].PosId, selPoints[1].GeoId, selPoints[1].PosId);
+                availableConstraint = AvailableConstraint::RESET;
+                break;
+            case DimensionSemantic::Unknown:
+            case DimensionSemantic::DirectDistance:
+            case DimensionSemantic::Radius:
+            case DimensionSemantic::Diameter:
+            case DimensionSemantic::Angle:
+            case DimensionSemantic::ArcLength:
+                break;
         }
     }
 
@@ -2376,7 +2411,20 @@ protected:
         //distance, Symmetry
         if (availableConstraint == AvailableConstraint::FIRST) {
             restartCommand(QT_TRANSLATE_NOOP("Command", "Add point to line Distance constraint"));
-            createDistanceConstrain(selPoints[0].GeoId, selPoints[0].PosId, selLine[0].GeoId, selLine[0].PosId, onSketchPos); // point to be on first parameter
+            const DimensionReference point {selPoints[0].GeoId, selPoints[0].PosId};
+            const DimensionReference line {selLine[0].GeoId, selLine[0].PosId};
+            const auto resolved = resolvePrimaryDistanceRefs(
+                Obj,
+                BasicDimensionSelectionPattern::OnePointOneLine,
+                point,
+                &line);
+            if (resolved) {
+                createDistanceConstrain((*resolved)[0].geoId,
+                                        (*resolved)[0].posId,
+                                        (*resolved)[1].geoId,
+                                        (*resolved)[1].posId,
+                                        onSketchPos);
+            }
             selAllowed = true;
         }
         if (availableConstraint == AvailableConstraint::SECOND) {
@@ -2474,7 +2522,20 @@ protected:
         //Distance
         if (availableConstraint == AvailableConstraint::FIRST) {
             restartCommand(QT_TRANSLATE_NOOP("Command", "Add length constraint"));
-            createDistanceConstrain(selPoints[0].GeoId, selPoints[0].PosId, selCircleArc[0].GeoId, selCircleArc[0].PosId, onSketchPos);
+            const DimensionReference point {selPoints[0].GeoId, selPoints[0].PosId};
+            const DimensionReference circle {selCircleArc[0].GeoId, selCircleArc[0].PosId};
+            const auto resolved = resolvePrimaryDistanceRefs(
+                Obj,
+                BasicDimensionSelectionPattern::OnePointOneCircle,
+                point,
+                &circle);
+            if (resolved) {
+                createDistanceConstrain((*resolved)[0].geoId,
+                                        (*resolved)[0].posId,
+                                        (*resolved)[1].geoId,
+                                        (*resolved)[1].posId,
+                                        onSketchPos);
+            }
             selAllowed = true;
             availableConstraint = AvailableConstraint::RESET;
         }
@@ -2492,15 +2553,48 @@ protected:
 
     void makeCts_1Line(bool& selAllowed, Base::Vector2d onSketchPos)
     {
-        //axis can be selected but we don't want distance on axis!
-        if ((selLine[0].GeoId != Sketcher::GeoEnum::VAxis && selLine[0].GeoId != Sketcher::GeoEnum::HAxis)) {
-            //distance, horizontal, vertical, block
-            if (availableConstraint == AvailableConstraint::FIRST) {
-                restartCommand(QT_TRANSLATE_NOOP("Command", "Add length constraint"));
-                createDistanceConstrain(selLine[0].GeoId, Sketcher::PointPos::start, selLine[0].GeoId, Sketcher::PointPos::end, onSketchPos);
+        const bool isAxisSelection = selLine[0].GeoId == Sketcher::GeoEnum::VAxis
+            || selLine[0].GeoId == Sketcher::GeoEnum::HAxis;
+        const auto order = isAxisSelection
+            ? std::vector<DimensionSemantic> {}
+            : buildLinearDimensionSemantics(BasicDimensionSelectionPattern::OneLine);
+        const bool hasBlock = !isAxisSelection
+            && hasLinearBlockOption(BasicDimensionSelectionPattern::OneLine);
+        const auto index = static_cast<std::size_t>(availableConstraint);
+        if (index > order.size() || (index == order.size() && !hasBlock)) {
+            if (isAxisSelection) {
                 selAllowed = true;
             }
-            if (availableConstraint == AvailableConstraint::SECOND) {
+            return;
+        }
+
+        if (index == order.size()) {
+            restartCommand(QT_TRANSLATE_NOOP("Command", "Add Block constraint"));
+            createBlockConstrain(selLine[0].GeoId);
+            availableConstraint = AvailableConstraint::RESET;
+            return;
+        }
+
+        switch (order[index]) {
+            case DimensionSemantic::DirectLength: {
+                restartCommand(QT_TRANSLATE_NOOP("Command", "Add length constraint"));
+                const DimensionReference line {selLine[0].GeoId, selLine[0].PosId};
+                const auto resolved = resolvePrimaryDistanceRefs(
+                    Obj,
+                    BasicDimensionSelectionPattern::OneLine,
+                    line,
+                    nullptr);
+                if (resolved) {
+                    createDistanceConstrain((*resolved)[0].geoId,
+                                            (*resolved)[0].posId,
+                                            (*resolved)[1].geoId,
+                                            (*resolved)[1].posId,
+                                            onSketchPos);
+                }
+                selAllowed = true;
+                break;
+            }
+            case DimensionSemantic::ProjectedX:
                 if (isHorizontalVerticalBlock(selLine[0].GeoId)) {
                     //if the line has a vertical horizontal or block constraint then we don't switch to other modes as they are horizontal, vertical and block.
                     availableConstraint = AvailableConstraint::RESET;
@@ -2509,20 +2603,18 @@ protected:
                     restartCommand(QT_TRANSLATE_NOOP("Command", "Add Horizontal constraint"));
                     createHorizontalConstrain(selLine[0].GeoId, Sketcher::PointPos::none, GeoEnum::GeoUndef, Sketcher::PointPos::none);
                 }
-            }
-            if (availableConstraint == AvailableConstraint::THIRD) {
+                break;
+            case DimensionSemantic::ProjectedY:
                 restartCommand(QT_TRANSLATE_NOOP("Command", "Add Vertical constraint"));
                 createVerticalConstrain(selLine[0].GeoId, Sketcher::PointPos::none, GeoEnum::GeoUndef, Sketcher::PointPos::none);
-            }
-            if (availableConstraint == AvailableConstraint::FOURTH) {
-                restartCommand(QT_TRANSLATE_NOOP("Command", "Add Block constraint"));
-                createBlockConstrain(selLine[0].GeoId);
-                availableConstraint = AvailableConstraint::RESET;
-            }
-        }
-        else {
-            //But axis can still be selected
-            selAllowed = true;
+                break;
+            case DimensionSemantic::Unknown:
+            case DimensionSemantic::DirectDistance:
+            case DimensionSemantic::Radius:
+            case DimensionSemantic::Diameter:
+            case DimensionSemantic::Angle:
+            case DimensionSemantic::ArcLength:
+                break;
         }
     }
 
@@ -2565,7 +2657,20 @@ protected:
         //Distance
         if (availableConstraint == AvailableConstraint::FIRST) {
             restartCommand(QT_TRANSLATE_NOOP("Command", "Add length constraint"));
-            createDistanceConstrain(selCircleArc[0].GeoId, selCircleArc[0].PosId, selLine[0].GeoId, selLine[0].PosId, onSketchPos); //Line second parameter
+            const DimensionReference line {selLine[0].GeoId, selLine[0].PosId};
+            const DimensionReference circle {selCircleArc[0].GeoId, selCircleArc[0].PosId};
+            const auto resolved = resolvePrimaryDistanceRefs(
+                Obj,
+                BasicDimensionSelectionPattern::OneLineOneCircle,
+                line,
+                &circle);
+            if (resolved) {
+                createDistanceConstrain((*resolved)[0].geoId,
+                                        (*resolved)[0].posId,
+                                        (*resolved)[1].geoId,
+                                        (*resolved)[1].posId,
+                                        onSketchPos);
+            }
             selAllowed = true;
             availableConstraint = AvailableConstraint::RESET;
         }
@@ -2594,54 +2699,59 @@ protected:
 
     void makeCts_1Circle(bool& selAllowed, Base::Vector2d onSketchPos)
     {
-        int geoId = selCircleArc[0].GeoId;
-        bool reverseOrder = isRadiusDoF(geoId);
-
-        if (reverseOrder) {
-            if (availableConstraint == AvailableConstraint::FIRST) {
-                restartCommand(QT_TRANSLATE_NOOP("Command", "Add arc angle constraint"));
-                createArcAngleConstrain(geoId, onSketchPos);
-                selAllowed = true;
-            }
-            if (availableConstraint == AvailableConstraint::SECOND) {
-                restartCommand(QT_TRANSLATE_NOOP("Command", "Add arc length constraint"));
-                createArcLengthConstrain(geoId, onSketchPos);
-            }
-            if (availableConstraint == AvailableConstraint::THIRD) {
-                restartCommand(QT_TRANSLATE_NOOP("Command", "Add radius constraint"));
-                createRadiusDiameterConstrain(geoId, onSketchPos, true);
-            }
-            if (availableConstraint == AvailableConstraint::FOURTH) {
-                restartCommand(QT_TRANSLATE_NOOP("Command", "Add radius constraint"));
-                createRadiusDiameterConstrain(geoId, onSketchPos, false);
-                availableConstraint = AvailableConstraint::RESET;
-            }
-        }
-        else {
-            if (availableConstraint == AvailableConstraint::FIRST) {
-                restartCommand(QT_TRANSLATE_NOOP("Command", "Add radius constraint"));
-                createRadiusDiameterConstrain(geoId, onSketchPos, true);
-                selAllowed = true;
-            }
-            if (availableConstraint == AvailableConstraint::SECOND) {
-                restartCommand(QT_TRANSLATE_NOOP("Command", "Add radius constraint"));
-                createRadiusDiameterConstrain(geoId, onSketchPos, false);
-                if (!isArcOfCircle(*Obj->getGeometry(geoId))) {
-                    //This way if key is pressed again it goes back to FIRST
-                    availableConstraint = AvailableConstraint::RESET;
-                }
-            }
-            if (availableConstraint == AvailableConstraint::THIRD) {
-                restartCommand(QT_TRANSLATE_NOOP("Command", "Add arc angle constraint"));
-                createArcAngleConstrain(geoId, onSketchPos);
-            }
-            if (availableConstraint == AvailableConstraint::FOURTH) {
-                restartCommand(QT_TRANSLATE_NOOP("Command", "Add arc length constraint"));
-                createArcLengthConstrain(geoId, onSketchPos);
-                availableConstraint = AvailableConstraint::RESET;
-            }
+        const int geoId = selCircleArc[0].GeoId;
+        const auto order = buildRoundDimensionSemantics(Obj, geoId);
+        if (order.empty()) {
+            return;
         }
 
+        int slot = -1;
+        switch (availableConstraint) {
+            case AvailableConstraint::FIRST:
+                slot = 0;
+                break;
+            case AvailableConstraint::SECOND:
+                slot = 1;
+                break;
+            case AvailableConstraint::THIRD:
+                slot = 2;
+                break;
+            case AvailableConstraint::FOURTH:
+                slot = 3;
+                break;
+            default:
+                return;
+        }
+
+        if (slot < 0 || slot >= static_cast<int>(order.size())) {
+            return;
+        }
+
+        switch (order[slot]) {
+            case DimensionSemantic::Radius:
+                restartCommand(QT_TRANSLATE_NOOP("Command", "Add radius constraint"));
+                createRadiusDiameterConstrain(geoId, onSketchPos, true);
+                break;
+            case DimensionSemantic::Diameter:
+                restartCommand(QT_TRANSLATE_NOOP("Command", "Add radius constraint"));
+                createRadiusDiameterConstrain(geoId, onSketchPos, false);
+                break;
+            case DimensionSemantic::Angle:
+                restartCommand(QT_TRANSLATE_NOOP("Command", "Add arc angle constraint"));
+                createArcAngleConstrain(geoId, onSketchPos);
+                break;
+            case DimensionSemantic::ArcLength:
+                restartCommand(QT_TRANSLATE_NOOP("Command", "Add arc length constraint"));
+                createArcLengthConstrain(geoId, onSketchPos);
+                break;
+        }
+
+        if (slot == 0) {
+            selAllowed = true;
+        }
+        if (slot + 1 >= static_cast<int>(order.size())) {
+            availableConstraint = AvailableConstraint::RESET;
+        }
     }
 
     void makeCts_2Circle(bool& selAllowed, Base::Vector2d onSketchPos)
@@ -2649,7 +2759,20 @@ protected:
         //Distance, radial distance, equality
         if (availableConstraint == AvailableConstraint::FIRST) {
             restartCommand(QT_TRANSLATE_NOOP("Command", "Add length constraint"));
-            createDistanceConstrain(selCircleArc[0].GeoId, selCircleArc[0].PosId, selCircleArc[1].GeoId, selCircleArc[1].PosId, onSketchPos);
+            const DimensionReference first {selCircleArc[0].GeoId, selCircleArc[0].PosId};
+            const DimensionReference second {selCircleArc[1].GeoId, selCircleArc[1].PosId};
+            const auto resolved = resolvePrimaryDistanceRefs(
+                Obj,
+                BasicDimensionSelectionPattern::TwoCircles,
+                first,
+                &second);
+            if (resolved) {
+                createDistanceConstrain((*resolved)[0].geoId,
+                                        (*resolved)[0].posId,
+                                        (*resolved)[1].geoId,
+                                        (*resolved)[1].posId,
+                                        onSketchPos);
+            }
             selAllowed = true;
         }
         if (availableConstraint == AvailableConstraint::SECOND) {
@@ -2719,6 +2842,28 @@ protected:
         }
     }
 
+    bool createSharedDimension(const DimensionCandidate& candidate)
+    {
+        const int geoId1 = !candidate.refs.empty()
+            ? candidate.refs[0].geoId
+            : Sketcher::GeoEnum::GeoUndef;
+        const int geoId2 = candidate.refs.size() > 1
+            ? candidate.refs[1].geoId
+            : Sketcher::GeoEnum::GeoUndef;
+        const bool isDriving = shouldCreateDrivingDimension(Obj, geoId1, geoId2);
+
+        const int index = appendDimensionFromCandidate(*Obj,
+                                                       candidate,
+                                                       isDriving ? DimensionDrivingPolicy::Driving
+                                                                 : DimensionDrivingPolicy::Reference,
+                                                       [&](int resolvedIndex) {
+                                                           addConstraintIndex();
+                                                           moveConstraint(resolvedIndex,
+                                                                          candidate.labelPos);
+                                                       });
+        return index >= 0;
+    }
+
     void createDistanceConstrain(int GeoId1, Sketcher::PointPos PosId1, int GeoId2, Sketcher::PointPos PosId2, Base::Vector2d onSketchPos) {
         // If there's a point, it must be GeoId1. We could add a swap to make sure but as it's hardcoded it's not necessary.
 
@@ -2726,148 +2871,55 @@ protected:
             specialConstraint = SpecialConstraint::LineOr2PointsDistance;
         }
 
-        // Point-line case and point-circle/arc
-        if (PosId1 != Sketcher::PointPos::none && PosId2 == Sketcher::PointPos::none) {
-            Base::Vector3d pnt = Obj->getPoint(GeoId1, PosId1);
-            double ActDist = 0.;
-            const Part::Geometry* geom = Obj->getGeometry(GeoId2);
+        const DimensionReference first {GeoId1, PosId1};
+        const DimensionReference second {GeoId2, PosId2};
+        const DimensionSemantic semantic = (GeoId1 == GeoId2
+                                            && PosId1 != Sketcher::PointPos::none
+                                            && PosId2 != Sketcher::PointPos::none)
+            ? DimensionSemantic::DirectLength
+            : DimensionSemantic::DirectDistance;
 
-            if (isLineSegment(*geom)) {
-                auto lineSeg = static_cast<const Part::GeomLineSegment*>(geom);
-                Base::Vector3d pnt1 = lineSeg->getStartPoint();
-                Base::Vector3d pnt2 = lineSeg->getEndPoint();
-                Base::Vector3d d = pnt2 - pnt1;
-                ActDist = std::abs(-pnt.x * d.y + pnt.y * d.x + pnt1.x * pnt2.y - pnt2.x * pnt1.y) / d.Length();
-            }
-            else if (isCircle(*geom)) {
-                auto circle = static_cast<const Part::GeomCircle*>(geom);
-                Base::Vector3d ct = circle->getCenter();
-                Base::Vector3d di = ct - pnt;
-                ActDist = std::abs(di.Length() - circle->getRadius());
-            }
-            else if (isArcOfCircle(*geom)) {
-                auto arc = static_cast<const Part::GeomArcOfCircle*>(geom);
-                Base::Vector3d ct = arc->getCenter();
-                Base::Vector3d di = ct - pnt;
-                ActDist = std::abs(di.Length() - arc->getRadius());
-            }
-
-            Gui::cmdAppObjectArgs(Obj, "addConstraint(Sketcher.Constraint('Distance',%d,%d,%d,%f)) ",
-                GeoId1, static_cast<int>(PosId1), GeoId2, ActDist);
-        }
-        // Circle/arc - line, circle/arc - circle/arc cases
-        else if (PosId1 == Sketcher::PointPos::none && PosId2 == Sketcher::PointPos::none) {
-            const Part::Geometry* geo1 = Obj->getGeometry(GeoId1);
-            const Part::Geometry* geo2 = Obj->getGeometry(GeoId2);
-            double radius1 {};
-            double radius2 {};
-            Base::Vector3d center1, center2;
-            if (isCircle(*geo1)) {
-                auto conic = static_cast<const Part::GeomCircle*>(geo1);
-                radius1 = conic->getRadius();
-                center1 = conic->getCenter();
-            }
-            else if (isArcOfCircle(*geo1)) {
-                auto conic = static_cast<const Part::GeomArcOfCircle*>(geo1);
-                radius1 = conic->getRadius();
-                center1 = conic->getCenter();
-            }
-            if (isCircle(*geo2)) {
-                auto conic = static_cast<const Part::GeomCircle*>(geo2);
-                radius2 = conic->getRadius();
-                center2 = conic->getCenter();
-            }
-            else if (isArcOfCircle(*geo2)){
-                auto conic = static_cast<const Part::GeomArcOfCircle*>(geo2);
-                radius2 = conic->getRadius();
-                center2 = conic->getCenter();
-            }
-            // Circle/arc - line case
-            if ((isCircle(*geo1) || isArcOfCircle(*geo1)) && isLineSegment(*geo2)) {
-                auto lineSeg = static_cast<const Part::GeomLineSegment*>(geo2);
-                Base::Vector3d pnt1 = lineSeg->getStartPoint();
-                Base::Vector3d pnt2 = lineSeg->getEndPoint();
-                Base::Vector3d d = pnt2 - pnt1;
-                double ActDist = std::abs(
-                            std::abs(-center1.x * d.y + center1.y * d.x + pnt1.x * pnt2.y - pnt2.x * pnt1.y)
-                            / d.Length()
-                            - radius1);
-
-                Gui::cmdAppObjectArgs(Obj,
-                                      "addConstraint(Sketcher.Constraint('Distance',%d,%d,%f))",
-                                      GeoId1,
-                                      GeoId2,
-                                      ActDist);
-            }
-            // Circle/arc - circle/arc case
-            else if ((isCircle(*geo1) || isArcOfCircle(*geo1))
-                     && (isCircle(*geo2) || isArcOfCircle(*geo2))) {
-                double ActDist = 0.;
-
-                Base::Vector3d intercenter = center1 - center2;
-                double intercenterdistance = intercenter.Length();
-
-                if (intercenterdistance >= radius1 && intercenterdistance >= radius2) {
-
-                    ActDist = intercenterdistance - radius1 - radius2;
-                }
-                else {
-                    double bigradius = std::max(radius1, radius2);
-                    double smallradius = std::min(radius1, radius2);
-
-                    ActDist = bigradius - smallradius - intercenterdistance;
-                }
-
-                Gui::cmdAppObjectArgs(Obj,
-                                      "addConstraint(Sketcher.Constraint('Distance',%d,%d,%f))",
-                                      GeoId1,
-                                      GeoId2,
-                                      ActDist);
-            }
-        }
-        else {  // both points
-            Base::Vector3d pnt1 = Obj->getPoint(GeoId1, PosId1);
-            Base::Vector3d pnt2 = Obj->getPoint(GeoId2, PosId2);
-
-            Gui::cmdAppObjectArgs(Obj,
-                                  "addConstraint(Sketcher.Constraint('Distance',%d,%d,%d,%d,%f)) ",
-                                  GeoId1,
-                                  static_cast<int>(PosId1),
-                                  GeoId2,
-                                  static_cast<int>(PosId2),
-                                  (pnt2 - pnt1).Length());
+        const auto segment = DimensionGeometry::directDistanceSegment(*Obj, first, second);
+        if (!segment.valid) {
+            return;
         }
 
-        finishDimensionCreation(GeoId1, GeoId2, onSketchPos);
+        createSharedDimension(DimensionCandidate {semantic,
+                                                  segment.value,
+                                                  {first, second},
+                                                  onSketchPos});
     }
 
     void createDistanceXYConstrain(Sketcher::ConstraintType type, int GeoId1, Sketcher::PointPos PosId1, int GeoId2, Sketcher::PointPos PosId2, Base::Vector2d onSketchPos) {
-        Base::Vector3d pnt1 = Obj->getPoint(GeoId1, PosId1);
-        Base::Vector3d pnt2 = Obj->getPoint(GeoId2, PosId2);
-        double ActLength = pnt2.x - pnt1.x;
+        const DimensionReference first {GeoId1, PosId1};
+        const DimensionReference second {GeoId2, PosId2};
+        const Base::Vector2d pnt1 = DimensionGeometry::sketchPoint(*Obj, first);
+        const Base::Vector2d pnt2 = DimensionGeometry::sketchPoint(*Obj, second);
+        const DimensionSemantic semantic = type == Sketcher::DistanceY
+            ? DimensionSemantic::ProjectedY
+            : DimensionSemantic::ProjectedX;
+        const double value = type == Sketcher::DistanceY
+            ? std::abs(pnt2.y - pnt1.y)
+            : std::abs(pnt2.x - pnt1.x);
+        const auto frame = DimensionGeometry::makeLinearPreviewFrame(*Obj,
+                                                                    first,
+                                                                    second,
+                                                                    semantic);
+        const Base::Vector2d labelPos = [&]() {
+            if (!frame.valid) {
+                return onSketchPos;
+            }
 
-        if (type == Sketcher::DistanceY) {
-            ActLength = pnt2.y - pnt1.y;
-        }
+            const Base::Vector2d delta(frame.b.x - frame.a.x, frame.b.y - frame.a.y);
+            const double segmentLength = std::sqrt(delta.x * delta.x + delta.y * delta.y);
+            const double offset = std::clamp(segmentLength * 0.25, 6.0, 14.0);
+            return DimensionGeometry::preferredExteriorLinearLabelPosition(frame,
+                                                                           semantic,
+                                                                           offset,
+                                                                           0.0);
+        }();
 
-        //negative sign avoidance: swap the points to make value positive
-        if (ActLength < -Precision::Confusion()) {
-            std::swap(GeoId1, GeoId2);
-            std::swap(PosId1, PosId2);
-            std::swap(pnt1, pnt2);
-            ActLength = -ActLength;
-        }
-
-        if (type == Sketcher::DistanceY) {
-            Gui::cmdAppObjectArgs(Obj, "addConstraint(Sketcher.Constraint('DistanceY',%d,%d,%d,%d,%f)) ",
-                GeoId1, static_cast<int>(PosId1), GeoId2, static_cast<int>(PosId2), ActLength);
-        }
-        else {
-            Gui::cmdAppObjectArgs(Obj, "addConstraint(Sketcher.Constraint('DistanceX',%d,%d,%d,%d,%f)) ",
-                GeoId1, static_cast<int>(PosId1), GeoId2, static_cast<int>(PosId2), ActLength);
-        }
-
-        finishDimensionCreation(GeoId1, GeoId2, onSketchPos);
+        createSharedDimension(DimensionCandidate {semantic, value, {first, second}, labelPos});
     }
 
     void createRadiusDiameterConstrain(int GeoId, Base::Vector2d onSketchPos, bool firstCstr) {
@@ -2892,26 +2944,28 @@ protected:
         if (isBsplinePole(geom)) {
             Gui::cmdAppObjectArgs(Obj, "addConstraint(Sketcher.Constraint('Weight',%d,%f)) ",
                 GeoId, radius);
-        }
-        else {
-            ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/dimensioning");
-            bool dimensioningDiameter = hGrp->GetBool("DimensioningDiameter", true);
-            bool dimensioningRadius = hGrp->GetBool("DimensioningRadius", true);
-
-            if ((firstCstr && dimensioningRadius && !dimensioningDiameter) ||
-                (!firstCstr && !dimensioningRadius && dimensioningDiameter) ||
-                (firstCstr && dimensioningRadius && dimensioningDiameter && !isCircleGeom) ||
-                (!firstCstr && dimensioningRadius && dimensioningDiameter && isCircleGeom) ) {
-                Gui::cmdAppObjectArgs(Obj, "addConstraint(Sketcher.Constraint('Radius',%d,%f)) ",
-                    GeoId, radius);
-            }
-            else {
-                Gui::cmdAppObjectArgs(Obj, "addConstraint(Sketcher.Constraint('Diameter',%d,%f)) ",
-                    GeoId, radius * 2);
-            }
+            finishDimensionCreation(GeoId, GeoEnum::GeoUndef, onSketchPos);
+            return;
         }
 
-        finishDimensionCreation(GeoId, GeoEnum::GeoUndef, onSketchPos);
+        ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath("User parameter:BaseApp/Preferences/Mod/Sketcher/dimensioning");
+        bool dimensioningDiameter = hGrp->GetBool("DimensioningDiameter", true);
+        bool dimensioningRadius = hGrp->GetBool("DimensioningRadius", true);
+
+        const bool useRadius = (firstCstr && dimensioningRadius && !dimensioningDiameter)
+            || (!firstCstr && !dimensioningRadius && dimensioningDiameter)
+            || (firstCstr && dimensioningRadius && dimensioningDiameter && !isCircleGeom)
+            || (!firstCstr && dimensioningRadius && dimensioningDiameter && isCircleGeom);
+
+        const DimensionSemantic semantic = useRadius
+            ? DimensionSemantic::Radius
+            : DimensionSemantic::Diameter;
+        const double value = useRadius ? radius : radius * 2.0;
+
+        createSharedDimension(DimensionCandidate {semantic,
+                                                  value,
+                                                  {{GeoId, Sketcher::PointPos::none}},
+                                                  onSketchPos});
     }
 
     bool createCoincidenceConstrain(int GeoId1, Sketcher::PointPos PosId1, int GeoId2, Sketcher::PointPos PosId2) {
@@ -2960,25 +3014,24 @@ protected:
     }
 
     void createAngleConstrain(int GeoId1, int GeoId2, Base::Vector2d onSketchPos) {
-        Sketcher::PointPos PosId1 = Sketcher::PointPos::none;
-        Sketcher::PointPos PosId2 = Sketcher::PointPos::none;
-        double ActAngle;
-
-        if (!calculateAngle(Obj, GeoId1, GeoId2, PosId1, PosId2, ActAngle)) {
+        const auto resolved = resolveTwoLineDimension(Obj, GeoId1, GeoId2);
+        if (!resolved) {
             return;
         }
 
-        if (ActAngle == 0.0) {
-            //Here we are sure that GeoIds are lines. So 0.0 means that lines are parallel, we change to distance
+        if (resolved->semantic == DimensionSemantic::DirectDistance) {
+            // Here we are sure that GeoIds are lines. Shared line-pair resolution already
+            // decided that the lines are parallel, so reuse the existing distance fallback.
             restartCommand(QT_TRANSLATE_NOOP("Command", "Add Distance constraint"));
             createDistanceConstrain(selLine[1].GeoId, Sketcher::PointPos::start, selLine[0].GeoId, selLine[0].PosId, onSketchPos);
             return;
         }
 
-        Gui::cmdAppObjectArgs(Obj, "addConstraint(Sketcher.Constraint('Angle',%d,%d,%d,%d,%f)) ",
-            GeoId1, static_cast<int>(PosId1), GeoId2, static_cast<int>(PosId2), ActAngle);
-
-        finishDimensionCreation(GeoId1, GeoId2, onSketchPos);
+        createSharedDimension(DimensionCandidate {DimensionSemantic::Angle,
+                                                  resolved->angleValue,
+                                                  {{resolved->firstGeoId, resolved->firstPos},
+                                                   {resolved->secondGeoId, resolved->secondPos}},
+                                                  onSketchPos});
     }
 
     void createArcLengthConstrain(int GeoId, Base::Vector2d onSketchPos) {
@@ -2988,12 +3041,12 @@ protected:
         }
 
         const auto* arc = static_cast<const Part::GeomArcOfCircle*>(geom);
-        double ActLength = arc->getAngle(false) * arc->getRadius();
+        const double arcLength = arc->getAngle(false) * arc->getRadius();
 
-        Gui::cmdAppObjectArgs(Obj, "addConstraint(Sketcher.Constraint('Distance',%d,%f))",
-            GeoId, ActLength);
-
-        finishDimensionCreation(GeoId, GeoEnum::GeoUndef, onSketchPos);
+        createSharedDimension(DimensionCandidate {DimensionSemantic::ArcLength,
+                                                  arcLength,
+                                                  {{GeoId, Sketcher::PointPos::none}},
+                                                  onSketchPos});
     }
 
     void createArcAngleConstrain(int GeoId, Base::Vector2d onSketchPos) {
@@ -3003,12 +3056,12 @@ protected:
         }
 
         const auto* arc = static_cast<const Part::GeomArcOfCircle*>(geom);
-        double angle = arc->getAngle(/*EmulateCCWXY=*/true);
+        const double angle = arc->getAngle(/*EmulateCCWXY=*/true);
 
-        Gui::cmdAppObjectArgs(Obj, "addConstraint(Sketcher.Constraint('Angle',%d,%f))",
-            GeoId, angle);
-
-        finishDimensionCreation(GeoId, GeoEnum::GeoUndef, onSketchPos);
+        createSharedDimension(DimensionCandidate {DimensionSemantic::Angle,
+                                                  angle,
+                                                  {{GeoId, Sketcher::PointPos::none}},
+                                                  onSketchPos});
     }
 
     void createVerticalConstrain(int GeoId1, Sketcher::PointPos PosId1, int GeoId2, Sketcher::PointPos PosId2) {
@@ -3222,39 +3275,18 @@ protected:
         }
     }
 
-    bool isRadiusDoF(int geoId)
-    {
-        const Part::Geometry* geo = Obj->getGeometry(geoId);
-        if (!isArcOfCircle(*geo)) {
-            return false;
-        }
-
-        //make sure we are not taking into account the constraint created in previous mode.
-        abortCommand();
-        Obj->solve();
-
-        auto solvext = Obj->getSolvedSketch().getSolverExtension(geoId);
-
-        if (solvext) {
-            auto arcInfo = solvext->getArc();
-
-            return !arcInfo.isRadiusDoF();
-        }
-
-        return false;
-    }
-
     void finishDimensionCreation(int GeoId1, int GeoId2, Base::Vector2d onSketchPos)
     {
-        bool fixed = GeoId2 == GeoEnum::GeoUndef ? isPointOrSegmentFixed(Obj, GeoId1) : areBothPointsOrSegmentsFixed(Obj, GeoId1, GeoId2);
-
-        int index = Obj->Constraints.getValues().size() - 1;
-        if (fixed || constraintCreationMode == Reference) {
-            Gui::cmdAppObjectArgs(Obj, "setDriving(%i,%s)", index, "False");
-        }
-
-        addConstraintIndex();
-        moveConstraint(index, onSketchPos);
+        const int index = Obj->Constraints.getValues().size() - 1;
+        const bool isDriving = shouldCreateDrivingDimension(Obj, GeoId1, GeoId2);
+        finalizeCreatedDimension(*Obj,
+                                 index,
+                                 isDriving ? DimensionDrivingPolicy::Driving
+                                           : DimensionDrivingPolicy::Reference,
+                                 [&](int resolvedIndex) {
+                                     addConstraintIndex();
+                                     moveConstraint(resolvedIndex, onSketchPos);
+                                 });
     }
 
     void addConstraintIndex()
@@ -10503,37 +10535,10 @@ void CmdSketcherConstrainSnellsLaw::activated(int iMsg)
         return;
     }
 
-    double n2divn1 = 0;
+    // Add the constraint first and reuse the native datum editing path instead of
+    // maintaining a separate InsertDatum prompt here.
+    constexpr double n2divn1 = 0.0;
 
-    // the essence.
-    // Unlike other constraints, we'll ask for a value immediately.
-    QDialog dlg(Gui::getMainWindow());
-    Ui::InsertDatum ui_Datum;
-    ui_Datum.setupUi(&dlg);
-    dlg.setWindowTitle(EditDatumDialog::tr("Refractive Index Ratio"));
-    ui_Datum.label->setText(EditDatumDialog::tr("Ratio n2/n1:"));
-    Base::Quantity init_val;
-    init_val.setUnit(Base::Unit());
-    init_val.setValue(0.0);
-
-    ui_Datum.labelEdit->setValue(init_val);
-    ui_Datum.labelEdit->setParamGrpPath(
-        QByteArray("User parameter:BaseApp/History/SketcherRefrIndexRatio"));
-    ui_Datum.labelEdit->setEntryName(QByteArray("DatumValue"));
-    ui_Datum.labelEdit->setToLastUsedValue();
-    ui_Datum.labelEdit->selectNumber();
-    ui_Datum.labelEdit->setSingleStep(0.05);
-    // Unable to bind, because the constraint does not yet exist
-
-    if (dlg.exec() != QDialog::Accepted) {
-        return;
-    }
-    ui_Datum.labelEdit->pushToHistory();
-
-    Base::Quantity newQuant = ui_Datum.labelEdit->value();
-    n2divn1 = newQuant.getValue();
-
-    // add constraint
     openCommand(QT_TRANSLATE_NOOP("Command", "Add Snell's law constraint"));
 
     bool safe = addConstraintSafely(Obj, [&]() {
@@ -10577,8 +10582,8 @@ void CmdSketcherConstrainSnellsLaw::activated(int iMsg)
         abortCommand();
         return;
     }
-    commitCommand();
-    tryAutoRecompute(Obj);
+
+    finishDatumConstraint(this, Obj, /*isDriving=*/true);
 
     // clear the selection (convenience)
     getSelection().clearSelection();
