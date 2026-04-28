@@ -343,8 +343,8 @@ void finishDatumConstraint(Gui::Command* cmd,
     // Ask for the value of the distance immediately
     if (show && isDriving) {
         EditDatumDialog editDatumDialog(cmd->transactionID(),
-                                        &sketch,
-                                        ConStr.size() - 1);
+                                        sketch,
+                                        static_cast<int>(ConStr.size() - 1));
         cmd->resetTransactionID();
         editDatumDialog.exec(bindDatumToConstraintPath);
         tryAutoRecompute(sketch);
