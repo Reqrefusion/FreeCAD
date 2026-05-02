@@ -29,6 +29,9 @@
 #include <QDirIterator>
 #include <QFileInfo>
 
+#include <cmath>
+#include <numbers>
+
 #include <App/Application.h>
 #include <App/Transactions.h>
 #include <Base/Quantity.h>
@@ -120,6 +123,34 @@ std::tuple<double, Base::Vector3d> Sketcher::getRadiusCenterCircleArc(const Part
 
     THROWM(Base::TypeError, "getRadiusCenterCircleArc - Neither an arc nor a circle")
 };
+
+Base::Vector3d Sketcher::getArcOfCircleLengthMidpoint(const Part::GeomArcOfCircle* arc)
+{
+    using std::numbers::pi;
+
+    double startAngle = 0.0;
+    double endAngle = 0.0;
+    arc->getRange(startAngle, endAngle, /*emulateCCW=*/true);
+
+    while (endAngle < startAngle) {
+        endAngle += 2.0 * pi;
+    }
+
+    const double midAngle = 0.5 * (startAngle + endAngle);
+    const double radius = arc->getRadius();
+    const Base::Vector3d center = arc->getCenter();
+
+    return center + radius * Base::Vector3d(std::cos(midAngle), std::sin(midAngle), 0.0);
+}
+
+Base::Vector3d Sketcher::getArcOfCircleLengthMidpoint(const Part::Geometry* geo)
+{
+    if (!isArcOfCircle(*geo)) {
+        THROWM(Base::TypeError, "getArcOfCircleLengthMidpoint - Not an arc of circle")
+    }
+
+    return getArcOfCircleLengthMidpoint(static_cast<const Part::GeomArcOfCircle*>(geo));
+}
 
 bool SketcherGui::tryAutoRecompute(Sketcher::SketchObject* obj, bool& autoremoveredundants)
 {

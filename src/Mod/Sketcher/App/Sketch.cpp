@@ -3594,21 +3594,22 @@ int Sketch::addDistanceConstraint(
         );
         return ConstraintsCounter;
     }
-    else {
-        GCS::Circle* c2;
-        if (Geoms[geoId2].type == Circle) {
-            c2 = &Circles[Geoms[geoId2].index];
-        }
-        else if (Geoms[geoId2].type == Arc) {
-            c2 = &Arcs[Geoms[geoId2].index];
-        }
-        else {
-            return -1;
-        }
+    else if (Geoms[geoId2].type == Arc) {
+        GCS::Arc& a2 = Arcs[Geoms[geoId2].index];
+
         int tag = ++ConstraintsCounter;
-        GCSsys.addConstraintP2CDistance(p1, *c2, value, tag, driving);
+        GCSsys.addConstraintArcMidP2PDistance(a2, p1, value, tag, driving);
         return ConstraintsCounter;
     }
+    else if (Geoms[geoId2].type == Circle) {
+        GCS::Circle& c2 = Circles[Geoms[geoId2].index];
+
+        int tag = ++ConstraintsCounter;
+        GCSsys.addConstraintP2CDistance(p1, c2, value, tag, driving);
+        return ConstraintsCounter;
+    }
+
+    return -1;
 }
 
 // point to point distance constraint
@@ -3652,61 +3653,81 @@ int Sketch::addDistanceConstraint(
     geoId2 = checkGeoId(geoId2);
 
     if (Geoms[geoId2].type == Line) {
-        GCS::Circle* c1;
-        if (Geoms[geoId1].type == Circle) {
-            c1 = &Circles[Geoms[geoId1].index];
-        }
-        else if (Geoms[geoId1].type == Arc) {
-            c1 = &Arcs[Geoms[geoId1].index];
-        }
-        else {
-            return -1;
-        }
-
-        GCS::Line* l = &Lines[Geoms[geoId2].index];
-        int tag = ++ConstraintsCounter;
-        GCSsys.addConstraintC2LDistance(
-            *c1,
-            *l,
-            value,
-            orientation.testFlag(ConstraintOrientations::CounterClockwise),
-            orientation.testFlag(ConstraintOrientations::Internal),
-            tag,
-            driving
-        );
-        return ConstraintsCounter;
-    }
-    else {
-        GCS::Circle *c1 {}, *c2 {};
-        if (Geoms[geoId1].type == Circle) {
-            c1 = &Circles[Geoms[geoId1].index];
-        }
-        else if (Geoms[geoId1].type == Arc) {
-            c1 = &Arcs[Geoms[geoId1].index];
-        }
-        if (Geoms[geoId2].type == Circle) {
-            c2 = &Circles[Geoms[geoId2].index];
-        }
-        else if (Geoms[geoId2].type == Arc) {
-            c2 = &Arcs[Geoms[geoId2].index];
-        }
-        if (c1 == nullptr || c2 == nullptr) {
-            return -1;
-        }
-
+        GCS::Line& l = Lines[Geoms[geoId2].index];
         int tag = ++ConstraintsCounter;
 
-        std::optional<bool> c1Bigger = std::nullopt;
-        if (orientation.testFlag(ConstraintOrientations::Internal)) {
-            c1Bigger = false;
+        if (Geoms[geoId1].type == Arc) {
+            GCS::Arc& a1 = Arcs[Geoms[geoId1].index];
+            GCSsys.addConstraintArcMidP2LDistance(
+                a1,
+                l,
+                value,
+                orientation.testFlag(ConstraintOrientations::CounterClockwise),
+                tag,
+                driving
+            );
+            return ConstraintsCounter;
         }
-        else if (orientation.testFlag(ConstraintOrientations::External)) {
-            c1Bigger = true;
+        else if (Geoms[geoId1].type == Circle) {
+            GCS::Circle& c1 = Circles[Geoms[geoId1].index];
+            GCSsys.addConstraintC2LDistance(
+                c1,
+                l,
+                value,
+                orientation.testFlag(ConstraintOrientations::CounterClockwise),
+                orientation.testFlag(ConstraintOrientations::Internal),
+                tag,
+                driving
+            );
+            return ConstraintsCounter;
         }
 
-        GCSsys.addConstraintC2CDistance(*c1, *c2, value, c1Bigger, tag, driving);
+        return -1;
+    }
+
+    const bool firstIsArc = Geoms[geoId1].type == Arc;
+    const bool secondIsArc = Geoms[geoId2].type == Arc;
+    const bool firstIsCircle = Geoms[geoId1].type == Circle;
+    const bool secondIsCircle = Geoms[geoId2].type == Circle;
+
+    if (!(firstIsArc || firstIsCircle) || !(secondIsArc || secondIsCircle)) {
+        return -1;
+    }
+
+    int tag = ++ConstraintsCounter;
+
+    if (firstIsArc && secondIsArc) {
+        GCS::Arc& a1 = Arcs[Geoms[geoId1].index];
+        GCS::Arc& a2 = Arcs[Geoms[geoId2].index];
+        GCSsys.addConstraintArcMidP2ArcMidDistance(a1, a2, value, tag, driving);
         return ConstraintsCounter;
     }
+    else if (firstIsArc && secondIsCircle) {
+        GCS::Arc& a1 = Arcs[Geoms[geoId1].index];
+        GCS::Circle& c2 = Circles[Geoms[geoId2].index];
+        GCSsys.addConstraintArcMidP2CDistance(a1, c2, value, tag, driving);
+        return ConstraintsCounter;
+    }
+    else if (firstIsCircle && secondIsArc) {
+        GCS::Circle& c1 = Circles[Geoms[geoId1].index];
+        GCS::Arc& a2 = Arcs[Geoms[geoId2].index];
+        GCSsys.addConstraintArcMidP2CDistance(a2, c1, value, tag, driving);
+        return ConstraintsCounter;
+    }
+
+    GCS::Circle& c1 = Circles[Geoms[geoId1].index];
+    GCS::Circle& c2 = Circles[Geoms[geoId2].index];
+
+    std::optional<bool> c1Bigger = std::nullopt;
+    if (orientation.testFlag(ConstraintOrientations::Internal)) {
+        c1Bigger = false;
+    }
+    else if (orientation.testFlag(ConstraintOrientations::External)) {
+        c1Bigger = true;
+    }
+
+    GCSsys.addConstraintC2CDistance(c1, c2, value, c1Bigger, tag, driving);
+    return ConstraintsCounter;
 }
 
 

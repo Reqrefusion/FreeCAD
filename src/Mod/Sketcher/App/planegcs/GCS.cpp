@@ -916,6 +916,63 @@ int System::addConstraintArcLength(Arc& a, double* distance, int tagId, bool dri
     return addConstraint(constr);
 }
 
+int System::addConstraintArcMidP2PDistance(
+    Arc& a,
+    Point& p,
+    double* dist,
+    int tagId,
+    bool driving
+)
+{
+    Constraint* constr = new ConstraintArcMidP2PDistance(a, p, dist);
+    constr->setTag(tagId);
+    constr->setDriving(driving);
+    return addConstraint(constr);
+}
+
+int System::addConstraintArcMidP2LDistance(
+    Arc& a,
+    Line& l,
+    double* dist,
+    bool ccw,
+    int tagId,
+    bool driving
+)
+{
+    Constraint* constr = new ConstraintArcMidP2LDistance(a, l, dist, ccw);
+    constr->setTag(tagId);
+    constr->setDriving(driving);
+    return addConstraint(constr);
+}
+
+int System::addConstraintArcMidP2CDistance(
+    Arc& a,
+    Circle& c,
+    double* dist,
+    int tagId,
+    bool driving
+)
+{
+    Constraint* constr = new ConstraintArcMidP2CDistance(a, c, dist);
+    constr->setTag(tagId);
+    constr->setDriving(driving);
+    return addConstraint(constr);
+}
+
+int System::addConstraintArcMidP2ArcMidDistance(
+    Arc& a1,
+    Arc& a2,
+    double* dist,
+    int tagId,
+    bool driving
+)
+{
+    Constraint* constr = new ConstraintArcMidP2ArcMidDistance(a1, a2, dist);
+    constr->setTag(tagId);
+    constr->setDriving(driving);
+    return addConstraint(constr);
+}
+
 
 // derived constraints
 

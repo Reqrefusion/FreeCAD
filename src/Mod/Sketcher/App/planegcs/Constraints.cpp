@@ -3163,6 +3163,334 @@ void ConstraintP2CDistance::evaluate()
     *distance() = (h < *circle.rad) ? *circle.rad - h : h - *circle.rad;
 }
 
+
+// --------------------------------------------------------
+// Arc length midpoint distance helpers
+namespace
+{
+struct ArcMidDeriPoint
+{
+    double x = 0.0;
+    double y = 0.0;
+    double dx = 0.0;
+    double dy = 0.0;
+};
+
+void normalizedArcAngles(const GCS::Arc& arc, double& start, double& end)
+{
+    start = *arc.startAngle;
+    end = *arc.endAngle;
+
+    while (start < 0.0) {
+        start += 2.0 * std::numbers::pi;
+    }
+    while (end < start) {
+        end += 2.0 * std::numbers::pi;
+    }
+}
+
+ArcMidDeriPoint arcLengthMidpoint(const GCS::Arc& arc, double* param)
+{
+    double start = 0.0;
+    double end = 0.0;
+    normalizedArcAngles(arc, start, end);
+
+    const double angle = 0.5 * (start + end);
+    const double radius = *arc.rad;
+    const double c = std::cos(angle);
+    const double s = std::sin(angle);
+
+    const double dRadius = (param == arc.rad) ? 1.0 : 0.0;
+    const double dAngle = (param == arc.startAngle || param == arc.endAngle) ? 0.5 : 0.0;
+
+    GCS::DeriVector2 center(arc.center, param);
+
+    ArcMidDeriPoint p;
+    p.x = center.x + radius * c;
+    p.y = center.y + radius * s;
+    p.dx = center.dx + dRadius * c - radius * s * dAngle;
+    p.dy = center.dy + dRadius * s + radius * c * dAngle;
+    return p;
+}
+
+ArcMidDeriPoint deriPoint(const GCS::Point& pt, double* param)
+{
+    GCS::DeriVector2 p(pt, param);
+    return {p.x, p.y, p.dx, p.dy};
+}
+
+double distanceValue(const ArcMidDeriPoint& p1, const ArcMidDeriPoint& p2, double& deriValue)
+{
+    const double vx = p1.x - p2.x;
+    const double vy = p1.y - p2.y;
+    const double dvx = p1.dx - p2.dx;
+    const double dvy = p1.dy - p2.dy;
+    const double length = std::sqrt(vx * vx + vy * vy);
+
+    if (length > 1e-13) {
+        deriValue = (vx * dvx + vy * dvy) / length;
+    }
+    else {
+        deriValue = 0.0;
+    }
+
+    return length;
+}
+}  // namespace
+
+// --------------------------------------------------------
+// ConstraintArcMidP2PDistance
+ConstraintArcMidP2PDistance::ConstraintArcMidP2PDistance(Arc& a, Point& p, double* d)
+    : arc(a)
+    , pt(p)
+{
+    pvec.push_back(d);
+    this->arc.PushOwnParams(pvec);
+    this->pt.PushOwnParams(pvec);
+
+    origpvec = pvec;
+    reconstructGeomPointers();
+    rescale();
+}
+
+void ConstraintArcMidP2PDistance::reconstructGeomPointers()
+{
+    int i = 0;
+    i++;  // skip the distance parameter
+    arc.ReconstructOnNewPvec(pvec, i);
+    pt.ReconstructOnNewPvec(pvec, i);
+}
+
+ConstraintType ConstraintArcMidP2PDistance::getTypeId()
+{
+    return ArcMidP2PDistance;
+}
+
+void ConstraintArcMidP2PDistance::errorgrad(double* err, double* grad, double* param)
+{
+    double dlength = 0.0;
+    const double length = distanceValue(
+        arcLengthMidpoint(arc, param),
+        deriPoint(pt, param),
+        dlength
+    );
+
+    if (err) {
+        *err = length - *distance();
+    }
+    else if (grad) {
+        *grad = (param == distance()) ? -1.0 : dlength;
+    }
+}
+
+void ConstraintArcMidP2PDistance::evaluate()
+{
+    double dlength = 0.0;
+    *distance() = distanceValue(arcLengthMidpoint(arc, nullptr), deriPoint(pt, nullptr), dlength);
+}
+
+// --------------------------------------------------------
+// ConstraintArcMidP2LDistance
+ConstraintArcMidP2LDistance::ConstraintArcMidP2LDistance(Arc& a, Line& l, double* d, bool ccw)
+    : arc(a)
+    , line(l)
+    , ccw(ccw)
+{
+    pvec.push_back(d);
+    this->arc.PushOwnParams(pvec);
+    this->line.PushOwnParams(pvec);
+
+    origpvec = pvec;
+    reconstructGeomPointers();
+    rescale();
+}
+
+void ConstraintArcMidP2LDistance::reconstructGeomPointers()
+{
+    int i = 0;
+    i++;  // skip the distance parameter
+    arc.ReconstructOnNewPvec(pvec, i);
+    line.ReconstructOnNewPvec(pvec, i);
+}
+
+ConstraintType ConstraintArcMidP2LDistance::getTypeId()
+{
+    return ArcMidP2LDistance;
+}
+
+double ConstraintArcMidP2LDistance::signed_value(double& deriValue, double* param)
+{
+    const ArcMidDeriPoint p0 = arcLengthMidpoint(arc, param);
+    const DeriVector2 p1(line.p1, param);
+    const DeriVector2 p2(line.p2, param);
+
+    const double vx = p2.x - p1.x;
+    const double vy = p2.y - p1.y;
+    const double dvx = p2.dx - p1.dx;
+    const double dvy = p2.dy - p1.dy;
+
+    const double wx = p0.x - p1.x;
+    const double wy = p0.y - p1.y;
+    const double dwx = p0.dx - p1.dx;
+    const double dwy = p0.dy - p1.dy;
+
+    const double area = vx * wy - vy * wx;
+    const double darea = dvx * wy + vx * dwy - dvy * wx - vy * dwx;
+
+    const double length = std::sqrt(vx * vx + vy * vy);
+    if (length <= 1e-13) {
+        deriValue = 0.0;
+        return 0.0;
+    }
+
+    const double dlength = (vx * dvx + vy * dvy) / length;
+    const double h = area / length;
+    deriValue = (darea - h * dlength) / length;
+
+    return h;
+}
+
+void ConstraintArcMidP2LDistance::errorgrad(double* err, double* grad, double* param)
+{
+    double h = 0.0;
+    double dh = 0.0;
+    h = signed_value(dh, param);
+
+    if (err) {
+        const double dist = ccw ? std::abs(*distance()) : -std::abs(*distance());
+        *err = h - dist;
+    }
+    else if (grad) {
+        if (param == distance()) {
+            *grad = ccw ? -1.0 : 1.0;
+        }
+        else {
+            *grad = dh;
+        }
+    }
+}
+
+void ConstraintArcMidP2LDistance::evaluate()
+{
+    double dh = 0.0;
+    *distance() = std::abs(signed_value(dh, nullptr));
+}
+
+// --------------------------------------------------------
+// ConstraintArcMidP2CDistance
+ConstraintArcMidP2CDistance::ConstraintArcMidP2CDistance(Arc& a, Circle& c, double* d)
+    : arc(a)
+    , circle(c)
+{
+    pvec.push_back(d);
+    this->arc.PushOwnParams(pvec);
+    this->circle.PushOwnParams(pvec);
+
+    origpvec = pvec;
+    reconstructGeomPointers();
+    rescale();
+}
+
+void ConstraintArcMidP2CDistance::reconstructGeomPointers()
+{
+    int i = 0;
+    i++;  // skip the distance parameter
+    arc.ReconstructOnNewPvec(pvec, i);
+    circle.ReconstructOnNewPvec(pvec, i);
+}
+
+ConstraintType ConstraintArcMidP2CDistance::getTypeId()
+{
+    return ArcMidP2CDistance;
+}
+
+double ConstraintArcMidP2CDistance::value(double& deriValue, double* param)
+{
+    return distanceValue(arcLengthMidpoint(arc, param), deriPoint(circle.center, param), deriValue);
+}
+
+void ConstraintArcMidP2CDistance::errorgrad(double* err, double* grad, double* param)
+{
+    double dlength = 0.0;
+    const double length = value(dlength, param);
+
+    if (err) {
+        *err = *circle.rad + *distance() - length;
+        if (length < *circle.rad) {
+            *err = *circle.rad - *distance() - length;
+        }
+    }
+    else if (grad) {
+        if (param == distance()) {
+            *grad = (length < *circle.rad) ? -1.0 : 1.0;
+        }
+        else if (param == circle.rad) {
+            *grad = 1.0;
+        }
+        else {
+            *grad = -dlength;
+        }
+    }
+}
+
+void ConstraintArcMidP2CDistance::evaluate()
+{
+    double dlength = 0.0;
+    const double length = value(dlength, nullptr);
+    *distance() = (length < *circle.rad) ? *circle.rad - length : length - *circle.rad;
+}
+
+// --------------------------------------------------------
+// ConstraintArcMidP2ArcMidDistance
+ConstraintArcMidP2ArcMidDistance::ConstraintArcMidP2ArcMidDistance(Arc& a1, Arc& a2, double* d)
+    : arc1(a1)
+    , arc2(a2)
+{
+    pvec.push_back(d);
+    this->arc1.PushOwnParams(pvec);
+    this->arc2.PushOwnParams(pvec);
+
+    origpvec = pvec;
+    reconstructGeomPointers();
+    rescale();
+}
+
+void ConstraintArcMidP2ArcMidDistance::reconstructGeomPointers()
+{
+    int i = 0;
+    i++;  // skip the distance parameter
+    arc1.ReconstructOnNewPvec(pvec, i);
+    arc2.ReconstructOnNewPvec(pvec, i);
+}
+
+ConstraintType ConstraintArcMidP2ArcMidDistance::getTypeId()
+{
+    return ArcMidP2ArcMidDistance;
+}
+
+void ConstraintArcMidP2ArcMidDistance::errorgrad(double* err, double* grad, double* param)
+{
+    double dlength = 0.0;
+    const double length = distanceValue(
+        arcLengthMidpoint(arc1, param),
+        arcLengthMidpoint(arc2, param),
+        dlength
+    );
+
+    if (err) {
+        *err = length - *distance();
+    }
+    else if (grad) {
+        *grad = (param == distance()) ? -1.0 : dlength;
+    }
+}
+
+void ConstraintArcMidP2ArcMidDistance::evaluate()
+{
+    double dlength = 0.0;
+    *distance() = distanceValue(arcLengthMidpoint(arc1, nullptr), arcLengthMidpoint(arc2, nullptr), dlength);
+}
+
 // --------------------------------------------------------
 // ConstraintArcLength
 ConstraintArcLength::ConstraintArcLength(Arc& a, double* d)

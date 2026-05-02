@@ -50,6 +50,7 @@ class Document;
 namespace Part
 {
 class Geometry;
+class GeomArcOfCircle;
 }
 namespace Sketcher
 {
@@ -70,6 +71,8 @@ bool isPoint(const Part::Geometry&);
 bool isCircleOrArc(const Part::Geometry& geo);
 
 std::tuple<double, Base::Vector3d> getRadiusCenterCircleArc(const Part::Geometry* geo);
+Base::Vector3d getArcOfCircleLengthMidpoint(const Part::GeomArcOfCircle* arc);
+Base::Vector3d getArcOfCircleLengthMidpoint(const Part::Geometry* geo);
 
 }  // namespace Sketcher
 

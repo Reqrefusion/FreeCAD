@@ -502,6 +502,35 @@ public:
     );
     int addConstraintP2CDistance(Point& p, Circle& c, double* distance, int tagId = 0, bool driving = true);
     int addConstraintArcLength(Arc& a, double* dist, int tagId, bool driving = true);
+    int addConstraintArcMidP2PDistance(
+        Arc& a,
+        Point& p,
+        double* dist,
+        int tagId = 0,
+        bool driving = true
+    );
+    int addConstraintArcMidP2LDistance(
+        Arc& a,
+        Line& l,
+        double* dist,
+        bool ccw,
+        int tagId = 0,
+        bool driving = true
+    );
+    int addConstraintArcMidP2CDistance(
+        Arc& a,
+        Circle& c,
+        double* dist,
+        int tagId = 0,
+        bool driving = true
+    );
+    int addConstraintArcMidP2ArcMidDistance(
+        Arc& a1,
+        Arc& a2,
+        double* dist,
+        int tagId = 0,
+        bool driving = true
+    );
 
     // internal alignment constraints
     int addConstraintInternalAlignmentPoint2Ellipse(

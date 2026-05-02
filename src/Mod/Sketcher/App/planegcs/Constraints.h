@@ -85,6 +85,10 @@ enum ConstraintType
     AngleViaPointAndTwoParams = 34,
     AngleViaTwoPoints = 35,
     ArcLength = 36,
+    ArcMidP2PDistance = 37,
+    ArcMidP2LDistance = 38,
+    ArcMidP2CDistance = 39,
+    ArcMidP2ArcMidDistance = 40,
 };
 
 enum InternalAlignmentType
@@ -1378,6 +1382,86 @@ public:
     ConstraintType getTypeId() override;
 };
 
+// ArcMidP2PDistance
+class ConstraintArcMidP2PDistance: public Constraint
+{
+private:
+    Arc arc;
+    Point pt;
+    double* distance()
+    {
+        return pvec[0];
+    }
+    void reconstructGeomPointers() override;  // writes pointers in pvec to the parameters of a and p
+    void errorgrad(double* err, double* grad, double* param) override;
+    void evaluate() override;
+
+public:
+    ConstraintArcMidP2PDistance(Arc& a, Point& p, double* d);
+    ConstraintType getTypeId() override;
+};
+
+// ArcMidP2LDistance
+class ConstraintArcMidP2LDistance: public Constraint
+{
+private:
+    Arc arc;
+    Line line;
+    bool ccw;
+    double* distance()
+    {
+        return pvec[0];
+    }
+    void reconstructGeomPointers() override;  // writes pointers in pvec to the parameters of a and l
+    double signed_value(double& deriValue, double* param);
+    void errorgrad(double* err, double* grad, double* param) override;
+    void evaluate() override;
+
+public:
+    ConstraintArcMidP2LDistance(Arc& a, Line& l, double* d, bool ccw);
+    ConstraintType getTypeId() override;
+};
+
+// ArcMidP2CDistance
+class ConstraintArcMidP2CDistance: public Constraint
+{
+private:
+    Arc arc;
+    Circle circle;
+    double* distance()
+    {
+        return pvec[0];
+    }
+    void reconstructGeomPointers() override;  // writes pointers in pvec to the parameters of a and c
+    double value(double& deriValue, double* param);
+    void errorgrad(double* err, double* grad, double* param) override;
+    void evaluate() override;
+
+public:
+    ConstraintArcMidP2CDistance(Arc& a, Circle& c, double* d);
+    ConstraintType getTypeId() override;
+};
+
+// ArcMidP2ArcMidDistance
+class ConstraintArcMidP2ArcMidDistance: public Constraint
+{
+private:
+    Arc arc1;
+    Arc arc2;
+    double* distance()
+    {
+        return pvec[0];
+    }
+    void reconstructGeomPointers() override;  // writes pointers in pvec to the parameters of a1 and a2
+    void errorgrad(double* err, double* grad, double* param) override;
+    void evaluate() override;
+
+public:
+    ConstraintArcMidP2ArcMidDistance(Arc& a1, Arc& a2, double* d);
+    ConstraintType getTypeId() override;
+};
+
+
 // ArcLength
 class ConstraintArcLength: public Constraint
 {
@@ -1396,5 +1480,6 @@ public:
     ConstraintArcLength(Arc& a, double* d);
     ConstraintType getTypeId() override;
 };
+
 
 }  // namespace GCS

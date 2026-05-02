@@ -2746,10 +2746,8 @@ protected:
                 ActDist = std::abs(di.Length() - circle->getRadius());
             }
             else if (isArcOfCircle(*geom)) {
-                auto arc = static_cast<const Part::GeomArcOfCircle*>(geom);
-                Base::Vector3d ct = arc->getCenter();
-                Base::Vector3d di = ct - pnt;
-                ActDist = std::abs(di.Length() - arc->getRadius());
+                Base::Vector3d arcMidpoint = getArcOfCircleLengthMidpoint(geom);
+                ActDist = (arcMidpoint - pnt).Length();
             }
 
             Gui::cmdAppObjectArgs(Obj, "addConstraint(Sketcher.Constraint('Distance',%d,%d,%d,%f)) ",
@@ -2784,14 +2782,20 @@ protected:
             }
             // Circle/arc - line case
             if ((isCircle(*geo1) || isArcOfCircle(*geo1)) && isLineSegment(*geo2)) {
+                Base::Vector3d measurePoint = center1;
+                if (isArcOfCircle(*geo1)) {
+                    measurePoint = getArcOfCircleLengthMidpoint(geo1);
+                    radius1 = 0.0;
+                }
+
                 auto lineSeg = static_cast<const Part::GeomLineSegment*>(geo2);
                 Base::Vector3d pnt1 = lineSeg->getStartPoint();
                 Base::Vector3d pnt2 = lineSeg->getEndPoint();
                 Base::Vector3d d = pnt2 - pnt1;
-                double ActDist = std::abs(
-                            std::abs(-center1.x * d.y + center1.y * d.x + pnt1.x * pnt2.y - pnt2.x * pnt1.y)
-                            / d.Length()
-                            - radius1);
+                double lineDistance = std::abs(
+                            -measurePoint.x * d.y + measurePoint.y * d.x + pnt1.x * pnt2.y - pnt2.x * pnt1.y)
+                            / d.Length();
+                double ActDist = isArcOfCircle(*geo1) ? lineDistance : std::abs(lineDistance - radius1);
 
                 Gui::cmdAppObjectArgs(Obj,
                                       "addConstraint(Sketcher.Constraint('Distance',%d,%d,%f))",
@@ -2804,18 +2808,33 @@ protected:
                      && (isCircle(*geo2) || isArcOfCircle(*geo2))) {
                 double ActDist = 0.;
 
-                Base::Vector3d intercenter = center1 - center2;
-                double intercenterdistance = intercenter.Length();
-
-                if (intercenterdistance >= radius1 && intercenterdistance >= radius2) {
-
-                    ActDist = intercenterdistance - radius1 - radius2;
+                if (isArcOfCircle(*geo1) && isArcOfCircle(*geo2)) {
+                    Base::Vector3d midpoint1 = getArcOfCircleLengthMidpoint(geo1);
+                    Base::Vector3d midpoint2 = getArcOfCircleLengthMidpoint(geo2);
+                    ActDist = (midpoint1 - midpoint2).Length();
+                }
+                else if (isArcOfCircle(*geo1) && isCircle(*geo2)) {
+                    Base::Vector3d midpoint1 = getArcOfCircleLengthMidpoint(geo1);
+                    ActDist = std::abs((midpoint1 - center2).Length() - radius2);
+                }
+                else if (isCircle(*geo1) && isArcOfCircle(*geo2)) {
+                    Base::Vector3d midpoint2 = getArcOfCircleLengthMidpoint(geo2);
+                    ActDist = std::abs((midpoint2 - center1).Length() - radius1);
                 }
                 else {
-                    double bigradius = std::max(radius1, radius2);
-                    double smallradius = std::min(radius1, radius2);
+                    Base::Vector3d intercenter = center1 - center2;
+                    double intercenterdistance = intercenter.Length();
 
-                    ActDist = bigradius - smallradius - intercenterdistance;
+                    if (intercenterdistance >= radius1 && intercenterdistance >= radius2) {
+
+                        ActDist = intercenterdistance - radius1 - radius2;
+                    }
+                    else {
+                        double bigradius = std::max(radius1, radius2);
+                        double smallradius = std::min(radius1, radius2);
+
+                        ActDist = bigradius - smallradius - intercenterdistance;
+                    }
                 }
 
                 Gui::cmdAppObjectArgs(Obj,
@@ -5089,10 +5108,17 @@ void CmdSketcherConstrainDistance::activated(int iMsg)
 
             return;
         }
-        else if (isCircleOrArc(*geom)) {    // point to circle distance
-            auto [radius, center] = getRadiusCenterCircleArc(geom);
-            Base::Vector3d d = center - pnt;
-            double ActDist = std::abs(d.Length() - radius);
+        else if (isCircleOrArc(*geom)) {    // point to circle/arc distance
+            double ActDist = 0.0;
+            if (isArcOfCircle(*geom)) {
+                Base::Vector3d arcMidpoint = getArcOfCircleLengthMidpoint(geom);
+                ActDist = (arcMidpoint - pnt).Length();
+            }
+            else {
+                auto [radius, center] = getRadiusCenterCircleArc(geom);
+                Base::Vector3d d = center - pnt;
+                ActDist = std::abs(d.Length() - radius);
+            }
 
             openCommand(QT_TRANSLATE_NOOP("Command", "Add point to circle distance constraint"));
             Gui::cmdAppObjectArgs(selection[0].getObject(),
@@ -5126,23 +5152,40 @@ void CmdSketcherConstrainDistance::activated(int iMsg)
 
         if(isCircleOrArc(*geom1) && isCircleOrArc(*geom2)) {
 
-            auto [radius1, center1] = getRadiusCenterCircleArc(geom1);
-            auto [radius2, center2] = getRadiusCenterCircleArc(geom2);
-
             double ActDist = 0.0;
 
-            Base::Vector3d intercenter = center1 - center2;
-            double intercenterdistance = intercenter.Length();
-
-            if (intercenterdistance >= radius1 && intercenterdistance >= radius2) {
-
-                ActDist = intercenterdistance - radius1 - radius2;
+            if (isArcOfCircle(*geom1) && isArcOfCircle(*geom2)) {
+                Base::Vector3d midpoint1 = getArcOfCircleLengthMidpoint(geom1);
+                Base::Vector3d midpoint2 = getArcOfCircleLengthMidpoint(geom2);
+                ActDist = (midpoint1 - midpoint2).Length();
+            }
+            else if (isArcOfCircle(*geom1) && isCircle(*geom2)) {
+                auto [radius2, center2] = getRadiusCenterCircleArc(geom2);
+                Base::Vector3d midpoint1 = getArcOfCircleLengthMidpoint(geom1);
+                ActDist = std::abs((midpoint1 - center2).Length() - radius2);
+            }
+            else if (isCircle(*geom1) && isArcOfCircle(*geom2)) {
+                auto [radius1, center1] = getRadiusCenterCircleArc(geom1);
+                Base::Vector3d midpoint2 = getArcOfCircleLengthMidpoint(geom2);
+                ActDist = std::abs((midpoint2 - center1).Length() - radius1);
             }
             else {
-                double bigradius = std::max(radius1, radius2);
-                double smallradius = std::min(radius1, radius2);
+                auto [radius1, center1] = getRadiusCenterCircleArc(geom1);
+                auto [radius2, center2] = getRadiusCenterCircleArc(geom2);
 
-                ActDist = bigradius - smallradius - intercenterdistance;
+                Base::Vector3d intercenter = center1 - center2;
+                double intercenterdistance = intercenter.Length();
+
+                if (intercenterdistance >= radius1 && intercenterdistance >= radius2) {
+
+                    ActDist = intercenterdistance - radius1 - radius2;
+                }
+                else {
+                    double bigradius = std::max(radius1, radius2);
+                    double smallradius = std::min(radius1, radius2);
+
+                    ActDist = bigradius - smallradius - intercenterdistance;
+                }
             }
 
             openCommand(QT_TRANSLATE_NOOP("Command", "Add circle to circle distance constraint"));
@@ -5177,16 +5220,25 @@ void CmdSketcherConstrainDistance::activated(int iMsg)
                 std::swap(GeoId1, GeoId2);
             }
 
-            auto [radius, center] = getRadiusCenterCircleArc(geom1);
+            Base::Vector3d measurePoint;
+            double radius = 0.0;
+            if (isArcOfCircle(*geom1)) {
+                measurePoint = getArcOfCircleLengthMidpoint(geom1);
+            }
+            else {
+                auto [circleRadius, center] = getRadiusCenterCircleArc(geom1);
+                radius = circleRadius;
+                measurePoint = center;
+            }
 
             auto lineSeg = static_cast<const Part::GeomLineSegment*>(geom2);
             Base::Vector3d pnt1 = lineSeg->getStartPoint();
             Base::Vector3d pnt2 = lineSeg->getEndPoint();
             Base::Vector3d d = pnt2 - pnt1;
-            double ActDist =
-                std::abs(-center.x * d.y + center.y * d.x + pnt1.x * pnt2.y - pnt2.x * pnt1.y)
-                / d.Length()
-                - radius;
+            double lineDistance =
+                std::abs(-measurePoint.x * d.y + measurePoint.y * d.x + pnt1.x * pnt2.y - pnt2.x * pnt1.y)
+                / d.Length();
+            double ActDist = isArcOfCircle(*geom1) ? lineDistance : std::abs(lineDistance - radius);
 
             openCommand(QT_TRANSLATE_NOOP("Command", "Add circle to line distance constraint"));
             Gui::cmdAppObjectArgs(selection[0].getObject(),
@@ -5470,29 +5522,46 @@ void CmdSketcherConstrainDistance::applyConstraint(std::vector<SelIdPair>& selSe
         const Part::Geometry* geom1 = Obj->getGeometry(GeoId1);
         const Part::Geometry* geom2 = Obj->getGeometry(GeoId2);
 
-        if (isCircle(*geom1) && isCircle(*geom2)) {// circle to circle distance
-            auto circleSeg1 = static_cast<const Part::GeomCircle*>(geom1);
-            double radius1 = circleSeg1->getRadius();
-            Base::Vector3d center1 = circleSeg1->getCenter();
-
-            auto circleSeg2 = static_cast<const Part::GeomCircle*>(geom2);
-            double radius2 = circleSeg2->getRadius();
-            Base::Vector3d center2 = circleSeg2->getCenter();
-
+        if (isCircleOrArc(*geom1) && isCircleOrArc(*geom2)) {// circle/arc to circle/arc distance
             double ActDist = 0.;
 
-            Base::Vector3d intercenter = center1 - center2;
-            double intercenterdistance = intercenter.Length();
-
-            if (intercenterdistance >= radius1 && intercenterdistance >= radius2) {
-
-                ActDist = intercenterdistance - radius1 - radius2;
+            if (isArcOfCircle(*geom1) && isArcOfCircle(*geom2)) {
+                Base::Vector3d midpoint1 = getArcOfCircleLengthMidpoint(geom1);
+                Base::Vector3d midpoint2 = getArcOfCircleLengthMidpoint(geom2);
+                ActDist = (midpoint1 - midpoint2).Length();
+            }
+            else if (isArcOfCircle(*geom1) && isCircle(*geom2)) {
+                auto [radius2, center2] = getRadiusCenterCircleArc(geom2);
+                Base::Vector3d midpoint1 = getArcOfCircleLengthMidpoint(geom1);
+                ActDist = std::abs((midpoint1 - center2).Length() - radius2);
+            }
+            else if (isCircle(*geom1) && isArcOfCircle(*geom2)) {
+                auto [radius1, center1] = getRadiusCenterCircleArc(geom1);
+                Base::Vector3d midpoint2 = getArcOfCircleLengthMidpoint(geom2);
+                ActDist = std::abs((midpoint2 - center1).Length() - radius1);
             }
             else {
-                double bigradius = std::max(radius1, radius2);
-                double smallradius = std::min(radius1, radius2);
+                auto circleSeg1 = static_cast<const Part::GeomCircle*>(geom1);
+                double radius1 = circleSeg1->getRadius();
+                Base::Vector3d center1 = circleSeg1->getCenter();
 
-                ActDist = bigradius - smallradius - intercenterdistance;
+                auto circleSeg2 = static_cast<const Part::GeomCircle*>(geom2);
+                double radius2 = circleSeg2->getRadius();
+                Base::Vector3d center2 = circleSeg2->getCenter();
+
+                Base::Vector3d intercenter = center1 - center2;
+                double intercenterdistance = intercenter.Length();
+
+                if (intercenterdistance >= radius1 && intercenterdistance >= radius2) {
+
+                    ActDist = intercenterdistance - radius1 - radius2;
+                }
+                else {
+                    double bigradius = std::max(radius1, radius2);
+                    double smallradius = std::min(radius1, radius2);
+
+                    ActDist = bigradius - smallradius - intercenterdistance;
+                }
             }
 
             openCommand(

@@ -2041,28 +2041,60 @@ void ViewProviderSketch::moveConstraint(Sketcher::Constraint* Constr, int constN
             }
 
             if (isCircleOrArc(*geo2)) {
-                if (Constr->FirstPos != Sketcher::PointPos::none){ // circular to point distance
-                    auto [rad, ct] = getRadiusCenterCircleArc(geo2);
+                if (Constr->FirstPos != Sketcher::PointPos::none){ // circular/arc to point distance
+                    if (isArcOfCircle(*geo2)) {
+                        p2 = getArcOfCircleLengthMidpoint(geo2);
+                    }
+                    else {
+                        auto [rad, ct] = getRadiusCenterCircleArc(geo2);
 
-                    Base::Vector3d v = p1 - ct;
-                    v = v.Normalize();
-                    p2 = ct + rad * v;
+                        Base::Vector3d v = p1 - ct;
+                        v = v.Normalize();
+                        p2 = ct + rad * v;
+                    }
                 }
-                else if (isCircleOrArc(*geo1)) { // circular to circular distance
-                    GetCirclesMinimalDistance(geo1, geo2, p1, p2);
+                else if (isCircleOrArc(*geo1)) { // circular/arc to circular/arc distance
+                    if (isArcOfCircle(*geo1) && isArcOfCircle(*geo2)) {
+                        p1 = getArcOfCircleLengthMidpoint(geo1);
+                        p2 = getArcOfCircleLengthMidpoint(geo2);
+                    }
+                    else if (isArcOfCircle(*geo1) && isCircle(*geo2)) {
+                        p1 = getArcOfCircleLengthMidpoint(geo1);
+                        auto [rad, ct] = getRadiusCenterCircleArc(geo2);
+                        Base::Vector3d v = p1 - ct;
+                        v = v.Normalize();
+                        p2 = ct + rad * v;
+                    }
+                    else if (isCircle(*geo1) && isArcOfCircle(*geo2)) {
+                        p2 = getArcOfCircleLengthMidpoint(geo2);
+                        auto [rad, ct] = getRadiusCenterCircleArc(geo1);
+                        Base::Vector3d v = p2 - ct;
+                        v = v.Normalize();
+                        p1 = ct + rad * v;
+                    }
+                    else {
+                        GetCirclesMinimalDistance(geo1, geo2, p1, p2);
+                    }
                 }
-                else if (isLineSegment(*geo1)){ // circular to line distance
+                else if (isLineSegment(*geo1)){ // circular/arc to line distance
                     auto lineSeg = static_cast<const Part::GeomLineSegment*>(geo1); //NOLINT
                     Base::Vector3d l2p1 = lineSeg->getStartPoint();
                     Base::Vector3d l2p2 = lineSeg->getEndPoint();
 
-                    auto [rad, ct] = getRadiusCenterCircleArc(geo2);
+                    if (isArcOfCircle(*geo2)) {
+                        p2 = getArcOfCircleLengthMidpoint(geo2);
+                        p1.ProjectToLine(p2 - l2p1, l2p2 - l2p1);
+                        p1 += p2;
+                    }
+                    else {
+                        auto [rad, ct] = getRadiusCenterCircleArc(geo2);
 
-                    p1.ProjectToLine(ct - l2p1, l2p2 - l2p1);// project on the line translated to origin
-                    Base::Vector3d v = p1;
-                    p1 += ct;
-                    v.Normalize();
-                    p2 = ct + v * rad;
+                        p1.ProjectToLine(ct - l2p1, l2p2 - l2p1);// project on the line translated to origin
+                        Base::Vector3d v = p1;
+                        p1 += ct;
+                        v.Normalize();
+                        p2 = ct + v * rad;
+                    }
                 }
             }
         }
