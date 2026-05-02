@@ -45,6 +45,7 @@
 #include <Mod/Sketcher/App/GeoEnum.h>
 
 #include "PropertyVisualLayerList.h"
+#include "AutoConstraint.h"
 
 #include "ShortcutListener.h"
 #include "Utils.h"
@@ -100,6 +101,7 @@ namespace SketcherGui
 class EditModeCoinManager;
 class SnapManager;
 class DrawSketchHandler;
+class DrawSketchHandlerDragAutoConstraint;
 class ViewProviderSketchCommandConstraintsAttorney;
 
 using GeoList = Sketcher::GeoList;
@@ -832,8 +834,25 @@ private:
     //@{
     /// dragging helpers
     void initDragging(int geoId, Sketcher::PointPos pos, Gui::View3DInventorViewer* viewer);
-    void doDragStep(double x, double y);
+    bool doDragStep(double x, double y);
     void commitDragMove(double x, double y);
+
+    bool canUseDragAutoConstraints() const;
+    void ensureDragAutoConstraintHandler();
+    void restoreDragAutoConstraintCursor();
+    void addDragAutoConstraint(
+        Sketcher::ConstraintType type,
+        int geoId,
+        Sketcher::PointPos posId = Sketcher::PointPos::none
+    );
+    void updateDragAutoConstraints(const Base::Vector2d& pos);
+    void createDragAutoConstraints();
+    void clearDragAutoConstraints();
+    Base::Vector2d getDragAutoConstraintPosition(const Base::Vector2d& fallbackPos) const;
+    bool hasDraggedPointMoved(const Base::Vector2d& actualPos) const;
+    Base::Vector2d getDragAutoConstraintDirection(const Base::Vector2d& pos) const;
+    bool isExistingDragAutoConstraint(const AutoConstraint& constraint) const;
+    void removeInvalidDragAutoConstraints();
 
     //@}
 
@@ -1019,6 +1038,11 @@ private:
     std::unique_ptr<ViewProviderSketch::ParameterObserver> pObserver;
 
     std::unique_ptr<DrawSketchHandler> sketchHandler;
+
+    std::unique_ptr<DrawSketchHandlerDragAutoConstraint> dragAutoConstraintHandler;
+    std::vector<AutoConstraint> dragAutoConstraints;
+    bool dragAutoConstraintHasStartPos = false;
+    Base::Vector2d dragAutoConstraintStartPos {0.0, 0.0};
 
     ViewProviderParameters viewProviderParameters;
 

@@ -57,6 +57,7 @@ SET(SketcherGui_SRCS
     DrawSketchHandlerText.h
     DrawSketchHandlerBSpline.h
     DrawSketchHandlerPoint.h
+    DrawSketchHandlerDragAutoConstraint.h
     DrawSketchHandlerFillet.h
     DrawSketchHandlerTranslate.h
     DrawSketchHandlerTrimming.h
