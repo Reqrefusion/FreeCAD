@@ -247,6 +247,17 @@ public:
         bool defining = false,
         bool intersection = false
     );
+
+    /// returns the sketch GeoId of an already-added external reference, or GeoEnum::GeoUndef
+    int findExternalGeometry(App::DocumentObject* Obj, const char* SubName) const;
+
+    /// returns an existing external GeoId or adds the referenced subelement as external geometry
+    int ensureExternalGeometry(
+        App::DocumentObject* Obj,
+        const char* SubName,
+        bool defining = false,
+        bool intersection = false
+    );
     /** delete external
      *  ExtGeoId >= 0 with 0 corresponding to the first user defined
      *  external geometry

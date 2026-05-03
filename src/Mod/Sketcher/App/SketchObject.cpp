@@ -1223,6 +1223,60 @@ void SketchObject::onExternalGeometryChanged()
     }
 }
 
+int SketchObject::findExternalGeometry(App::DocumentObject* Obj, const char* SubName) const
+{
+    if (!Obj || !SubName || SubName[0] == '\0') {
+        return GeoEnum::GeoUndef;
+    }
+
+    const std::string subName(SubName);
+    const auto objs = ExternalGeometry.getValues();
+    const auto subs = ExternalGeometry.getSubValues();
+
+    const std::size_t count = std::min(objs.size(), subs.size());
+    for (std::size_t i = 0; i < count; ++i) {
+        if (objs[i] == Obj && subs[i] == subName) {
+            return GeoEnum::RefExt - static_cast<int>(i);
+        }
+    }
+
+    return GeoEnum::GeoUndef;
+}
+
+int SketchObject::ensureExternalGeometry(
+    App::DocumentObject* Obj,
+    const char* SubName,
+    bool defining,
+    bool intersection)
+{
+    int geoId = findExternalGeometry(Obj, SubName);
+    if (geoId != GeoEnum::GeoUndef) {
+        return geoId;
+    }
+
+    if (!Obj || !SubName || SubName[0] == '\0') {
+        return GeoEnum::GeoUndef;
+    }
+
+    if (!isExternalAllowed(Obj->getDocument(), Obj)) {
+        return GeoEnum::GeoUndef;
+    }
+
+    const int oldExternalCount = ExternalGeometry.getSize();
+    addExternal(Obj, SubName, defining, intersection);
+
+    geoId = findExternalGeometry(Obj, SubName);
+    if (geoId != GeoEnum::GeoUndef) {
+        return geoId;
+    }
+
+    if (ExternalGeometry.getSize() > oldExternalCount) {
+        return GeoEnum::RefExt - oldExternalCount;
+    }
+
+    return GeoEnum::GeoUndef;
+}
+
 void SketchObject::onPlacementChanged()
 {
     if (ExternalGeometry.getSize() > 0) {

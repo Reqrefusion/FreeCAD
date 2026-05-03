@@ -46,6 +46,7 @@
 #include <QWindow>
 
 #include <limits>
+#include <set>
 
 #include <fmt/format.h>
 
@@ -94,6 +95,220 @@ FC_LOG_LEVEL_INIT("Sketch", true, true)
 using namespace SketcherGui;
 using namespace Sketcher;
 namespace sp = std::placeholders;
+
+
+namespace
+{
+
+bool isLazyExternalSketchConstraintSubElementName(const char* subName)
+{
+    if (Base::Tools::isNullOrEmpty(subName)) {
+        return false;
+    }
+
+    const std::string element(subName);
+    return element.rfind("Edge", 0) == 0 || element.rfind("Vertex", 0) == 0;
+}
+
+bool getLazyExternalSelectionObject(SketcherGui::ViewProviderSketch* sketchgui,
+                                    const Gui::SelectionChanges& msg,
+                                    App::DocumentObject*& selectedObject)
+{
+    selectedObject = nullptr;
+    if (!sketchgui || !sketchgui->getSketchObject()
+        || Base::Tools::isNullOrEmpty(msg.pDocName)
+        || Base::Tools::isNullOrEmpty(msg.pObjectName)) {
+        return false;
+    }
+
+    Sketcher::SketchObject* sketchObject = sketchgui->getSketchObject();
+    App::Document* sketchDocument = sketchObject->getDocument();
+    if (!sketchDocument || std::string(msg.pDocName) != sketchDocument->getName()) {
+        return false;
+    }
+
+    selectedObject = sketchDocument->getObject(msg.pObjectName);
+    if (!selectedObject) {
+        std::string normalizedObjectName(msg.pObjectName);
+        const std::string::size_type hashPos = normalizedObjectName.rfind('#');
+        if (hashPos != std::string::npos && hashPos + 1 < normalizedObjectName.size()) {
+            normalizedObjectName = normalizedObjectName.substr(hashPos + 1);
+            selectedObject = sketchDocument->getObject(normalizedObjectName.c_str());
+        }
+    }
+
+    return selectedObject && selectedObject != sketchObject;
+}
+
+enum class LazyExternalPreselectionState
+{
+    None,
+    UsableExternal,
+    IgnoredExternal
+};
+
+std::set<SketcherGui::ViewProviderSketch*> ignoredLazyExternalPreselectionSketches;
+
+void setLazyExternalIgnoredPreselection(SketcherGui::ViewProviderSketch* sketchgui, bool active)
+{
+    if (!sketchgui) {
+        return;
+    }
+
+    if (active) {
+        ignoredLazyExternalPreselectionSketches.insert(sketchgui);
+    }
+    else {
+        ignoredLazyExternalPreselectionSketches.erase(sketchgui);
+    }
+}
+
+bool consumeLazyExternalIgnoredPreselection(SketcherGui::ViewProviderSketch* sketchgui)
+{
+    if (!sketchgui) {
+        return false;
+    }
+
+    auto it = ignoredLazyExternalPreselectionSketches.find(sketchgui);
+    if (it == ignoredLazyExternalPreselectionSketches.end()) {
+        return false;
+    }
+
+    ignoredLazyExternalPreselectionSketches.erase(it);
+    return true;
+}
+
+LazyExternalPreselectionState classifyLazyExternalPreselection(
+    SketcherGui::ViewProviderSketch* sketchgui)
+{
+    const Gui::SelectionChanges& preselection = Gui::Selection().getPreselection();
+
+    App::DocumentObject* selectedObject = nullptr;
+    if (!getLazyExternalSelectionObject(sketchgui, preselection, selectedObject)) {
+        return consumeLazyExternalIgnoredPreselection(sketchgui)
+            ? LazyExternalPreselectionState::IgnoredExternal
+            : LazyExternalPreselectionState::None;
+    }
+
+    Sketcher::SketchObject* sketchObject = sketchgui->getSketchObject();
+    const bool usableSubElement = isLazyExternalSketchConstraintSubElementName(preselection.pSubName);
+    if (usableSubElement
+        && sketchObject->isExternalAllowed(selectedObject->getDocument(), selectedObject)) {
+        setLazyExternalIgnoredPreselection(sketchgui, false);
+        return LazyExternalPreselectionState::UsableExternal;
+    }
+
+    // It is an external object under the cursor, but not an Edge/Vertex usable by lazy
+    // constraints.  Treat it as ignored geometry instead of letting Sketcher start the
+    // rubber-band selector over a face.
+    setLazyExternalIgnoredPreselection(sketchgui, false);
+    return LazyExternalPreselectionState::IgnoredExternal;
+}
+
+bool selectLazyExternalPreselection(SketcherGui::ViewProviderSketch* sketchgui, double x, double y)
+{
+    const Gui::SelectionChanges& preselection = Gui::Selection().getPreselection();
+
+    App::DocumentObject* selectedObject = nullptr;
+    if (!getLazyExternalSelectionObject(sketchgui, preselection, selectedObject)) {
+        return false;
+    }
+
+    Sketcher::SketchObject* sketchObject = sketchgui->getSketchObject();
+    if (!isLazyExternalSketchConstraintSubElementName(preselection.pSubName)
+        || !sketchObject->isExternalAllowed(selectedObject->getDocument(), selectedObject)) {
+        return false;
+    }
+
+    // Do not delegate the click to the native selection path here.  In sketch edit mode the
+    // native path often collapses an Edge/Vertex hit into a whole-object selection, which then
+    // reaches CommandConstraints.cpp without a subelement and cannot become a constraint.
+    // Add the exact preselected subelement ourselves and consume the mouse event.
+    Gui::Selection().addSelection(selectedObject->getDocument()->getName(),
+                                  selectedObject->getNameInDocument(),
+                                  preselection.pSubName,
+                                  x,
+                                  y,
+                                  0.0F);
+    return true;
+}
+
+
+Gui::View3DInventorViewer* getLazyExternalSketchEditViewer(SketcherGui::ViewProviderSketch* sketchgui)
+{
+    if (!sketchgui || !Gui::Application::Instance) {
+        return nullptr;
+    }
+
+    auto editDoc = Gui::Application::Instance->editDocument(
+        [sketchgui](Gui::Document* editdoc) {
+            return editdoc && editdoc->getEditViewProvider() == sketchgui;
+        });
+
+    auto* view = editDoc ? dynamic_cast<Gui::View3DInventor*>(editDoc->getActiveView()) : nullptr;
+    return view ? view->getViewer() : nullptr;
+}
+
+void setLazyExternalSketchNativeSelection(SketcherGui::ViewProviderSketch* sketchgui, bool enabled)
+{
+    if (auto* viewer = getLazyExternalSketchEditViewer(sketchgui)) {
+        viewer->setSelectionEnabled(enabled);
+    }
+}
+
+void discardLazyExternalSelectionChange(const Gui::SelectionChanges& msg)
+{
+    if (msg.Type == Gui::SelectionChanges::SetPreselect) {
+        Gui::Selection().rmvPreselect();
+    }
+    else if (msg.Type == Gui::SelectionChanges::AddSelection) {
+        Gui::Selection().rmvSelection(msg.pDocName,
+                                      msg.pObjectName,
+                                      Base::Tools::isNullOrEmpty(msg.pSubName) ? nullptr : msg.pSubName);
+    }
+}
+
+bool handleLazyExternalSelectionChange(SketcherGui::ViewProviderSketch* sketchgui,
+                                       const Gui::SelectionChanges& msg)
+{
+    App::DocumentObject* selectedObject = nullptr;
+    if (!getLazyExternalSelectionObject(sketchgui, msg, selectedObject)) {
+        if (msg.Type == Gui::SelectionChanges::SetPreselect) {
+            setLazyExternalIgnoredPreselection(sketchgui, false);
+        }
+        return false;
+    }
+
+    // Native 3D selection is deliberately left enabled while editing a sketch so edges and
+    // vertices from surrounding geometry can be picked without entering the External Geometry
+    // tool.  Faces and whole-object hits are noise for lazy constraints: do not reject them via
+    // SelectionGate, because that shows the forbidden cursor; instead immediately discard them.
+    const bool usableSubElement = isLazyExternalSketchConstraintSubElementName(msg.pSubName);
+    Sketcher::SketchObject* sketchObject = sketchgui->getSketchObject();
+    if (!usableSubElement || !sketchObject->isExternalAllowed(selectedObject->getDocument(), selectedObject)) {
+        if (msg.Type == Gui::SelectionChanges::SetPreselect) {
+            setLazyExternalIgnoredPreselection(sketchgui, true);
+        }
+        discardLazyExternalSelectionChange(msg);
+
+        // Only consume the events that would otherwise reach the active constraint handler or
+        // leave an unwanted external face/whole-object selection behind.  Do not swallow
+        // RmvPreselect: Sketcher still needs that notification to clear its own hover state
+        // and redraw sketch geometry when the cursor leaves a sketch edge that lies on a face.
+        return msg.Type == Gui::SelectionChanges::SetPreselect
+            || msg.Type == Gui::SelectionChanges::AddSelection;
+    }
+
+    setLazyExternalIgnoredPreselection(sketchgui, false);
+
+    // Keep valid external Edge/Vertex selections in Gui::Selection.  CommandConstraints.cpp
+    // converts them to sketch ExternalGeometry only when a constraint actually consumes them.
+    // Let SetPreselect pass through so active constraint handlers can cache the exact external
+    // subelement before snapHandle->compute() has a chance to clear Gui::Selection preselection.
+    return msg.Type == Gui::SelectionChanges::RmvSelection;
+}
+
+} // namespace
 
 /************** ViewProviderSketch::ParameterObserver *********************/
 
@@ -730,6 +945,13 @@ void ViewProviderSketch::activateHandler(std::unique_ptr<DrawSketchHandler> newH
 
     sketchHandler = std::move(newHandler);
     setSketchMode(STATUS_SKETCH_UseHandler);
+
+    // Native viewer selection must not be globally active while a generic Sketcher tool
+    // handles mouse press/release: drawing tools depend on receiving those events directly.
+    // Constraint handlers that need lazy-external Edge/Vertex picks re-enable it in their
+    // own activated() method, keeping the broader Sketcher event model deterministic.
+    setLazyExternalSketchNativeSelection(this, false);
+
     sketchHandler->activate(this);
 
     // make sure receiver has focus so immediately pressing Escape will be handled by
@@ -746,6 +968,11 @@ void ViewProviderSketch::deactivateHandler()
         sketchHandler = nullptr;
     }
     setSketchMode(STATUS_NONE);
+
+    // With no active draw/constraint handler, lazy external edges should again be hoverable
+    // and selectable in the 3D view.  This mirrors v11's useful behaviour without letting
+    // native selection interfere with drawing tools.
+    setLazyExternalSketchNativeSelection(this, true);
 }
 
 /// removes the active handler
@@ -766,7 +993,7 @@ void ViewProviderSketch::purgeHandler()
     if(view) {
         Gui::View3DInventorViewer* viewer;
         viewer = static_cast<Gui::View3DInventor*>(view)->getViewer();
-        viewer->setSelectionEnabled(false);
+        viewer->setSelectionEnabled(true);
     }
 
     // Give back the focus to the MDI to make sure VPSketch receive keyboard events.
@@ -1049,6 +1276,27 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                         done = true;
                     }
 
+                    if (!done) {
+                        const auto lazyExternalPreselection = classifyLazyExternalPreselection(this);
+                        if (lazyExternalPreselection
+                            == LazyExternalPreselectionState::UsableExternal) {
+                            // Select the exact external Edge/Vertex that is currently preselected.
+                            // Returning false here lets the viewer select the owning object in some
+                            // PartDesign cases, so consume the click after adding the subelement.
+                            DoubleClick::prvClickTime = SbTime::getTimeOfDay();
+                            DoubleClick::prvClickPos = cursorPos;
+                            DoubleClick::prvCursorPos = cursorPos;
+                            DoubleClick::newCursorPos = cursorPos;
+                            return selectLazyExternalPreselection(this, x, y);
+                        }
+                        if (lazyExternalPreselection
+                            == LazyExternalPreselectionState::IgnoredExternal) {
+                            // Faces and whole-object external hits should be invisible to
+                            // Sketcher: no forbidden cursor, no selection box, no clear-select.
+                            return true;
+                        }
+                    }
+
                     // Double click events variables
                     float dci = (float)QApplication::doubleClickInterval() / 1000.0F;
 
@@ -1081,6 +1329,10 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                     return done;
                 }
                 case STATUS_SKETCH_UseHandler: {
+                    // Keep the stock handler path for every active tool.  Lazy-external handling
+                    // must stay inside the constraint handler only; doing any external-face
+                    // filtering here also affects drawing tools (for example Line) whenever the
+                    // cursor is above visible support geometry, making clicks appear to do nothing.
                     Base::Vector2d snappedPos = snapHandle->compute();
                     return sketchHandler->pressButton(snappedPos);
                 }
@@ -1216,6 +1468,10 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                     setSketchMode(STATUS_NONE);
                     return true;
                 case STATUS_SKETCH_UseHandler: {
+                    // Same as mouse-down: never consume the event at ViewProvider level based on
+                    // external object preselection.  Drawing handlers need the release event to
+                    // complete their state machine; constraint handlers decide themselves whether
+                    // an external Edge/Vertex should be consumed or ignored.
                     sketchHandler->applyCursor();
                     Base::Vector2d snappedPos = snapHandle->compute();
                     return sketchHandler->releaseButton(snappedPos);
@@ -2328,6 +2584,10 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
             && msg.Object.getDocument() != getObject()->getDocument())
             return;
 
+        if (handleLazyExternalSelectionChange(this, msg)) {
+            return;
+        }
+
         bool handled = false;
         if (Mode == STATUS_SKETCH_UseHandler) {
             handled = sketchHandler->onSelectionChanged(msg);
@@ -2485,7 +2745,19 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
             }
         }
         else if (msg.Type == Gui::SelectionChanges::RmvPreselect) {
+            const bool hadSketchPreselection = preselection.isPreselectCurveValid()
+                || preselection.isPreselectPointValid()
+                || preselection.isCrossPreselected()
+                || !preselection.PreselectConstraintSet.empty()
+                || preselection.blockedPreselection;
+
             resetPreselectPoint();
+            preselection.blockedPreselection = false;
+
+            if (hadSketchPreselection) {
+                editCoinManager->drawConstraintIcons();
+                updateColor();
+            }
         }
     }
 }
@@ -4115,7 +4387,10 @@ void ViewProviderSketch::setEditViewer(Gui::View3DInventorViewer* viewer, int Mo
     viewer->setCameraOrientation(rot);
 
     viewer->setEditing(true);
-    viewer->setSelectionEnabled(false);
+    // Keep native selection available while the sketch is idle so lazy external Edge/Vertex
+    // preselection works. activateHandler() disables it for drawing tools, and constraint
+    // handlers re-enable it only for their own external-pick workflow.
+    viewer->setSelectionEnabled(true);
 
     viewer->addGraphicsItem(rubberband.get());
     rubberband->setViewer(viewer);
@@ -4154,6 +4429,7 @@ void ViewProviderSketch::unsetEditViewer(Gui::View3DInventorViewer* viewer)
     viewer->removeGraphicsItem(rubberband.get());
     viewer->setEditing(false);
     viewer->setSelectionEnabled(true);
+    setLazyExternalIgnoredPreselection(this, false);
 
     blockContextMenu = false;
 
