@@ -148,6 +148,7 @@ enum class LazyExternalPreselectionState
 };
 
 std::set<SketcherGui::ViewProviderSketch*> ignoredLazyExternalPreselectionSketches;
+std::set<SketcherGui::ViewProviderSketch*> lazyExternalFaceRubberBandClickGuards;
 
 void setLazyExternalIgnoredPreselection(SketcherGui::ViewProviderSketch* sketchgui, bool active)
 {
@@ -175,6 +176,35 @@ bool consumeLazyExternalIgnoredPreselection(SketcherGui::ViewProviderSketch* ske
     }
 
     ignoredLazyExternalPreselectionSketches.erase(it);
+    return true;
+}
+
+void setLazyExternalFaceRubberBandClickGuard(SketcherGui::ViewProviderSketch* sketchgui, bool active)
+{
+    if (!sketchgui) {
+        return;
+    }
+
+    if (active) {
+        lazyExternalFaceRubberBandClickGuards.insert(sketchgui);
+    }
+    else {
+        lazyExternalFaceRubberBandClickGuards.erase(sketchgui);
+    }
+}
+
+bool consumeLazyExternalFaceRubberBandClickGuard(SketcherGui::ViewProviderSketch* sketchgui)
+{
+    if (!sketchgui) {
+        return false;
+    }
+
+    auto it = lazyExternalFaceRubberBandClickGuards.find(sketchgui);
+    if (it == lazyExternalFaceRubberBandClickGuards.end()) {
+        return false;
+    }
+
+    lazyExternalFaceRubberBandClickGuards.erase(it);
     return true;
 }
 
@@ -223,13 +253,14 @@ bool selectLazyExternalPreselection(SketcherGui::ViewProviderSketch* sketchgui, 
     // Do not delegate the click to the native selection path here.  In sketch edit mode the
     // native path often collapses an Edge/Vertex hit into a whole-object selection, which then
     // reaches CommandConstraints.cpp without a subelement and cannot become a constraint.
-    // Add the exact preselected subelement ourselves and consume the mouse event.
-    Gui::Selection().addSelection(selectedObject->getDocument()->getName(),
-                                  selectedObject->getNameInDocument(),
-                                  preselection.pSubName,
-                                  x,
-                                  y,
-                                  0.0F);
+    // Use addSelection2(), like Sketcher does for its own subelement selections, so picking a
+    // lazy external Edge/Vertex appends to the current selection instead of replacing it.
+    Gui::Selection().addSelection2(selectedObject->getDocument()->getName(),
+                                   selectedObject->getNameInDocument(),
+                                   preselection.pSubName,
+                                   x,
+                                   y,
+                                   0.0F);
     return true;
 }
 
@@ -1291,8 +1322,17 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                         }
                         if (lazyExternalPreselection
                             == LazyExternalPreselectionState::IgnoredExternal) {
-                            // Faces and whole-object external hits should be invisible to
-                            // Sketcher: no forbidden cursor, no selection box, no clear-select.
+                            // A face/whole-object hit should not be selected by a simple click,
+                            // but it must still be possible to start a rubber-band selection from
+                            // that screen position.  Arm the normal rubber-band state machine and
+                            // remember that a click-without-drag must not clear the current
+                            // selection.
+                            DoubleClick::prvClickTime = SbTime::getTimeOfDay();
+                            DoubleClick::prvClickPos = cursorPos;
+                            DoubleClick::prvCursorPos = cursorPos;
+                            DoubleClick::newCursorPos = cursorPos;
+                            setLazyExternalFaceRubberBandClickGuard(this, true);
+                            setSketchMode(STATUS_SKETCH_StartRubberBand);
                             return true;
                         }
                     }
@@ -1450,6 +1490,14 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                 }
                 case STATUS_SKETCH_StartRubberBand:// a single click happened, so clear selection
                                                    // unless user hold control.
+                    if (consumeLazyExternalFaceRubberBandClickGuard(this)) {
+                        // The press started over an ignored external face.  Treat a click without
+                        // enough motion as a no-op: no face selection and no clear-selection.  If
+                        // the user drags far enough, mouseMove() switches to UseRubberBand and
+                        // the normal box selection path below remains available.
+                        setSketchMode(STATUS_NONE);
+                        return true;
+                    }
                     if (!(QApplication::keyboardModifiers() & Qt::ControlModifier)) {
                         Gui::Selection().clearSelection();
                     }
@@ -1903,6 +1951,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s& cursorPos, Gui::View3DInventor
             }
             return true;
         case STATUS_SKETCH_StartRubberBand: {
+            setLazyExternalFaceRubberBandClickGuard(this, false);
             setSketchMode(STATUS_SKETCH_UseRubberBand);
             rubberband->setWorking(true);
             return true;
@@ -4430,6 +4479,7 @@ void ViewProviderSketch::unsetEditViewer(Gui::View3DInventorViewer* viewer)
     viewer->setEditing(false);
     viewer->setSelectionEnabled(true);
     setLazyExternalIgnoredPreselection(this, false);
+    setLazyExternalFaceRubberBandClickGuard(this, false);
 
     blockContextMenu = false;
 
