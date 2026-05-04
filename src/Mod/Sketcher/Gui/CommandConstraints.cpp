@@ -202,13 +202,20 @@ namespace SketcherGui::AngularDatumLabelPlacement
     const auto vertexOnSegment = [](const Base::Vector2d& segmentStart,
                                     const Base::Vector2d& segmentSpan,
                                     const Base::Vector2d& point) {
+        const double tolerance = Precision::Confusion();
         const Base::Vector2d segmentToPoint = point - segmentStart;
-        return std::abs(segmentSpan.x * segmentToPoint.y - segmentSpan.y * segmentToPoint.x)
-                <= Precision::Confusion()
-            && (segmentToPoint.x * segmentSpan.x + segmentToPoint.y * segmentSpan.y)
-                >= -Precision::Confusion()
-            && (segmentToPoint.x * segmentSpan.x + segmentToPoint.y * segmentSpan.y)
-                <= segmentSpan.Sqr() + Precision::Confusion();
+
+        const double crossProduct = segmentSpan.x * segmentToPoint.y
+            - segmentSpan.y * segmentToPoint.x;
+        const double dotProduct = segmentToPoint.x * segmentSpan.x
+            + segmentToPoint.y * segmentSpan.y;
+        const double segmentLengthSquared = segmentSpan.Sqr();
+
+        const bool pointIsOnLine = std::abs(crossProduct) <= tolerance;
+        const bool pointIsAfterSegmentStart = dotProduct >= -tolerance;
+        const bool pointIsBeforeSegmentEnd = dotProduct <= segmentLengthSquared + tolerance;
+
+        return pointIsOnLine && pointIsAfterSegmentStart && pointIsBeforeSegmentEnd;
     };
 
     if (constraint->Second == Sketcher::GeoEnum::GeoUndef) {
