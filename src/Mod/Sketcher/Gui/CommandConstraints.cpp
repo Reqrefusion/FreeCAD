@@ -1538,12 +1538,24 @@ public:
 
     void mouseMove(SnapManager::SnapHandle /*snapHandle*/) override
     {
-        // A cached external preselection is only a bridge from hover to the very next
-        // mouse-down.  Normal motion away from the external edge/vertex must discard it
-        // so regular sketch picks keep behaving exactly like upstream Sketcher.
-        if (!isCurrentLazyExternalConstraintPreselection()) {
-            clearCachedExternalPreselection();
-        }
+        // A cached external preselection bridges the gap between hover and the next
+        // mouse-down.  Discard it only when the cursor has genuinely moved away from the
+        // external edge/vertex.
+        //
+        // After the handleLazyExternalSelectionChange() refactor, SetPreselect events for
+        // external objects are consumed before reaching here, so
+        // isCurrentLazyExternalConstraintPreselection() (which reads live
+        // Gui::Selection preselection) will return false even while the cursor is still
+        // hovering over the same external edge.  We must therefore keep the cache alive
+        // as long as the ViewProviderSketch snapshot also holds a UsableExternal entry;
+        // once the cursor moves to empty space or a sketch element the snapshot is cleared
+        // by handleLazyExternalSelectionChange, after which the cache should also go.
+        //
+        // Cache is cleared on RmvPreselect (cursor left the external edge) and on
+        // pressButton (consumed).  mouseMove is now a no-op for cache management;
+        // isCurrentLazyExternalConstraintPreselection() is intentionally not checked here
+        // because SetPreselect is consumed before reaching the handler, so it would
+        // always return false even while the cursor is still over the same external edge.
         applyCursor();
     }
 
@@ -1565,9 +1577,17 @@ public:
         }
 
         if (msg.Type == Gui::SelectionChanges::RmvPreselect) {
-            // Do not clear the cache here.  snapHandle->compute() can emit RmvPreselect
-            // during the same mouse-down that should consume the hovered external edge.
-            // mouseMove() and any following SetPreselect keep the cache from becoming stale.
+            // After the handleLazyExternalSelectionChange() refactor, SetPreselect for
+            // external edges is consumed before it reaches the normal onSelectionChanged
+            // chain.  We instead forward it explicitly to this handler so cacheExternalPreselection()
+            // runs.  When the cursor leaves the external edge, a RmvPreselect arrives here
+            // without a prior SetPreselect having been seen -- which means the cache may hold
+            // a stale entry from the last hover.
+            //
+            // It is now safe to clear here because the snapHandle->compute() concern no longer
+            // applies: pressButton() snapshots the cache before compute() runs and the snapshot
+            // is stored independently of Gui::Selection preselection.
+            clearCachedExternalPreselection();
             return false;
         }
 
@@ -1600,9 +1620,13 @@ public:
         }
 
         if (externalSelectionHandledOnPress) {
-            Gui::Selection().rmvSelection(msg.pDocName,
-                                          msg.pObjectName,
-                                          msg.pSubName);
+            // The external edge/vertex was already consumed on press (pressButton called
+            // acceptSelection).  The AddSelection event that arrives here is the
+            // Gui::Selection echo of selectLazyExternalPreselection()'s addSelection2() call.
+            // We must NOT call rmvSelection() from inside this notification -- that would
+            // generate a reentrant RmvSelection event that disturbs the constraint sequence.
+            // Simply consume this event; the stale foreign-object selection entry is harmless
+            // and will be swept away when the constraint tool resets or the sketch is closed.
             return true;
         }
 
@@ -1622,11 +1646,14 @@ public:
             return false;
         }
 
-        // The native selection has served only as a carrier for the external subelement.
-        // Replace it by the sketch-local ExternalEdgeN/ExternalVertexN selection that the
-        // standard constraint UI understands.
-        Gui::Selection().rmvSelection(msg.pDocName, msg.pObjectName, msg.pSubName);
-
+        // The native selection was a carrier for the lazy external subelement.
+        // acceptSelection() will add the sketch-local ExternalEdgeN/ExternalVertexN entry.
+        // We intentionally do NOT call rmvSelection() here: invoking Gui::Selection()
+        // mutators from inside an onSelectionChanged(AddSelection) notification creates
+        // reentrant events that disturb the active constraint sequence and can make the
+        // next sketch hover require an extra click.  The stale foreign-object entry will
+        // be removed when the constraint tool resets (clearSelection in acceptSelection
+        // on sequence completion) or when the handler is destroyed.
         std::stringstream ss;
         ss << constraintSubName;
         Gui::Selection().rmvPreselect();
@@ -1752,14 +1779,23 @@ public:
             }
         }
 
-        if (selIdPair.GeoId == GeoEnum::GeoUndef
-            && isExternalConstraintPreselection(sketchgui->getSketchObject())) {
-            // Faces, whole-object hits, or edge/vertex picks that are not valid for the current
-            // constraint step should be ignored.  Do not reset the sequence and do not clear
-            // selections; the active constraint tool must remain active.
-            updateHint();
-            applyCursor();
-            return true;
+        if (selIdPair.GeoId == GeoEnum::GeoUndef) {
+            // Check whether the cursor was over an external object that is not valid for
+            // the current constraint step (face, whole-object, or edge/vertex out of scope).
+            // isExternalConstraintPreselection() reads live Gui::Selection preselection, but
+            // after our handleLazyExternalSelectionChange() refactor the SetPreselect is
+            // consumed before it reaches here, so the live preselection is typically empty.
+            // Fall back to cachedExternalPreselectionValid, which was set by
+            // cacheExternalPreselection() when the SetPreselect was forwarded to the handler.
+            const bool wasExternalHit = isExternalConstraintPreselection(sketchgui->getSketchObject())
+                || cachedExternalPreselectionValid;
+            if (wasExternalHit) {
+                // Do not reset the sequence or clear selections; the constraint tool stays active.
+                clearCachedExternalPreselection();
+                updateHint();
+                applyCursor();
+                return true;
+            }
         }
 
         return acceptSelection(selIdPair, newSelType, ss, onSketchPos);
