@@ -2252,12 +2252,62 @@ protected:
             return false;
         }
 
-        // Normal sketch geometry must keep the stock press/release flow.  A stale external
-        // Gui::Selection preselection can otherwise steal the click, which is what broke
-        // two-line tools such as Parallel and also made drawing tools feel stuck.
+        SelIdPair selIdPair;
+        selIdPair.GeoId = GeoEnum::GeoUndef;
+        selIdPair.PosId = Sketcher::PointPos::none;
+        SelType newSelType = SelUnknown;
+        std::stringstream ss;
+
         const int VtId = getPreselectPoint();
         const int CrvId = getPreselectCurve();
         const int CrsId = getPreselectCross();
+
+        const bool hasLazyExternalPreselection =
+            isCurrentLazyExternalConstraintPreselection() || cachedExternalPreselectionValid;
+
+        if (hasLazyExternalPreselection) {
+            // Prefer the external Edge/Vertex that generated the latest SetPreselect.  When native
+            // selection is enabled for lazy externals, the sketch-local preselection can still hold
+            // the previous internal edge; checking that first makes the external click look like a
+            // blank click or a repeat of the old selection.
+            if ((allowedSelTypes & SelExternalEdge)
+                && CrvId <= Sketcher::GeoEnum::RefExt
+                && CrvId != Sketcher::GeoEnum::GeoUndef) {
+                selIdPair.GeoId = CrvId;
+                selIdPair.PosId = Sketcher::PointPos::none;
+                newSelType = SelExternalEdge;
+                ss << "ExternalEdge" << Sketcher::GeoEnum::RefExt + 1 - CrvId;
+                clearCachedExternalPreselection();
+                return acceptSelection(selIdPair, newSelType, ss, onSketchPos);
+            }
+
+            if (resolveLazyExternalConstraintPreselection(cmd,
+                                                         sketchObject,
+                                                         allowedSelTypes,
+                                                         selIdPair,
+                                                         newSelType,
+                                                         ss)) {
+                clearCachedExternalPreselection();
+                return acceptSelection(selIdPair, newSelType, ss, onSketchPos);
+            }
+
+            if (resolveCachedExternalPreselection(selIdPair, newSelType, ss)) {
+                return acceptSelection(selIdPair, newSelType, ss, onSketchPos);
+            }
+
+            if (isExternalConstraintPreselection(sketchObject) || cachedExternalPreselectionValid) {
+                // The cursor is over an external object, but that subelement is not valid for the
+                // current constraint step.  Ignore it without clearing an already-started sequence.
+                clearCachedExternalPreselection();
+                updateHint();
+                applyCursor();
+                return true;
+            }
+        }
+
+        // Normal sketch geometry must keep the stock press/release flow.  Only use it after the
+        // lazy-external cache had a chance to consume the external hit above; otherwise a stale
+        // sketch preselection can steal external edge clicks.
         if ((allowedSelTypes & SelVertex && VtId >= 0)
             || (allowedSelTypes & SelEdge && CrvId >= 0)
             || (allowedSelTypes & SelRoot && CrsId == 0)
@@ -2266,12 +2316,6 @@ protected:
             clearCachedExternalPreselection();
             return false;
         }
-
-        SelIdPair selIdPair;
-        selIdPair.GeoId = GeoEnum::GeoUndef;
-        selIdPair.PosId = Sketcher::PointPos::none;
-        SelType newSelType = SelUnknown;
-        std::stringstream ss;
 
         // Already-added external geometry is preselected as an ExternalEdgeN on the active sketch.
         if ((allowedSelTypes & SelExternalEdge)

@@ -45,6 +45,7 @@
 #include <QToolTip>
 #include <QWindow>
 
+#include <algorithm>
 #include <limits>
 #include <map>
 #include <set>
@@ -148,8 +149,31 @@ enum class LazyExternalPreselectionState
     IgnoredExternal
 };
 
+struct LazyExternalPreselectionSnapshot
+{
+    LazyExternalPreselectionState state = LazyExternalPreselectionState::None;
+    std::string documentName;
+    std::string objectName;
+    std::string subName;
+    SbVec2s cursorPos;
+    bool hasCursorPos = false;
+};
+
 std::set<SketcherGui::ViewProviderSketch*> ignoredLazyExternalPreselectionSketches;
 std::map<SketcherGui::ViewProviderSketch*, SbVec2s> lazyExternalFaceRubberBandCandidates;
+std::map<SketcherGui::ViewProviderSketch*, SbVec2s> lazyExternalLastCursorPositions;
+std::map<SketcherGui::ViewProviderSketch*, LazyExternalPreselectionSnapshot>
+    lazyExternalPreselectionSnapshots;
+
+void noteLazyExternalCursorPosition(SketcherGui::ViewProviderSketch* sketchgui,
+                                    const SbVec2s& cursorPos)
+{
+    if (!sketchgui) {
+        return;
+    }
+
+    lazyExternalLastCursorPositions[sketchgui] = cursorPos;
+}
 
 void setLazyExternalIgnoredPreselection(SketcherGui::ViewProviderSketch* sketchgui, bool active)
 {
@@ -178,6 +202,120 @@ bool consumeLazyExternalIgnoredPreselection(SketcherGui::ViewProviderSketch* ske
 
     ignoredLazyExternalPreselectionSketches.erase(it);
     return true;
+}
+
+void clearLazyExternalPreselectionSnapshot(SketcherGui::ViewProviderSketch* sketchgui)
+{
+    if (!sketchgui) {
+        return;
+    }
+
+    lazyExternalPreselectionSnapshots.erase(sketchgui);
+    setLazyExternalIgnoredPreselection(sketchgui, false);
+}
+
+void setLazyExternalPreselectionSnapshot(SketcherGui::ViewProviderSketch* sketchgui,
+                                         LazyExternalPreselectionState state,
+                                         const Gui::SelectionChanges& msg)
+{
+    if (!sketchgui) {
+        return;
+    }
+
+    LazyExternalPreselectionSnapshot snapshot;
+    snapshot.state = state;
+    snapshot.documentName = Base::Tools::isNullOrEmpty(msg.pDocName)
+        ? std::string()
+        : std::string(msg.pDocName);
+    snapshot.objectName = Base::Tools::isNullOrEmpty(msg.pObjectName)
+        ? std::string()
+        : std::string(msg.pObjectName);
+    snapshot.subName = Base::Tools::isNullOrEmpty(msg.pSubName)
+        ? std::string()
+        : std::string(msg.pSubName);
+
+    auto posIt = lazyExternalLastCursorPositions.find(sketchgui);
+    if (posIt != lazyExternalLastCursorPositions.end()) {
+        snapshot.cursorPos = posIt->second;
+        snapshot.hasCursorPos = true;
+    }
+
+    lazyExternalPreselectionSnapshots[sketchgui] = snapshot;
+    setLazyExternalIgnoredPreselection(sketchgui,
+                                       state == LazyExternalPreselectionState::IgnoredExternal);
+}
+
+bool isLazyExternalPreselectionSnapshotAtCursor(
+    const LazyExternalPreselectionSnapshot& snapshot,
+    const SbVec2s& cursorPos)
+{
+    if (!snapshot.hasCursorPos) {
+        return true;
+    }
+
+    short dx = 0;
+    short dy = 0;
+    (cursorPos - snapshot.cursorPos).getValue(dx, dy);
+    const int tolerance = std::max(QApplication::startDragDistance(), 3);
+    return std::abs(dx) <= tolerance && std::abs(dy) <= tolerance;
+}
+
+bool consumeLazyExternalPreselectionSnapshot(
+    SketcherGui::ViewProviderSketch* sketchgui,
+    const SbVec2s& cursorPos,
+    LazyExternalPreselectionSnapshot& snapshot)
+{
+    if (!sketchgui) {
+        return false;
+    }
+
+    auto it = lazyExternalPreselectionSnapshots.find(sketchgui);
+    if (it == lazyExternalPreselectionSnapshots.end()) {
+        return false;
+    }
+
+    snapshot = it->second;
+    lazyExternalPreselectionSnapshots.erase(it);
+    setLazyExternalIgnoredPreselection(sketchgui, false);
+
+    if (!isLazyExternalPreselectionSnapshotAtCursor(snapshot, cursorPos)) {
+        return false;
+    }
+
+    return snapshot.state != LazyExternalPreselectionState::None;
+}
+
+bool getLazyExternalSelectionObjectFromSnapshot(
+    SketcherGui::ViewProviderSketch* sketchgui,
+    const LazyExternalPreselectionSnapshot& snapshot,
+    App::DocumentObject*& selectedObject)
+{
+    selectedObject = nullptr;
+    if (!sketchgui || !sketchgui->getSketchObject() || snapshot.objectName.empty()) {
+        return false;
+    }
+
+    Sketcher::SketchObject* sketchObject = sketchgui->getSketchObject();
+    App::Document* sketchDocument = sketchObject->getDocument();
+    if (!sketchDocument) {
+        return false;
+    }
+
+    if (!snapshot.documentName.empty() && snapshot.documentName != sketchDocument->getName()) {
+        return false;
+    }
+
+    selectedObject = sketchDocument->getObject(snapshot.objectName.c_str());
+    if (!selectedObject) {
+        std::string normalizedObjectName(snapshot.objectName);
+        const std::string::size_type hashPos = normalizedObjectName.rfind('#');
+        if (hashPos != std::string::npos && hashPos + 1 < normalizedObjectName.size()) {
+            normalizedObjectName = normalizedObjectName.substr(hashPos + 1);
+            selectedObject = sketchDocument->getObject(normalizedObjectName.c_str());
+        }
+    }
+
+    return selectedObject && selectedObject != sketchObject;
 }
 
 void setLazyExternalFaceRubberBandCandidate(SketcherGui::ViewProviderSketch* sketchgui,
@@ -231,43 +369,70 @@ bool getLazyExternalFaceRubberBandCandidateStart(SketcherGui::ViewProviderSketch
 }
 
 LazyExternalPreselectionState classifyLazyExternalPreselection(
-    SketcherGui::ViewProviderSketch* sketchgui)
+    SketcherGui::ViewProviderSketch* sketchgui,
+    const SbVec2s& cursorPos,
+    LazyExternalPreselectionSnapshot& snapshot)
 {
+    snapshot = LazyExternalPreselectionSnapshot{};
+
     const Gui::SelectionChanges& preselection = Gui::Selection().getPreselection();
 
     App::DocumentObject* selectedObject = nullptr;
     if (!getLazyExternalSelectionObject(sketchgui, preselection, selectedObject)) {
-        return consumeLazyExternalIgnoredPreselection(sketchgui)
-            ? LazyExternalPreselectionState::IgnoredExternal
-            : LazyExternalPreselectionState::None;
+        if (consumeLazyExternalPreselectionSnapshot(sketchgui, cursorPos, snapshot)) {
+            return snapshot.state;
+        }
+
+        if (consumeLazyExternalIgnoredPreselection(sketchgui)) {
+            return LazyExternalPreselectionState::IgnoredExternal;
+        }
+
+        return LazyExternalPreselectionState::None;
     }
 
     Sketcher::SketchObject* sketchObject = sketchgui->getSketchObject();
     const bool usableSubElement = isLazyExternalSketchConstraintSubElementName(preselection.pSubName);
     if (usableSubElement
         && sketchObject->isExternalAllowed(selectedObject->getDocument(), selectedObject)) {
-        setLazyExternalIgnoredPreselection(sketchgui, false);
+        snapshot.state = LazyExternalPreselectionState::UsableExternal;
+        snapshot.documentName = Base::Tools::isNullOrEmpty(preselection.pDocName)
+            ? std::string()
+            : std::string(preselection.pDocName);
+        snapshot.objectName = preselection.pObjectName;
+        snapshot.subName = preselection.pSubName;
+        clearLazyExternalPreselectionSnapshot(sketchgui);
         return LazyExternalPreselectionState::UsableExternal;
     }
 
     // It is an external object under the cursor, but not an Edge/Vertex usable by lazy
     // constraints.  Treat it as ignored geometry instead of letting Sketcher start the
     // rubber-band selector over a face.
-    setLazyExternalIgnoredPreselection(sketchgui, false);
+    snapshot.state = LazyExternalPreselectionState::IgnoredExternal;
+    snapshot.documentName = Base::Tools::isNullOrEmpty(preselection.pDocName)
+        ? std::string()
+        : std::string(preselection.pDocName);
+    snapshot.objectName = Base::Tools::isNullOrEmpty(preselection.pObjectName)
+        ? std::string()
+        : std::string(preselection.pObjectName);
+    snapshot.subName = Base::Tools::isNullOrEmpty(preselection.pSubName)
+        ? std::string()
+        : std::string(preselection.pSubName);
+    clearLazyExternalPreselectionSnapshot(sketchgui);
     return LazyExternalPreselectionState::IgnoredExternal;
 }
 
-bool selectLazyExternalPreselection(SketcherGui::ViewProviderSketch* sketchgui, double x, double y)
+bool selectLazyExternalPreselection(SketcherGui::ViewProviderSketch* sketchgui,
+                                    const LazyExternalPreselectionSnapshot& snapshot,
+                                    double x,
+                                    double y)
 {
-    const Gui::SelectionChanges& preselection = Gui::Selection().getPreselection();
-
     App::DocumentObject* selectedObject = nullptr;
-    if (!getLazyExternalSelectionObject(sketchgui, preselection, selectedObject)) {
+    if (!getLazyExternalSelectionObjectFromSnapshot(sketchgui, snapshot, selectedObject)) {
         return false;
     }
 
     Sketcher::SketchObject* sketchObject = sketchgui->getSketchObject();
-    if (!isLazyExternalSketchConstraintSubElementName(preselection.pSubName)
+    if (!isLazyExternalSketchConstraintSubElementName(snapshot.subName.c_str())
         || !sketchObject->isExternalAllowed(selectedObject->getDocument(), selectedObject)) {
         return false;
     }
@@ -280,13 +445,13 @@ bool selectLazyExternalPreselection(SketcherGui::ViewProviderSketch* sketchgui, 
     // sketch selections.
     const char* docName = selectedObject->getDocument()->getName();
     const char* objName = selectedObject->getNameInDocument();
-    if (Gui::Selection().isSelected(docName, objName, preselection.pSubName)) {
-        Gui::Selection().rmvSelection(docName, objName, preselection.pSubName);
+    if (Gui::Selection().isSelected(docName, objName, snapshot.subName.c_str())) {
+        Gui::Selection().rmvSelection(docName, objName, snapshot.subName.c_str());
     }
     else {
         Gui::Selection().addSelection2(docName,
                                        objName,
-                                       preselection.pSubName,
+                                       snapshot.subName.c_str(),
                                        static_cast<float>(x),
                                        static_cast<float>(y),
                                        0.0F);
@@ -335,7 +500,7 @@ bool handleLazyExternalSelectionChange(SketcherGui::ViewProviderSketch* sketchgu
     App::DocumentObject* selectedObject = nullptr;
     if (!getLazyExternalSelectionObject(sketchgui, msg, selectedObject)) {
         if (msg.Type == Gui::SelectionChanges::SetPreselect) {
-            setLazyExternalIgnoredPreselection(sketchgui, false);
+            clearLazyExternalPreselectionSnapshot(sketchgui);
         }
         return false;
     }
@@ -348,7 +513,9 @@ bool handleLazyExternalSelectionChange(SketcherGui::ViewProviderSketch* sketchgu
     Sketcher::SketchObject* sketchObject = sketchgui->getSketchObject();
     if (!usableSubElement || !sketchObject->isExternalAllowed(selectedObject->getDocument(), selectedObject)) {
         if (msg.Type == Gui::SelectionChanges::SetPreselect) {
-            setLazyExternalIgnoredPreselection(sketchgui, true);
+            setLazyExternalPreselectionSnapshot(sketchgui,
+                                                LazyExternalPreselectionState::IgnoredExternal,
+                                                msg);
         }
         discardLazyExternalSelectionChange(msg);
 
@@ -360,7 +527,14 @@ bool handleLazyExternalSelectionChange(SketcherGui::ViewProviderSketch* sketchgu
             || msg.Type == Gui::SelectionChanges::AddSelection;
     }
 
-    setLazyExternalIgnoredPreselection(sketchgui, false);
+    if (msg.Type == Gui::SelectionChanges::SetPreselect) {
+        setLazyExternalPreselectionSnapshot(sketchgui,
+                                            LazyExternalPreselectionState::UsableExternal,
+                                            msg);
+    }
+    else if (msg.Type == Gui::SelectionChanges::RmvSelection) {
+        clearLazyExternalPreselectionSnapshot(sketchgui);
+    }
 
     // Keep valid external Edge/Vertex selections in Gui::Selection.  CommandConstraints.cpp
     // converts them to sketch ExternalGeometry only when a constraint actually consumes them.
@@ -1276,6 +1450,8 @@ void ViewProviderSketch::getCoordsOnSketchPlane(const SbVec3f& point, const SbVe
 bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVec2s& cursorPos,
                                             const Gui::View3DInventorViewer* viewer)
 {
+    noteLazyExternalCursorPosition(this, cursorPos);
+
     if (getEditingMode() != ViewProviderSketch::Default) {
         return ViewProvider2DObject::mouseButtonPressed(Button, pressed, cursorPos, viewer);
     }
@@ -1338,7 +1514,9 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                     }
 
                     if (!done) {
-                        const auto lazyExternalPreselection = classifyLazyExternalPreselection(this);
+                        LazyExternalPreselectionSnapshot lazyExternalSnapshot;
+                        const auto lazyExternalPreselection =
+                            classifyLazyExternalPreselection(this, cursorPos, lazyExternalSnapshot);
                         if (lazyExternalPreselection
                             == LazyExternalPreselectionState::UsableExternal) {
                             // Select the exact external Edge/Vertex that is currently preselected.
@@ -1348,7 +1526,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                             DoubleClick::prvClickPos = cursorPos;
                             DoubleClick::prvCursorPos = cursorPos;
                             DoubleClick::newCursorPos = cursorPos;
-                            return selectLazyExternalPreselection(this, x, y);
+                            return selectLazyExternalPreselection(this, lazyExternalSnapshot, x, y);
                         }
                         if (lazyExternalPreselection
                             == LazyExternalPreselectionState::IgnoredExternal) {
@@ -1421,6 +1599,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                     Gui::Selection().clearSelection();
                 }
                 setSketchMode(STATUS_NONE);
+                setLazyExternalSketchNativeSelection(this, true);
                 return true;
             }
 
@@ -1541,6 +1720,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                 case STATUS_SKETCH_UseRubberBand:
                     doBoxSelection(DoubleClick::prvCursorPos, cursorPos, viewer);
                     rubberband->setWorking(false);
+                    clearLazyExternalFaceRubberBandCandidate(this);
                     blockContextMenu = true;
 
                     // use draw(false, false) to avoid solver geometry with outdated construction flags
@@ -1591,12 +1771,14 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                 case STATUS_SKETCH_UseRubberBand:
                     // Cancel rubberband
                     rubberband->setWorking(false);
+                    clearLazyExternalFaceRubberBandCandidate(this);
                     blockContextMenu = true;
 
                     // a redraw is required in order to clear the rubberband
                     draw(true, false);
                     const_cast<Gui::View3DInventorViewer*>(viewer)->redraw();
                     setSketchMode(STATUS_NONE);
+                    setLazyExternalSketchNativeSelection(this, true);
                     return true;
                 default:
                     break;
@@ -1862,6 +2044,8 @@ void ViewProviderSketch::toggleWireSelection(int clickedGeoId)
 
 bool ViewProviderSketch::mouseMove(const SbVec2s& cursorPos, Gui::View3DInventorViewer* viewer)
 {
+    noteLazyExternalCursorPosition(this, cursorPos);
+
     if (getEditingMode() != ViewProviderSketch::Default) {
         return ViewProvider2DObject::mouseMove(cursorPos, viewer);
     }
@@ -1902,6 +2086,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s& cursorPos, Gui::View3DInventor
         DoubleClick::prvClickPos = lazyExternalFaceRubberBandStart;
         DoubleClick::newCursorPos = cursorPos;
         setSketchMode(STATUS_SKETCH_UseRubberBand);
+        setLazyExternalSketchNativeSelection(this, false);
         rubberband->setWorking(true);
     }
 
@@ -2010,6 +2195,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s& cursorPos, Gui::View3DInventor
             return true;
         case STATUS_SKETCH_StartRubberBand: {
             setSketchMode(STATUS_SKETCH_UseRubberBand);
+            setLazyExternalSketchNativeSelection(this, false);
             rubberband->setWorking(true);
             return true;
         }
