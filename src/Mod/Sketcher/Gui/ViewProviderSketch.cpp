@@ -150,6 +150,7 @@ enum class LazyExternalPreselectionState
 
 std::set<SketcherGui::ViewProviderSketch*> ignoredLazyExternalPreselectionSketches;
 std::map<SketcherGui::ViewProviderSketch*, SbVec2s> lazyExternalFaceRubberBandCandidates;
+std::set<SketcherGui::ViewProviderSketch*> lazyExternalSelectionReleaseGuards;
 
 void setLazyExternalIgnoredPreselection(SketcherGui::ViewProviderSketch* sketchgui, bool active)
 {
@@ -211,6 +212,35 @@ bool consumeLazyExternalFaceRubberBandCandidate(SketcherGui::ViewProviderSketch*
     }
 
     lazyExternalFaceRubberBandCandidates.erase(it);
+    return true;
+}
+
+void setLazyExternalSelectionReleaseGuard(SketcherGui::ViewProviderSketch* sketchgui, bool active)
+{
+    if (!sketchgui) {
+        return;
+    }
+
+    if (active) {
+        lazyExternalSelectionReleaseGuards.insert(sketchgui);
+    }
+    else {
+        lazyExternalSelectionReleaseGuards.erase(sketchgui);
+    }
+}
+
+bool consumeLazyExternalSelectionReleaseGuard(SketcherGui::ViewProviderSketch* sketchgui)
+{
+    if (!sketchgui) {
+        return false;
+    }
+
+    auto it = lazyExternalSelectionReleaseGuards.find(sketchgui);
+    if (it == lazyExternalSelectionReleaseGuards.end()) {
+        return false;
+    }
+
+    lazyExternalSelectionReleaseGuards.erase(it);
     return true;
 }
 
@@ -1341,32 +1371,34 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                         const auto lazyExternalPreselection = classifyLazyExternalPreselection(this);
                         if (lazyExternalPreselection
                             == LazyExternalPreselectionState::UsableExternal) {
-                            // Select the exact external Edge/Vertex that is currently preselected.
-                            // Returning false here lets the viewer select the owning object in some
-                            // PartDesign cases, so consume the click after adding the subelement.
+                            // Keep the pick lazy and consume the full click pair.  In the broken
+                            // versions the press was consumed but the release was left to the
+                            // native viewer selection path; that could clear previous sketch
+                            // selections or start an empty-space rubber band.
                             DoubleClick::prvClickTime = SbTime::getTimeOfDay();
                             DoubleClick::prvClickPos = cursorPos;
                             DoubleClick::prvCursorPos = cursorPos;
                             DoubleClick::newCursorPos = cursorPos;
-                            return selectLazyExternalPreselection(this, x, y);
+                            clearLazyExternalFaceRubberBandCandidate(this);
+                            setLazyExternalSelectionReleaseGuard(this, false);
+                            if (selectLazyExternalPreselection(this, x, y)) {
+                                setLazyExternalSelectionReleaseGuard(this, true);
+                                return true;
+                            }
                         }
-                        if (lazyExternalPreselection
-                            == LazyExternalPreselectionState::IgnoredExternal) {
-                            // A face/whole-object hit should behave like empty sketch space:
-                            // a click clears the current sketch selection, and a drag starts the
-                            // normal rubber-band selector.  Do not select the face itself.
-                            DoubleClick::prvClickTime = SbTime::getTimeOfDay();
-                            DoubleClick::prvClickPos = cursorPos;
-                            DoubleClick::prvCursorPos = cursorPos;
-                            DoubleClick::newCursorPos = cursorPos;
-                            // Do not enter STATUS_SKETCH_StartRubberBand on mouse-down.  The
-                            // stock StartRubberBand state turns any tiny motion event into an
-                            // active rubber band.  For faces we need click/clear-selection vs
-                            // drag/rubber-band semantics, so keep a private pending drag candidate and only
-                            // start the real rubber band after mouseMove crosses the drag threshold.
-                            setLazyExternalFaceRubberBandCandidate(this, cursorPos);
-                            return true;
-                        }
+
+                        // Empty sketch space and ignored external faces must share the same
+                        // semantics: click clears selection; drag starts rubber-band.  Do not use
+                        // STATUS_SKETCH_StartRubberBand on mouse-down because tiny Coin/Qt motion
+                        // events between press and release make face clicks look like rubber-band
+                        // drags.  Start the real rubber-band only after mouseMove crosses the drag
+                        // threshold.
+                        DoubleClick::prvClickTime = SbTime::getTimeOfDay();
+                        DoubleClick::prvClickPos = cursorPos;
+                        DoubleClick::prvCursorPos = cursorPos;
+                        DoubleClick::newCursorPos = cursorPos;
+                        setLazyExternalFaceRubberBandCandidate(this, cursorPos);
+                        return true;
                     }
 
                     // Double click events variables
@@ -1393,12 +1425,9 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                         DoubleClick::prvClickPos = cursorPos;
                         DoubleClick::prvCursorPos = cursorPos;
                         DoubleClick::newCursorPos = cursorPos;
-                        if (!done) {
-                            setSketchMode(STATUS_SKETCH_StartRubberBand);
-                        }
                     }
 
-                    return done;
+                    return true;
                 }
                 case STATUS_SKETCH_UseHandler: {
                     // Keep the stock handler path for every active tool.  Lazy-external handling
@@ -1413,10 +1442,17 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
             }
         }
         else {// Button 1 released
+            if (consumeLazyExternalSelectionReleaseGuard(this)) {
+                // The matching press already toggled a lazy external Edge/Vertex proxy
+                // selection.  Consume the release so the native 3D viewer does not treat it
+                // as an empty-space/face click and clear the existing selection.
+                setSketchMode(STATUS_NONE);
+                return true;
+            }
+
             if (consumeLazyExternalFaceRubberBandCandidate(this)) {
-                // Face click without enough drag: behave exactly like a click on empty
-                // sketch space.  This clears the current sketch selection unless Ctrl is
-                // held, but it never selects the face/whole object underneath the cursor.
+                // Empty-space or face click without enough drag: clear selection unless Ctrl
+                // is held, but never select the face/whole object underneath the cursor.
                 if (!(QApplication::keyboardModifiers() & Qt::ControlModifier)) {
                     Gui::Selection().clearSelection();
                 }
@@ -1885,10 +1921,10 @@ bool ViewProviderSketch::mouseMove(const SbVec2s& cursorPos, Gui::View3DInventor
 
     SbVec2s lazyExternalFaceRubberBandStart;
     if (getLazyExternalFaceRubberBandCandidateStart(this, lazyExternalFaceRubberBandStart)) {
-        // The press began over an ignored external face.  Do not reuse the stock
-        // STATUS_SKETCH_StartRubberBand state: that state starts a rubber band on the
-        // first mouseMove it sees.  Instead, require the normal Qt drag distance before
-        // switching to the real rubber-band state.
+        // The press began on empty sketch space or an ignored external face.  Require
+        // the normal Qt drag distance before switching to the real rubber-band state;
+        // this prevents face clicks from opening a rubber band due to tiny press/release
+        // jitter.
         const int dragStartDistance = QApplication::startDragDistance();
         short dx = 0;
         short dy = 0;
@@ -1898,9 +1934,11 @@ bool ViewProviderSketch::mouseMove(const SbVec2s& cursorPos, Gui::View3DInventor
         }
 
         clearLazyExternalFaceRubberBandCandidate(this);
+        setLazyExternalSelectionReleaseGuard(this, false);
         DoubleClick::prvCursorPos = lazyExternalFaceRubberBandStart;
         DoubleClick::prvClickPos = lazyExternalFaceRubberBandStart;
         DoubleClick::newCursorPos = cursorPos;
+        setLazyExternalSketchNativeSelection(this, false);
         setSketchMode(STATUS_SKETCH_UseRubberBand);
         rubberband->setWorking(true);
     }
@@ -2009,6 +2047,7 @@ bool ViewProviderSketch::mouseMove(const SbVec2s& cursorPos, Gui::View3DInventor
             }
             return true;
         case STATUS_SKETCH_StartRubberBand: {
+            setLazyExternalSketchNativeSelection(this, false);
             setSketchMode(STATUS_SKETCH_UseRubberBand);
             rubberband->setWorking(true);
             return true;
@@ -4537,6 +4576,7 @@ void ViewProviderSketch::unsetEditViewer(Gui::View3DInventorViewer* viewer)
     viewer->setSelectionEnabled(true);
     setLazyExternalIgnoredPreselection(this, false);
     clearLazyExternalFaceRubberBandCandidate(this);
+    setLazyExternalSelectionReleaseGuard(this, false);
 
     blockContextMenu = false;
 
