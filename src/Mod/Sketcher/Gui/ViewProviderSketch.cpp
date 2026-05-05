@@ -208,6 +208,16 @@ bool consumeLazyExternalFaceRubberBandClickGuard(SketcherGui::ViewProviderSketch
     return true;
 }
 
+bool hasLazyExternalFaceRubberBandClickGuard(SketcherGui::ViewProviderSketch* sketchgui)
+{
+    if (!sketchgui) {
+        return false;
+    }
+
+    return lazyExternalFaceRubberBandClickGuards.find(sketchgui)
+        != lazyExternalFaceRubberBandClickGuards.end();
+}
+
 LazyExternalPreselectionState classifyLazyExternalPreselection(
     SketcherGui::ViewProviderSketch* sketchgui)
 {
@@ -1951,7 +1961,18 @@ bool ViewProviderSketch::mouseMove(const SbVec2s& cursorPos, Gui::View3DInventor
             }
             return true;
         case STATUS_SKETCH_StartRubberBand: {
-            setLazyExternalFaceRubberBandClickGuard(this, false);
+            if (hasLazyExternalFaceRubberBandClickGuard(this)) {
+                // A click that starts over an ignored external face must not immediately turn into
+                // a rubber-band selection because normal mouse jitter can produce one move event
+                // between button-down and button-up.  Keep the click as a no-op until the cursor
+                // has moved far enough to clearly be a drag.
+                constexpr int lazyExternalFaceRubberBandDragRadius = 5;
+                if (SbVec2f(cursorPos - DoubleClick::prvClickPos).length()
+                    < lazyExternalFaceRubberBandDragRadius) {
+                    return true;
+                }
+                setLazyExternalFaceRubberBandClickGuard(this, false);
+            }
             setSketchMode(STATUS_SKETCH_UseRubberBand);
             rubberband->setWorking(true);
             return true;
