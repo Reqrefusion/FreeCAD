@@ -46,6 +46,7 @@
 #include <QWindow>
 
 #include <limits>
+#include <map>
 #include <set>
 
 #include <fmt/format.h>
@@ -148,7 +149,7 @@ enum class LazyExternalPreselectionState
 };
 
 std::set<SketcherGui::ViewProviderSketch*> ignoredLazyExternalPreselectionSketches;
-std::set<SketcherGui::ViewProviderSketch*> lazyExternalFaceRubberBandClickGuards;
+std::map<SketcherGui::ViewProviderSketch*, SbVec2s> lazyExternalFaceRubberBandCandidates;
 
 void setLazyExternalIgnoredPreselection(SketcherGui::ViewProviderSketch* sketchgui, bool active)
 {
@@ -179,43 +180,54 @@ bool consumeLazyExternalIgnoredPreselection(SketcherGui::ViewProviderSketch* ske
     return true;
 }
 
-void setLazyExternalFaceRubberBandClickGuard(SketcherGui::ViewProviderSketch* sketchgui, bool active)
+void setLazyExternalFaceRubberBandCandidate(SketcherGui::ViewProviderSketch* sketchgui,
+                                            const SbVec2s& pressPos)
 {
     if (!sketchgui) {
         return;
     }
 
-    if (active) {
-        lazyExternalFaceRubberBandClickGuards.insert(sketchgui);
-    }
-    else {
-        lazyExternalFaceRubberBandClickGuards.erase(sketchgui);
-    }
+    lazyExternalFaceRubberBandCandidates[sketchgui] = pressPos;
 }
 
-bool consumeLazyExternalFaceRubberBandClickGuard(SketcherGui::ViewProviderSketch* sketchgui)
+void clearLazyExternalFaceRubberBandCandidate(SketcherGui::ViewProviderSketch* sketchgui)
+{
+    if (!sketchgui) {
+        return;
+    }
+
+    lazyExternalFaceRubberBandCandidates.erase(sketchgui);
+}
+
+bool consumeLazyExternalFaceRubberBandCandidate(SketcherGui::ViewProviderSketch* sketchgui)
 {
     if (!sketchgui) {
         return false;
     }
 
-    auto it = lazyExternalFaceRubberBandClickGuards.find(sketchgui);
-    if (it == lazyExternalFaceRubberBandClickGuards.end()) {
+    auto it = lazyExternalFaceRubberBandCandidates.find(sketchgui);
+    if (it == lazyExternalFaceRubberBandCandidates.end()) {
         return false;
     }
 
-    lazyExternalFaceRubberBandClickGuards.erase(it);
+    lazyExternalFaceRubberBandCandidates.erase(it);
     return true;
 }
 
-bool hasLazyExternalFaceRubberBandClickGuard(SketcherGui::ViewProviderSketch* sketchgui)
+bool getLazyExternalFaceRubberBandCandidateStart(SketcherGui::ViewProviderSketch* sketchgui,
+                                                 SbVec2s& pressPos)
 {
     if (!sketchgui) {
         return false;
     }
 
-    return lazyExternalFaceRubberBandClickGuards.find(sketchgui)
-        != lazyExternalFaceRubberBandClickGuards.end();
+    auto it = lazyExternalFaceRubberBandCandidates.find(sketchgui);
+    if (it == lazyExternalFaceRubberBandCandidates.end()) {
+        return false;
+    }
+
+    pressPos = it->second;
+    return true;
 }
 
 LazyExternalPreselectionState classifyLazyExternalPreselection(
@@ -1341,8 +1353,13 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                             DoubleClick::prvClickPos = cursorPos;
                             DoubleClick::prvCursorPos = cursorPos;
                             DoubleClick::newCursorPos = cursorPos;
-                            setLazyExternalFaceRubberBandClickGuard(this, true);
-                            setSketchMode(STATUS_SKETCH_StartRubberBand);
+                            // Do not enter STATUS_SKETCH_StartRubberBand on mouse-down.  The
+                            // stock StartRubberBand state turns any tiny motion event into an
+                            // active rubber band.  For faces we need click/no-op vs drag/rubber
+                            // band semantics, so keep a private pending drag candidate and only
+                            // start the real rubber band after mouseMove crosses the drag threshold.
+                            setLazyExternalFaceRubberBandCandidate(this, cursorPos);
+                            setLazyExternalSketchNativeSelection(this, false);
                             return true;
                         }
                     }
@@ -1391,6 +1408,15 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
             }
         }
         else {// Button 1 released
+            if (consumeLazyExternalFaceRubberBandCandidate(this)) {
+                // Face click without enough drag: no face selection, no clear-selection,
+                // no Sketcher rubber band.  Restore native lazy-external edge selection
+                // for the idle sketch after consuming this click.
+                setLazyExternalSketchNativeSelection(this, true);
+                setSketchMode(STATUS_NONE);
+                return true;
+            }
+
             // Do things depending on the mode of the user interaction
             switch (Mode) {
                 case STATUS_SELECT_Point:
@@ -1500,14 +1526,6 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                 }
                 case STATUS_SKETCH_StartRubberBand:// a single click happened, so clear selection
                                                    // unless user hold control.
-                    if (consumeLazyExternalFaceRubberBandClickGuard(this)) {
-                        // The press started over an ignored external face.  Treat a click without
-                        // enough motion as a no-op: no face selection and no clear-selection.  If
-                        // the user drags far enough, mouseMove() switches to UseRubberBand and
-                        // the normal box selection path below remains available.
-                        setSketchMode(STATUS_NONE);
-                        return true;
-                    }
                     if (!(QApplication::keyboardModifiers() & Qt::ControlModifier)) {
                         Gui::Selection().clearSelection();
                     }
@@ -1524,6 +1542,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                     // a redraw is required in order to clear the rubberband
                     const_cast<Gui::View3DInventorViewer*>(viewer)->redraw();
                     setSketchMode(STATUS_NONE);
+                    setLazyExternalSketchNativeSelection(this, true);
                     return true;
                 case STATUS_SKETCH_UseHandler: {
                     // Same as mouse-down: never consume the event at ViewProvider level based on
@@ -1857,6 +1876,28 @@ bool ViewProviderSketch::mouseMove(const SbVec2s& cursorPos, Gui::View3DInventor
         return false;
     }
 
+    SbVec2s lazyExternalFaceRubberBandStart;
+    if (getLazyExternalFaceRubberBandCandidateStart(this, lazyExternalFaceRubberBandStart)) {
+        // The press began over an ignored external face.  Do not reuse the stock
+        // STATUS_SKETCH_StartRubberBand state: that state starts a rubber band on the
+        // first mouseMove it sees.  Instead, require the normal Qt drag distance before
+        // switching to the real rubber-band state.
+        const int dragStartDistance = QApplication::startDragDistance();
+        short dx = 0;
+        short dy = 0;
+        (cursorPos - lazyExternalFaceRubberBandStart).getValue(dx, dy);
+        if (std::abs(dx) < dragStartDistance && std::abs(dy) < dragStartDistance) {
+            return true;
+        }
+
+        clearLazyExternalFaceRubberBandCandidate(this);
+        DoubleClick::prvCursorPos = lazyExternalFaceRubberBandStart;
+        DoubleClick::prvClickPos = lazyExternalFaceRubberBandStart;
+        DoubleClick::newCursorPos = cursorPos;
+        setSketchMode(STATUS_SKETCH_UseRubberBand);
+        rubberband->setWorking(true);
+    }
+
     // ignore small moves after selection
     switch (Mode) {
         case STATUS_SELECT_Point:
@@ -1961,18 +2002,6 @@ bool ViewProviderSketch::mouseMove(const SbVec2s& cursorPos, Gui::View3DInventor
             }
             return true;
         case STATUS_SKETCH_StartRubberBand: {
-            if (hasLazyExternalFaceRubberBandClickGuard(this)) {
-                // A click that starts over an ignored external face must not immediately turn into
-                // a rubber-band selection because normal mouse jitter can produce one move event
-                // between button-down and button-up.  Keep the click as a no-op until the cursor
-                // has moved far enough to clearly be a drag.
-                constexpr int lazyExternalFaceRubberBandDragRadius = 5;
-                if (SbVec2f(cursorPos - DoubleClick::prvClickPos).length()
-                    < lazyExternalFaceRubberBandDragRadius) {
-                    return true;
-                }
-                setLazyExternalFaceRubberBandClickGuard(this, false);
-            }
             setSketchMode(STATUS_SKETCH_UseRubberBand);
             rubberband->setWorking(true);
             return true;
@@ -4500,7 +4529,7 @@ void ViewProviderSketch::unsetEditViewer(Gui::View3DInventorViewer* viewer)
     viewer->setEditing(false);
     viewer->setSelectionEnabled(true);
     setLazyExternalIgnoredPreselection(this, false);
-    setLazyExternalFaceRubberBandClickGuard(this, false);
+    clearLazyExternalFaceRubberBandCandidate(this);
 
     blockContextMenu = false;
 
