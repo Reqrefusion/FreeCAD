@@ -43,7 +43,6 @@
 #include <QMessageBox>
 #include <QScreen>
 #include <QTextStream>
-#include <QTimer>
 #include <QToolTip>
 #include <QWindow>
 
@@ -517,29 +516,18 @@ LazyExternalPreselectionState classifyLazyExternalPreselection(
 {
     snapshot = LazyExternalPreselectionSnapshot{};
 
-    // Primary path: consume the snapshot that handleLazyExternalSelectionChange() recorded
-    // when it intercepted SetPreselect for the foreign object.  Both UsableExternal and
-    // IgnoredExternal are stored there now, so the snapshot is the single source of truth.
-    // The cursor-position check inside consumeLazyExternalPreselectionSnapshot() ensures we
-    // do not use a snapshot that was recorded at a different screen position.
-    if (consumeLazyExternalPreselectionSnapshot(sketchgui, cursorPos, snapshot)) {
-        return snapshot.state;
-    }
-
-    // Fallback: handleLazyExternalSelectionChange() consumed the SetPreselect before we
-    // could snapshot it (e.g. a very fast mouse that moved away already), but Gui::Selection
-    // still carries the preselection.  Re-derive the classification from live state.
     const Gui::SelectionChanges& preselection = Gui::Selection().getPreselection();
+
     App::DocumentObject* selectedObject = nullptr;
     if (!getLazyExternalSelectionObject(sketchgui, preselection, selectedObject)) {
-        // consumeLazyExternalIgnoredPreselection is the legacy flag path; it is set by
-        // setLazyExternalPreselectionSnapshot(IgnoredExternal) which also calls
-        // setLazyExternalIgnoredPreselection.  It was already cleared by the consume above
-        // if the snapshot existed; the check here handles the race where snapshot was absent
-        // but the ignored-flag survived (should be rare after this refactor).
+        if (consumeLazyExternalPreselectionSnapshot(sketchgui, cursorPos, snapshot)) {
+            return snapshot.state;
+        }
+
         if (consumeLazyExternalIgnoredPreselection(sketchgui)) {
             return LazyExternalPreselectionState::IgnoredExternal;
         }
+
         return LazyExternalPreselectionState::None;
     }
 
@@ -553,10 +541,13 @@ LazyExternalPreselectionState classifyLazyExternalPreselection(
             : std::string(preselection.pDocName);
         snapshot.objectName = preselection.pObjectName;
         snapshot.subName = preselection.pSubName;
+        clearLazyExternalPreselectionSnapshot(sketchgui);
         return LazyExternalPreselectionState::UsableExternal;
     }
 
-    // Face or whole-object hit.
+    // It is an external object under the cursor, but not an Edge/Vertex usable by lazy
+    // constraints.  Treat it as ignored geometry instead of letting Sketcher start the
+    // rubber-band selector over a face.
     snapshot.state = LazyExternalPreselectionState::IgnoredExternal;
     snapshot.documentName = Base::Tools::isNullOrEmpty(preselection.pDocName)
         ? std::string()
@@ -567,6 +558,7 @@ LazyExternalPreselectionState classifyLazyExternalPreselection(
     snapshot.subName = Base::Tools::isNullOrEmpty(preselection.pSubName)
         ? std::string()
         : std::string(preselection.pSubName);
+    clearLazyExternalPreselectionSnapshot(sketchgui);
     return LazyExternalPreselectionState::IgnoredExternal;
 }
 
@@ -665,17 +657,37 @@ bool selectLazyExternalPreselection(SketcherGui::ViewProviderSketch* sketchgui,
         return false;
     }
 
-    // Keep the pick lazy and keep Gui::Selection clean.  The previous implementation used
-    // the source object EdgeN/VertexN as a persistent proxy selection via addSelection2().
-    // That made the global selection manager believe a foreign object was really selected
-    // while the sketch was in edit mode; the result was stale hover state, "two click"
-    // behaviour, and faces remaining selected.
-    //
-    // In normal sketch mode an external Edge/Vertex click is only a consumed pick.  In a
-    // constraint tool the handler receives/caches the SetPreselect notification and carries
-    // a private lazy reference until the constraint sequence is completed.
-    (void)x;
-    (void)y;
+    // Native selection may be in a single-object mode depending on the current viewer/gate.
+    // Upstream Sketcher edge clicks toggle without dropping the previously selected sketch
+    // subelements, so preserve the active sketch selections and the already-selected lazy
+    // external Edge/Vertex proxies around the source-object selection update.
+    const auto preservedSelections = collectLazyExternalSelectionItemsToPreserve(sketchgui);
+
+    // Keep the pick lazy: selecting an external Edge/Vertex must not create an
+    // ExternalGeometry entry in the active sketch.  The source subelement is stored as a
+    // proxy selection and CommandConstraints.cpp materializes it with addExternal() only
+    // when a constraint actually consumes it.
+    const char* docName = selectedObject->getDocument()->getName();
+    const char* objName = selectedObject->getNameInDocument();
+    const LazyExternalSelectionItem toggledItem{docName, objName, snapshot.subName};
+    const bool toggledOff = Gui::Selection().isSelected(docName, objName, snapshot.subName.c_str());
+    if (toggledOff) {
+        Gui::Selection().rmvSelection(docName, objName, snapshot.subName.c_str());
+    }
+    else {
+        Gui::Selection().addSelection2(docName,
+                                       objName,
+                                       snapshot.subName.c_str(),
+                                       static_cast<float>(x),
+                                       static_cast<float>(y),
+                                       0.0F);
+    }
+
+    restoreLazyExternalSelectionItems(preservedSelections, toggledItem, toggledOff);
+
+    // The source-object preselection is only a carrier for the click.  Leaving it active
+    // makes the next sketch edge/blank-space click look like a second click is required
+    // because handlers keep seeing the old external edge under the cursor.
     Gui::Selection().rmvPreselect();
     clearLazyExternalPreselectionSnapshot(sketchgui);
     return true;
@@ -706,25 +718,14 @@ void setLazyExternalSketchNativeSelection(SketcherGui::ViewProviderSketch* sketc
 
 void discardLazyExternalSelectionChange(const Gui::SelectionChanges& msg)
 {
-    if (msg.Type != Gui::SelectionChanges::AddSelection
-        || Base::Tools::isNullOrEmpty(msg.pDocName)
-        || Base::Tools::isNullOrEmpty(msg.pObjectName)) {
-        return;
+    if (msg.Type == Gui::SelectionChanges::SetPreselect) {
+        Gui::Selection().rmvPreselect();
     }
-
-    // The event has already entered Gui::Selection, but removing it synchronously from this
-    // callback re-enters onSelectionChanged() and poisons Sketcher's hover/preselection state.
-    // Defer the cleanup one event-loop tick: faces/whole-object hits never remain selected,
-    // while the current notification chain can finish without recursive selection churn.
-    const std::string docName = msg.pDocName;
-    const std::string objectName = msg.pObjectName;
-    const std::string subName = Base::Tools::isNullOrEmpty(msg.pSubName)
-        ? std::string()
-        : std::string(msg.pSubName);
-
-    QTimer::singleShot(0, [docName, objectName, subName]() {
-        Gui::Selection().rmvSelection(docName.c_str(), objectName.c_str(), subName.c_str());
-    });
+    else if (msg.Type == Gui::SelectionChanges::AddSelection) {
+        Gui::Selection().rmvSelection(msg.pDocName,
+                                      msg.pObjectName,
+                                      Base::Tools::isNullOrEmpty(msg.pSubName) ? nullptr : msg.pSubName);
+    }
 }
 
 bool handleLazyExternalSelectionChange(SketcherGui::ViewProviderSketch* sketchgui,
@@ -733,9 +734,6 @@ bool handleLazyExternalSelectionChange(SketcherGui::ViewProviderSketch* sketchgu
     App::DocumentObject* selectedObject = nullptr;
     if (!getLazyExternalSelectionObject(sketchgui, msg, selectedObject)) {
         if (msg.Type == Gui::SelectionChanges::SetPreselect) {
-            // Cursor moved to something that is not a foreign object (sketch geometry,
-            // empty space, or constraint).  Clear any stale lazy snapshot so the next
-            // mouseButtonPressed sees a clean state.
             clearLazyExternalPreselectionSnapshot(sketchgui);
         }
         return false;
@@ -744,50 +742,41 @@ bool handleLazyExternalSelectionChange(SketcherGui::ViewProviderSketch* sketchgu
     // Native 3D selection is deliberately left enabled while editing a sketch so edges and
     // vertices from surrounding geometry can be picked without entering the External Geometry
     // tool.  Faces and whole-object hits are noise for lazy constraints: do not reject them via
-    // SelectionGate, because that shows the forbidden cursor; instead handle them here.
+    // SelectionGate, because that shows the forbidden cursor; instead immediately discard them.
     const bool usableSubElement = isLazyExternalSketchConstraintSubElementName(msg.pSubName);
     Sketcher::SketchObject* sketchObject = sketchgui->getSketchObject();
     if (!usableSubElement || !sketchObject->isExternalAllowed(selectedObject->getDocument(), selectedObject)) {
         if (msg.Type == Gui::SelectionChanges::SetPreselect) {
-            // Record as IgnoredExternal so mouseButtonPressed() can treat it as empty
-            // space without re-doing a ray cast.  Return true: Sketcher must not process
-            // a SetPreselect for a foreign object -- it would corrupt hover indices.
-            setLazyExternalPreselectionSnapshot(sketchgui,
-                                               LazyExternalPreselectionState::IgnoredExternal,
-                                               msg);
-            return true;
+            // Do not cache ignored face/whole-object preselection.  Normal Sketcher hover and
+            // click handling should be decided from the current picked point on mouse-down; a
+            // cached face hover can otherwise poison the next click and make sketch curves need
+            // a second click before they highlight/select.
+            clearLazyExternalPreselectionSnapshot(sketchgui);
         }
-
-        // AddSelection for a face/whole-object: consume it and schedule cleanup.
-        // The cleanup is deferred to avoid recursive selection-change notifications,
-        // but the face must not remain selected in Gui::Selection.
         discardLazyExternalSelectionChange(msg);
-        return msg.Type == Gui::SelectionChanges::AddSelection;
+
+        // Only consume the events that would otherwise reach the active constraint handler or
+        // leave an unwanted external face/whole-object selection behind.  Do not swallow
+        // RmvPreselect: Sketcher still needs that notification to clear its own hover state
+        // and redraw sketch geometry when the cursor leaves a sketch edge that lies on a face.
+        return msg.Type == Gui::SelectionChanges::SetPreselect
+            || msg.Type == Gui::SelectionChanges::AddSelection;
     }
 
     if (msg.Type == Gui::SelectionChanges::SetPreselect) {
-        // Usable external Edge/Vertex: record snapshot for mouseButtonPressed() and
-        // constraint handler caching.  Return true so Sketcher never sees a foreign-
-        // object SetPreselect that would corrupt its internal preselection indices.
         setLazyExternalPreselectionSnapshot(sketchgui,
                                             LazyExternalPreselectionState::UsableExternal,
                                             msg);
-        return true;
     }
-    if (msg.Type == Gui::SelectionChanges::AddSelection) {
-        // Edge/Vertex source-object selection is also just a carrier.  Do not let it become
-        // persistent global selection state; active constraint handlers still receive the
-        // AddSelection explicitly from ViewProviderSketch::onSelectionChanged().
-        discardLazyExternalSelectionChange(msg);
-        return true;
-    }
-
-    if (msg.Type == Gui::SelectionChanges::RmvSelection) {
+    else if (msg.Type == Gui::SelectionChanges::RmvSelection) {
         clearLazyExternalPreselectionSnapshot(sketchgui);
-        return true;
     }
 
-    return false;
+    // Keep valid external Edge/Vertex selections in Gui::Selection.  CommandConstraints.cpp
+    // converts them to sketch ExternalGeometry only when a constraint actually consumes them.
+    // Let SetPreselect pass through so active constraint handlers can cache the exact external
+    // subelement before snapHandle->compute() has a chance to clear Gui::Selection preselection.
+    return msg.Type == Gui::SelectionChanges::RmvSelection;
 }
 
 } // namespace
@@ -3163,20 +3152,6 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
             return;
 
         if (handleLazyExternalSelectionChange(this, msg)) {
-            // The lazy-external handler consumed the event to prevent Sketcher's normal
-            // selection logic from misinterpreting a foreign-object selection change.
-            // However, active constraint handlers must still see SetPreselect for external
-            // edges/vertices so they can cache the exact subelement before
-            // snapHandle->compute() clears Gui::Selection's preselection.
-            // Usable Edge/Vertex AddSelection events are also forwarded: the event itself
-            // is only a native carrier and will be removed asynchronously, but the active
-            // constraint handler needs the subelement to update its private lazy sequence.
-            if (Mode == STATUS_SKETCH_UseHandler
-                && (msg.Type == Gui::SelectionChanges::SetPreselect
-                    || (msg.Type == Gui::SelectionChanges::AddSelection
-                        && isLazyExternalSketchConstraintSubElementName(msg.pSubName)))) {
-                sketchHandler->onSelectionChanged(msg);
-            }
             return;
         }
 
