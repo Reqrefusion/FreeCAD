@@ -28,6 +28,7 @@
 #include <Precision.hxx>
 #include <Bnd_Box.hxx>
 #include <QPainter>
+#include <QTimer>
 #include <algorithm>
 #include <sstream>
 
@@ -902,10 +903,28 @@ bool addConstraintSafely(SketchObject* obj, std::function<void()> constraintaddi
 namespace SketcherGui
 {
 
+struct LazyExternalConstraintRef
+{
+    App::DocumentObject* object = nullptr;
+    std::string subName;
+    bool vertex = false;
+
+    bool isValid() const
+    {
+        return object && !subName.empty();
+    }
+};
+
 struct SelIdPair
 {
-    int GeoId;
-    Sketcher::PointPos PosId;
+    int GeoId = Sketcher::GeoEnum::GeoUndef;
+    Sketcher::PointPos PosId = Sketcher::PointPos::none;
+    LazyExternalConstraintRef lazyExternal;
+
+    bool isLazyExternal() const
+    {
+        return lazyExternal.isValid();
+    }
 };
 
 static bool startsWith(const std::string& text, const char* prefix)
@@ -954,6 +973,23 @@ static App::DocumentObject* getLazyExternalConstraintObject(App::Document* fallb
     }
 
     return nullptr;
+}
+
+static void deferRemoveLazyExternalCarrierSelection(const char* documentName,
+                                                   const char* objectName,
+                                                   const char* subName)
+{
+    if (Base::Tools::isNullOrEmpty(documentName)
+        || Base::Tools::isNullOrEmpty(objectName)) {
+        return;
+    }
+
+    const std::string docName = documentName;
+    const std::string objName = objectName;
+    const std::string sub = Base::Tools::isNullOrEmpty(subName) ? std::string() : std::string(subName);
+    QTimer::singleShot(0, [docName, objName, sub]() {
+        Gui::Selection().rmvSelection(docName.c_str(), objName.c_str(), sub.c_str());
+    });
 }
 
 static std::string externalConstraintSubNameFromGeoId(int geoId, bool vertex = false)
@@ -1257,20 +1293,16 @@ static bool resolveLazyExternalConstraintSubElement(
         return false;
     }
 
-    const int geoId = ensureExternalGeometryForConstraint(
-        cmd,
-        Obj,
-        selObj,
-        externalSub.c_str()
-    );
-    if (geoId == Sketcher::GeoEnum::GeoUndef) {
-        return false;
-    }
-
-    selIdPair.GeoId = geoId;
+    // Strict lazy path: do not call addExternal() while the user is merely building
+    // the constraint selection sequence.  Carry a private reference and materialize it
+    // only once a valid sequence is complete, immediately before applyConstraint().
+    selIdPair.GeoId = Sketcher::GeoEnum::GeoUndef;
     selIdPair.PosId = externalVertex ? Sketcher::PointPos::start : Sketcher::PointPos::none;
+    selIdPair.lazyExternal.object = selObj;
+    selIdPair.lazyExternal.subName = externalSub;
+    selIdPair.lazyExternal.vertex = externalVertex;
     newSelType = externalVertex ? SelVertex : SelExternalEdge;
-    constraintSubName = externalConstraintSubNameFromGeoId(geoId, externalVertex);
+    constraintSubName = externalVertex ? "LazyExternalVertex" : "LazyExternalEdge";
     return true;
 }
 
@@ -1393,10 +1425,12 @@ public:
             return true;
         }
 
-        // Faces and whole-object hits are filtered out by getGatedTypes() where supported.
-        // If the viewer still reports one, allow it so Sketcher can ignore it without showing
-        // the red forbidden cursor.
-        return true;
+        // Only external Edge/Vertex is useful for lazy constraints.  Returning true for
+        // faces lets the native selection manager add the support face before Sketcher has
+        // a chance to ignore it, which leaves faces selected and disturbs later hover/clicks.
+        // Treat faces/whole-object hits as rejected by the gate; the ViewProvider-level
+        // picked-point fallback still handles face click/drag as transparent background.
+        return false;
     }
 
     std::unordered_set<std::string> getGatedTypes(
@@ -1538,12 +1572,24 @@ public:
 
     void mouseMove(SnapManager::SnapHandle /*snapHandle*/) override
     {
-        // A cached external preselection is only a bridge from hover to the very next
-        // mouse-down.  Normal motion away from the external edge/vertex must discard it
-        // so regular sketch picks keep behaving exactly like upstream Sketcher.
-        if (!isCurrentLazyExternalConstraintPreselection()) {
-            clearCachedExternalPreselection();
-        }
+        // A cached external preselection bridges the gap between hover and the next
+        // mouse-down.  Discard it only when the cursor has genuinely moved away from the
+        // external edge/vertex.
+        //
+        // After the handleLazyExternalSelectionChange() refactor, SetPreselect events for
+        // external objects are consumed before reaching here, so
+        // isCurrentLazyExternalConstraintPreselection() (which reads live
+        // Gui::Selection preselection) will return false even while the cursor is still
+        // hovering over the same external edge.  We must therefore keep the cache alive
+        // as long as the ViewProviderSketch snapshot also holds a UsableExternal entry;
+        // once the cursor moves to empty space or a sketch element the snapshot is cleared
+        // by handleLazyExternalSelectionChange, after which the cache should also go.
+        //
+        // Cache is cleared on RmvPreselect (cursor left the external edge) and on
+        // pressButton (consumed).  mouseMove is now a no-op for cache management;
+        // isCurrentLazyExternalConstraintPreselection() is intentionally not checked here
+        // because SetPreselect is consumed before reaching the handler, so it would
+        // always return false even while the cursor is still over the same external edge.
         applyCursor();
     }
 
@@ -1565,9 +1611,17 @@ public:
         }
 
         if (msg.Type == Gui::SelectionChanges::RmvPreselect) {
-            // Do not clear the cache here.  snapHandle->compute() can emit RmvPreselect
-            // during the same mouse-down that should consume the hovered external edge.
-            // mouseMove() and any following SetPreselect keep the cache from becoming stale.
+            // After the handleLazyExternalSelectionChange() refactor, SetPreselect for
+            // external edges is consumed before it reaches the normal onSelectionChanged
+            // chain.  We instead forward it explicitly to this handler so cacheExternalPreselection()
+            // runs.  When the cursor leaves the external edge, a RmvPreselect arrives here
+            // without a prior SetPreselect having been seen -- which means the cache may hold
+            // a stale entry from the last hover.
+            //
+            // It is now safe to clear here because the snapHandle->compute() concern no longer
+            // applies: pressButton() snapshots the cache before compute() runs and the snapshot
+            // is stored independently of Gui::Selection preselection.
+            clearCachedExternalPreselection();
             return false;
         }
 
@@ -1600,9 +1654,10 @@ public:
         }
 
         if (externalSelectionHandledOnPress) {
-            Gui::Selection().rmvSelection(msg.pDocName,
-                                          msg.pObjectName,
-                                          msg.pSubName);
+            // The external edge/vertex was already consumed on press.  If native selection
+            // still emitted an AddSelection carrier for the source object, consume it and
+            // remove it asynchronously so Gui::Selection never becomes the lazy-storage layer.
+            deferRemoveLazyExternalCarrierSelection(msg.pDocName, msg.pObjectName, msg.pSubName);
             return true;
         }
 
@@ -1622,10 +1677,10 @@ public:
             return false;
         }
 
-        // The native selection has served only as a carrier for the external subelement.
-        // Replace it by the sketch-local ExternalEdgeN/ExternalVertexN selection that the
-        // standard constraint UI understands.
-        Gui::Selection().rmvSelection(msg.pDocName, msg.pObjectName, msg.pSubName);
+        // The native source-object selection is only a carrier for the lazy pick.
+        // Remove it after the current notification chain unwinds; keeping it in
+        // Gui::Selection is what made later sketch hovers/clicks require an extra click.
+        deferRemoveLazyExternalCarrierSelection(msg.pDocName, msg.pObjectName, msg.pSubName);
 
         std::stringstream ss;
         ss << constraintSubName;
@@ -1633,12 +1688,49 @@ public:
         return acceptSelection(selIdPair, newSelType, ss, Base::Vector2d(0.0, 0.0));
     }
 
+    bool materializeLazyExternalSelections(std::vector<SelIdPair>& sequence)
+    {
+        Sketcher::SketchObject* sketchObject = sketchgui ? sketchgui->getSketchObject() : nullptr;
+        if (!sketchObject) {
+            return false;
+        }
+
+        for (SelIdPair& item : sequence) {
+            if (!item.isLazyExternal()) {
+                continue;
+            }
+
+            App::DocumentObject* sourceObject = item.lazyExternal.object;
+            const std::string sourceSubName = item.lazyExternal.subName;
+            const bool sourceVertex = item.lazyExternal.vertex;
+            if (!sourceObject || sourceSubName.empty()) {
+                return false;
+            }
+
+            const int geoId = ensureExternalGeometryForConstraint(
+                cmd,
+                sketchObject,
+                sourceObject,
+                sourceSubName.c_str());
+            if (geoId == Sketcher::GeoEnum::GeoUndef) {
+                return false;
+            }
+
+            item.GeoId = geoId;
+            item.PosId = sourceVertex ? Sketcher::PointPos::start : Sketcher::PointPos::none;
+            item.lazyExternal = LazyExternalConstraintRef{};
+        }
+
+        return true;
+    }
+
     bool acceptSelection(const SelIdPair& selIdPair,
                          SelType newSelType,
                          const std::stringstream& ss,
                          Base::Vector2d onSketchPos)
     {
-        if (selIdPair.GeoId == GeoEnum::GeoUndef) {
+        const bool lazyExternalSelection = selIdPair.isLazyExternal();
+        if (selIdPair.GeoId == GeoEnum::GeoUndef && !lazyExternalSelection) {
             // If mouse is released on "blank" space, start over
             selSeq.clear();
             resetOngoingSequences();
@@ -1647,14 +1739,18 @@ public:
             return true;
         }
 
-        // If mouse is released on something allowed, select it and move forward
+        // If mouse is released on something allowed, select it and move forward.
+        // A lazy external source edge/vertex is intentionally NOT written to Gui::Selection;
+        // it remains a private SelIdPair until the sequence is complete.
         selSeq.push_back(selIdPair);
-        Gui::Selection().addSelection(sketchgui->getSketchObject()->getDocument()->getName(),
-                                      sketchgui->getSketchObject()->getNameInDocument(),
-                                      ss.str().c_str(),
-                                      onSketchPos.x,
-                                      onSketchPos.y,
-                                      0.f);
+        if (!lazyExternalSelection) {
+            Gui::Selection().addSelection(sketchgui->getSketchObject()->getDocument()->getName(),
+                                          sketchgui->getSketchObject()->getNameInDocument(),
+                                          ss.str().c_str(),
+                                          onSketchPos.x,
+                                          onSketchPos.y,
+                                          0.f);
+        }
         _tempOnSequences.clear();
         allowedSelTypes = 0;
         for (std::set<int>::iterator token = ongoingSequences.begin();
@@ -1662,7 +1758,15 @@ public:
              ++token) {
             if ((cmd->allowedSelSequences).at(*token).at(seqIndex) & newSelType) {
                 if (seqIndex == (cmd->allowedSelSequences).at(*token).size() - 1) {
-                    // One of the sequences is completed. Pass to cmd->applyConstraint
+                    // One of the sequences is completed.  Materialize any lazy external
+                    // references now, and only now.  If the user cancels before the sequence
+                    // reaches this point, addExternal() is never called.
+                    if (!materializeLazyExternalSelections(selSeq)) {
+                        selSeq.clear();
+                        resetOngoingSequences();
+                        updateHint();
+                        return true;
+                    }
                     cmd->applyConstraint(selSeq, *token);// replace arg 2 by ongoingToken
 
                     selSeq.clear();
@@ -1752,14 +1856,23 @@ public:
             }
         }
 
-        if (selIdPair.GeoId == GeoEnum::GeoUndef
-            && isExternalConstraintPreselection(sketchgui->getSketchObject())) {
-            // Faces, whole-object hits, or edge/vertex picks that are not valid for the current
-            // constraint step should be ignored.  Do not reset the sequence and do not clear
-            // selections; the active constraint tool must remain active.
-            updateHint();
-            applyCursor();
-            return true;
+        if (selIdPair.GeoId == GeoEnum::GeoUndef) {
+            // Check whether the cursor was over an external object that is not valid for
+            // the current constraint step (face, whole-object, or edge/vertex out of scope).
+            // isExternalConstraintPreselection() reads live Gui::Selection preselection, but
+            // after our handleLazyExternalSelectionChange() refactor the SetPreselect is
+            // consumed before it reaches here, so the live preselection is typically empty.
+            // Fall back to cachedExternalPreselectionValid, which was set by
+            // cacheExternalPreselection() when the SetPreselect was forwarded to the handler.
+            const bool wasExternalHit = isExternalConstraintPreselection(sketchgui->getSketchObject())
+                || cachedExternalPreselectionValid;
+            if (wasExternalHit) {
+                // Do not reset the sequence or clear selections; the constraint tool stays active.
+                clearCachedExternalPreselection();
+                updateHint();
+                applyCursor();
+                return true;
+            }
         }
 
         return acceptSelection(selIdPair, newSelType, ss, onSketchPos);
