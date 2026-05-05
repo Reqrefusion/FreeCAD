@@ -164,6 +164,7 @@ struct LazyExternalPreselectionSnapshot
 std::set<SketcherGui::ViewProviderSketch*> ignoredLazyExternalPreselectionSketches;
 std::map<SketcherGui::ViewProviderSketch*, SbVec2s> lazyExternalFaceRubberBandCandidates;
 std::map<SketcherGui::ViewProviderSketch*, SbVec2s> lazyExternalIgnoredPressCandidates;
+std::map<SketcherGui::ViewProviderSketch*, SbVec2s> lazyExternalUsablePressCandidates;
 std::map<SketcherGui::ViewProviderSketch*, SbVec2s> lazyExternalLastCursorPositions;
 std::map<SketcherGui::ViewProviderSketch*, LazyExternalPreselectionSnapshot>
     lazyExternalPreselectionSnapshots;
@@ -424,6 +425,40 @@ void clearLazyExternalIgnoredPressCandidate(SketcherGui::ViewProviderSketch* ske
     lazyExternalIgnoredPressCandidates.erase(sketchgui);
 }
 
+void setLazyExternalUsablePressCandidate(SketcherGui::ViewProviderSketch* sketchgui,
+                                         const SbVec2s& pressPos)
+{
+    if (!sketchgui) {
+        return;
+    }
+
+    lazyExternalUsablePressCandidates[sketchgui] = pressPos;
+}
+
+bool consumeLazyExternalUsablePressCandidate(SketcherGui::ViewProviderSketch* sketchgui)
+{
+    if (!sketchgui) {
+        return false;
+    }
+
+    auto it = lazyExternalUsablePressCandidates.find(sketchgui);
+    if (it == lazyExternalUsablePressCandidates.end()) {
+        return false;
+    }
+
+    lazyExternalUsablePressCandidates.erase(it);
+    return true;
+}
+
+void clearLazyExternalUsablePressCandidate(SketcherGui::ViewProviderSketch* sketchgui)
+{
+    if (!sketchgui) {
+        return;
+    }
+
+    lazyExternalUsablePressCandidates.erase(sketchgui);
+}
+
 void setLazyExternalFaceRubberBandCandidate(SketcherGui::ViewProviderSketch* sketchgui,
                                             const SbVec2s& pressPos)
 {
@@ -527,6 +562,85 @@ LazyExternalPreselectionState classifyLazyExternalPreselection(
     return LazyExternalPreselectionState::IgnoredExternal;
 }
 
+struct LazyExternalSelectionItem
+{
+    std::string documentName;
+    std::string objectName;
+    std::string subName;
+};
+
+std::vector<LazyExternalSelectionItem> collectLazyExternalSelectionItemsToPreserve(
+    SketcherGui::ViewProviderSketch* sketchgui)
+{
+    std::vector<LazyExternalSelectionItem> items;
+    if (!sketchgui || !sketchgui->getSketchObject()) {
+        return items;
+    }
+
+    Sketcher::SketchObject* sketchObject = sketchgui->getSketchObject();
+    const char* sketchDocName = sketchObject->getDocument()->getName();
+    const char* sketchObjectName = sketchObject->getNameInDocument();
+
+    std::vector<Gui::SelectionObject> selections = Gui::Selection().getSelectionEx();
+    for (Gui::SelectionObject& selectionObject : selections) {
+        App::DocumentObject* selectedObject = selectionObject.getObject();
+        if (!selectedObject || !selectedObject->getDocument()) {
+            continue;
+        }
+
+        const bool activeSketchSelection = selectedObject == sketchObject;
+        const bool lazyExternalSelection = selectedObject != sketchObject
+            && sketchObject->isExternalAllowed(selectedObject->getDocument(), selectedObject);
+        if (!activeSketchSelection && !lazyExternalSelection) {
+            continue;
+        }
+
+        const char* docName = activeSketchSelection
+            ? sketchDocName
+            : selectedObject->getDocument()->getName();
+        const char* objectName = activeSketchSelection
+            ? sketchObjectName
+            : selectedObject->getNameInDocument();
+
+        for (const std::string& subName : selectionObject.getSubNames()) {
+            if (subName.empty()) {
+                continue;
+            }
+            if (!activeSketchSelection
+                && !isLazyExternalSketchConstraintSubElementName(subName.c_str())) {
+                continue;
+            }
+
+            items.push_back({docName, objectName, subName});
+        }
+    }
+
+    return items;
+}
+
+void restoreLazyExternalSelectionItems(
+    const std::vector<LazyExternalSelectionItem>& items,
+    const LazyExternalSelectionItem& toggledItem,
+    bool toggledOff)
+{
+    for (const LazyExternalSelectionItem& item : items) {
+        if (toggledOff
+            && item.documentName == toggledItem.documentName
+            && item.objectName == toggledItem.objectName
+            && item.subName == toggledItem.subName) {
+            continue;
+        }
+
+        if (!Gui::Selection().isSelected(item.documentName.c_str(),
+                                         item.objectName.c_str(),
+                                         item.subName.c_str())) {
+            Gui::Selection().addSelection(item.documentName.c_str(),
+                                          item.objectName.c_str(),
+                                          item.subName.c_str());
+        }
+    }
+}
+
 bool selectLazyExternalPreselection(SketcherGui::ViewProviderSketch* sketchgui,
                                     const LazyExternalPreselectionSnapshot& snapshot,
                                     double x,
@@ -543,15 +657,21 @@ bool selectLazyExternalPreselection(SketcherGui::ViewProviderSketch* sketchgui,
         return false;
     }
 
+    // Native selection may be in a single-object mode depending on the current viewer/gate.
+    // Upstream Sketcher edge clicks toggle without dropping the previously selected sketch
+    // subelements, so preserve the active sketch selections and the already-selected lazy
+    // external Edge/Vertex proxies around the source-object selection update.
+    const auto preservedSelections = collectLazyExternalSelectionItemsToPreserve(sketchgui);
+
     // Keep the pick lazy: selecting an external Edge/Vertex must not create an
     // ExternalGeometry entry in the active sketch.  The source subelement is stored as a
     // proxy selection and CommandConstraints.cpp materializes it with addExternal() only
-    // when a constraint actually consumes it.  Use addSelection2(), like Sketcher does for
-    // its own subelement selections, so this appends/toggles without clearing existing
-    // sketch selections.
+    // when a constraint actually consumes it.
     const char* docName = selectedObject->getDocument()->getName();
     const char* objName = selectedObject->getNameInDocument();
-    if (Gui::Selection().isSelected(docName, objName, snapshot.subName.c_str())) {
+    const LazyExternalSelectionItem toggledItem{docName, objName, snapshot.subName};
+    const bool toggledOff = Gui::Selection().isSelected(docName, objName, snapshot.subName.c_str());
+    if (toggledOff) {
         Gui::Selection().rmvSelection(docName, objName, snapshot.subName.c_str());
     }
     else {
@@ -562,6 +682,14 @@ bool selectLazyExternalPreselection(SketcherGui::ViewProviderSketch* sketchgui,
                                        static_cast<float>(y),
                                        0.0F);
     }
+
+    restoreLazyExternalSelectionItems(preservedSelections, toggledItem, toggledOff);
+
+    // The source-object preselection is only a carrier for the click.  Leaving it active
+    // makes the next sketch edge/blank-space click look like a second click is required
+    // because handlers keep seeing the old external edge under the cursor.
+    Gui::Selection().rmvPreselect();
+    clearLazyExternalPreselectionSnapshot(sketchgui);
     return true;
 }
 
@@ -619,9 +747,11 @@ bool handleLazyExternalSelectionChange(SketcherGui::ViewProviderSketch* sketchgu
     Sketcher::SketchObject* sketchObject = sketchgui->getSketchObject();
     if (!usableSubElement || !sketchObject->isExternalAllowed(selectedObject->getDocument(), selectedObject)) {
         if (msg.Type == Gui::SelectionChanges::SetPreselect) {
-            setLazyExternalPreselectionSnapshot(sketchgui,
-                                                LazyExternalPreselectionState::IgnoredExternal,
-                                                msg);
+            // Do not cache ignored face/whole-object preselection.  Normal Sketcher hover and
+            // click handling should be decided from the current picked point on mouse-down; a
+            // cached face hover can otherwise poison the next click and make sketch curves need
+            // a second click before they highlight/select.
+            clearLazyExternalPreselectionSnapshot(sketchgui);
         }
         discardLazyExternalSelectionChange(msg);
 
@@ -1642,20 +1772,23 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                             DoubleClick::newCursorPos = cursorPos;
                             clearLazyExternalIgnoredPressCandidate(this);
                             clearLazyExternalFaceRubberBandCandidate(this);
+                            setLazyExternalUsablePressCandidate(this, cursorPos);
                             return selectLazyExternalPreselection(this, lazyExternalSnapshot, x, y);
                         }
                         if (lazyExternalPreselection
                             == LazyExternalPreselectionState::IgnoredExternal) {
-                            // External faces/whole-object hits are not empty sketch space.
-                            // Consuming the press prevents Sketcher from entering
-                            // STATUS_SKETCH_StartRubberBand and prevents release from clearing
-                            // the already-selected sketch/external edges.
+                            // A face/whole-object hit is not an immediate rubber-band start.
+                            // Treat it as a pending empty-space click: a click clears selection
+                            // on release, while a real drag starts rubber-band after the normal
+                            // Qt drag threshold.  This keeps face clicks from exploding into
+                            // rubber-band, but still lets users box-select by dragging on a face.
                             DoubleClick::prvClickTime = SbTime::getTimeOfDay();
                             DoubleClick::prvClickPos = cursorPos;
                             DoubleClick::prvCursorPos = cursorPos;
                             DoubleClick::newCursorPos = cursorPos;
-                            clearLazyExternalFaceRubberBandCandidate(this);
-                            setLazyExternalIgnoredPressCandidate(this, cursorPos);
+                            clearLazyExternalIgnoredPressCandidate(this);
+                            clearLazyExternalUsablePressCandidate(this);
+                            setLazyExternalFaceRubberBandCandidate(this, cursorPos);
                             setSketchMode(STATUS_NONE);
                             return true;
                         }
@@ -1705,6 +1838,16 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
             }
         }
         else {// Button 1 released
+            if (consumeLazyExternalUsablePressCandidate(this)) {
+                // Mouse-down already toggled a lazy external Edge/Vertex.  Consume the
+                // matching mouse-up so it cannot be interpreted as a blank click or keep
+                // the source-object preselection alive for the next click.
+                Gui::Selection().rmvPreselect();
+                clearLazyExternalPreselectionSnapshot(this);
+                setSketchMode(STATUS_NONE);
+                return true;
+            }
+
             if (consumeLazyExternalIgnoredPressCandidate(this)) {
                 // The press started on an ignored external face/whole-object hit.
                 // Keep existing selections intact and do not let the release become a
@@ -1716,7 +1859,12 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
             }
 
             if (consumeLazyExternalFaceRubberBandCandidate(this)) {
-                // Legacy pending face candidate: keep it non-destructive.
+                // Face click without enough drag: behave like a normal empty-space click
+                // for selection state, but never select the face/whole object itself.
+                if (!(QApplication::keyboardModifiers() & Qt::ControlModifier)) {
+                    Gui::Selection().clearSelection();
+                }
+                clearLazyExternalPreselectionSnapshot(this);
                 setSketchMode(STATUS_NONE);
                 setLazyExternalSketchNativeSelection(this, true);
                 return true;
@@ -1841,6 +1989,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                     rubberband->setWorking(false);
                     clearLazyExternalFaceRubberBandCandidate(this);
                     clearLazyExternalIgnoredPressCandidate(this);
+                    clearLazyExternalUsablePressCandidate(this);
                     blockContextMenu = true;
 
                     // use draw(false, false) to avoid solver geometry with outdated construction flags
@@ -1893,6 +2042,7 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                     rubberband->setWorking(false);
                     clearLazyExternalFaceRubberBandCandidate(this);
                     clearLazyExternalIgnoredPressCandidate(this);
+                    clearLazyExternalUsablePressCandidate(this);
                     blockContextMenu = true;
 
                     // a redraw is required in order to clear the rubberband
@@ -2196,16 +2346,14 @@ bool ViewProviderSketch::mouseMove(const SbVec2s& cursorPos, Gui::View3DInventor
 
     SbVec2s lazyExternalFaceRubberBandStart;
     if (getLazyExternalFaceRubberBandCandidateStart(this, lazyExternalFaceRubberBandStart)) {
-        // The press began over an ignored external face.  Do not reuse the stock
-        // STATUS_SKETCH_StartRubberBand state: that state starts a rubber band on the
-        // first mouseMove it sees.  Instead, require the normal Qt drag distance before
-        // switching to the real rubber-band state.
-        const int dragStartDistance = QApplication::startDragDistance();
+        // The press began over an ignored external face.  Mirror the stock Sketcher
+        // empty-space path: a tiny motion is ignored, and crossing the same small
+        // dragIgnoredDistance threshold promotes the gesture to rubber-band selection.
         short dx = 0;
         short dy = 0;
         (cursorPos - lazyExternalFaceRubberBandStart).getValue(dx, dy);
-        if (std::abs(dx) < dragStartDistance && std::abs(dy) < dragStartDistance) {
-            return true;
+        if (std::abs(dx) < dragIgnoredDistance && std::abs(dy) < dragIgnoredDistance) {
+            return false;
         }
 
         clearLazyExternalFaceRubberBandCandidate(this);

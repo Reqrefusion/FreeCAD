@@ -1629,6 +1629,7 @@ public:
 
         std::stringstream ss;
         ss << constraintSubName;
+        Gui::Selection().rmvPreselect();
         return acceptSelection(selIdPair, newSelType, ss, Base::Vector2d(0.0, 0.0));
     }
 
@@ -1739,14 +1740,16 @@ public:
             ss << "ExternalEdge" << Sketcher::GeoEnum::RefExt + 1 - CrvId;
         }
         else {
-            resolveLazyExternalConstraintPreselection(
-                cmd,
-                sketchgui->getSketchObject(),
-                allowedSelTypes,
-                selIdPair,
-                newSelType,
-                ss
-            );
+            if (resolveLazyExternalConstraintPreselection(
+                    cmd,
+                    sketchgui->getSketchObject(),
+                    allowedSelTypes,
+                    selIdPair,
+                    newSelType,
+                    ss)) {
+                Gui::Selection().rmvPreselect();
+                clearCachedExternalPreselection();
+            }
         }
 
         if (selIdPair.GeoId == GeoEnum::GeoUndef
@@ -2277,10 +2280,12 @@ protected:
                                                          newSelType,
                                                          ss)) {
                 clearCachedExternalPreselection();
+                Gui::Selection().rmvPreselect();
                 return acceptSelection(selIdPair, newSelType, ss, onSketchPos);
             }
 
             if (resolveCachedExternalPreselection(selIdPair, newSelType, ss)) {
+                Gui::Selection().rmvPreselect();
                 return acceptSelection(selIdPair, newSelType, ss, onSketchPos);
             }
 
@@ -2339,12 +2344,14 @@ protected:
                                                      newSelType,
                                                      ss)) {
             clearCachedExternalPreselection();
+            Gui::Selection().rmvPreselect();
             return acceptSelection(selIdPair, newSelType, ss, onSketchPos);
         }
 
         // If snapHandle->compute() removed Gui::Selection's preselection during this mouse-down,
         // use the exact Edge/Vertex cached from the preceding SetPreselect notification.
         if (resolveCachedExternalPreselection(selIdPair, newSelType, ss)) {
+            Gui::Selection().rmvPreselect();
             return acceptSelection(selIdPair, newSelType, ss, onSketchPos);
         }
 
