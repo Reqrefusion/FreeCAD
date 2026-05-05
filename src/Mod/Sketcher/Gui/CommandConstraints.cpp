@@ -2266,21 +2266,10 @@ protected:
             isCurrentLazyExternalConstraintPreselection() || cachedExternalPreselectionValid;
 
         if (hasLazyExternalPreselection) {
-            // Prefer the external Edge/Vertex that generated the latest SetPreselect.  When native
-            // selection is enabled for lazy externals, the sketch-local preselection can still hold
-            // the previous internal edge; checking that first makes the external click look like a
-            // blank click or a repeat of the old selection.
-            if ((allowedSelTypes & SelExternalEdge)
-                && CrvId <= Sketcher::GeoEnum::RefExt
-                && CrvId != Sketcher::GeoEnum::GeoUndef) {
-                selIdPair.GeoId = CrvId;
-                selIdPair.PosId = Sketcher::PointPos::none;
-                newSelType = SelExternalEdge;
-                ss << "ExternalEdge" << Sketcher::GeoEnum::RefExt + 1 - CrvId;
-                clearCachedExternalPreselection();
-                return acceptSelection(selIdPair, newSelType, ss, onSketchPos);
-            }
-
+            // Prefer the external Edge/Vertex that generated the latest SetPreselect/cache.
+            // The sketch-local preselection can still hold the previously selected internal
+            // or already-added external edge; consuming that first makes the new external
+            // click look like a blank click or a repeat of the old selection.
             if (resolveLazyExternalConstraintPreselection(cmd,
                                                          sketchObject,
                                                          allowedSelTypes,
@@ -2292,6 +2281,19 @@ protected:
             }
 
             if (resolveCachedExternalPreselection(selIdPair, newSelType, ss)) {
+                return acceptSelection(selIdPair, newSelType, ss, onSketchPos);
+            }
+
+            // Only fall back to an already-added ExternalEdgeN when no source-object
+            // external Edge/Vertex is available for this click.
+            if ((allowedSelTypes & SelExternalEdge)
+                && CrvId <= Sketcher::GeoEnum::RefExt
+                && CrvId != Sketcher::GeoEnum::GeoUndef) {
+                selIdPair.GeoId = CrvId;
+                selIdPair.PosId = Sketcher::PointPos::none;
+                newSelType = SelExternalEdge;
+                ss << "ExternalEdge" << Sketcher::GeoEnum::RefExt + 1 - CrvId;
+                clearCachedExternalPreselection();
                 return acceptSelection(selIdPair, newSelType, ss, onSketchPos);
             }
 
