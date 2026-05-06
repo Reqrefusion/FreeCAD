@@ -72,8 +72,6 @@ SET(SketcherGui_SRCS
     CommandCreateGeo.cpp
     CommandConstraints.h
     CommandConstraints.cpp
-    LazyExternalGeometryLayer.h
-    LazyExternalGeometryLayer.cpp
     CommandSketcherTools.h
     CommandSketcherTools.cpp
     CommandSketcherBSpline.cpp
