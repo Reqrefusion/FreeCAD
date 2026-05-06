@@ -174,11 +174,30 @@ public:
             }
             std::string subName(msg.pSubName);
 
+            const bool isLazyExternalEdge = subName.size() > 4 && subName.substr(0, 4) == "Edge";
+            const bool isLazyExternalVertex = subName.size() > 6 && subName.substr(0, 6) == "Vertex";
+
+            if (isLazyExternalEdge || isLazyExternalVertex) {
+                const bool defining = !(alwaysReference || isConstructionMode());
+                const int lazyId = sketchgui->addLazyExternalReference(obj, subName, defining, intersection);
+
+                Gui::Selection().clearSelection();
+                Gui::Selection().rmvPreselect();
+
+                if (lazyId < 0) {
+                    Gui::NotifyError(
+                        sketchgui,
+                        QT_TRANSLATE_NOOP("Notifications", "Error"),
+                        QT_TRANSLATE_NOOP("Notifications", "Failed to prepare lazy external geometry")
+                    );
+                }
+
+                return true;
+            }
+
             if (obj->isDerivedFrom<App::Plane>() || obj->isDerivedFrom<Part::Datum>()
                 || obj->isDerivedFrom<Part::DatumLine>() || obj->isDerivedFrom<Part::DatumPoint>()
                 || obj->isDerivedFrom<App::Line>() || obj->isDerivedFrom<App::Point>()
-                || (subName.size() > 4 && subName.substr(0, 4) == "Edge")
-                || (subName.size() > 6 && subName.substr(0, 6) == "Vertex")
                 || (subName.size() > 4 && subName.substr(0, 4) == "Face")) {
                 try {
                     openCommand(QT_TRANSLATE_NOOP("Command", "Add external geometry"));

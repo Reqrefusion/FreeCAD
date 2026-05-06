@@ -76,6 +76,7 @@
 #include "EditDatumDialog.h"
 #include "EditTextDialog.h"
 #include "EditModeCoinManager.h"
+#include "LazyExternalGeometryLayer.h"
 #include "SnapManager.h"
 #include "StyleParameters.h"
 #include "TaskDlgEditSketch.h"
@@ -557,6 +558,7 @@ ViewProviderSketch::ViewProviderSketch()
     , pcSketchFacesToggle(new SoToggleSwitch)
     , listener(nullptr)
     , editCoinManager(nullptr)
+    , lazyExternalGeometryLayer(nullptr)
     , snapManager(nullptr)
     , pObserver(std::make_unique<ViewProviderSketch::ParameterObserver>(*this))
     , sketchHandler(nullptr)
@@ -2622,6 +2624,18 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint* Point)
                 return true;
             }
         }
+        else if (result.LazyExternalId != EditModeCoinManager::PreselectionResult::InvalidLazyExternal
+                 && (result.LazyExternalId != preselection.PreselectLazyExternalId
+                     || result.LazyExternalVertex != preselection.PreselectLazyExternalVertex)) {
+            resetPreselectPoint();
+            Gui::Selection().rmvPreselect();
+            preselection.PreselectLazyExternalId = result.LazyExternalId;
+            preselection.PreselectLazyExternalVertex = result.LazyExternalVertex;
+            preselection.blockedPreselection = false;
+            updateToolTip();
+
+            return true;
+        }
         else if (!result.ConstrIndices.empty()
                  && result.ConstrIndices
                      != preselection.PreselectConstraintSet) {// if a constraint is hit
@@ -2660,9 +2674,11 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint* Point)
             }
         }
         else if ((result.PointIndex == -1 && result.GeoIndex == -1
+                  && result.LazyExternalId == EditModeCoinManager::PreselectionResult::InvalidLazyExternal
                   && result.Cross == EditModeCoinManager::PreselectionResult::Axes::None
                   && result.ConstrIndices.empty())
                  && (preselection.isPreselectPointValid() || preselection.isPreselectCurveValid()
+                     || preselection.isLazyExternalPreselected()
                      || preselection.isCrossPreselected()
                      || !preselection.PreselectConstraintSet.empty()
                      || preselection.blockedPreselection)) {
@@ -2677,6 +2693,7 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint* Point)
             Point->getPoint()[0], Point->getPoint()[1], Point->getPoint()[2]);
     }
     else if (preselection.isPreselectCurveValid() || preselection.isPreselectPointValid()
+             || preselection.isLazyExternalPreselected()
              || !preselection.PreselectConstraintSet.empty() || preselection.isCrossPreselected()
              || preselection.blockedPreselection) {
         resetPreselectPoint();
@@ -3331,6 +3348,8 @@ void ViewProviderSketch::draw(bool temp /*=false*/, bool rebuildinformationoverl
         editCoinManager->updateColor(geolistfacade);
     }
 
+    redrawLazyExternalGeometryLayer();
+
     Gui::MDIView* mdi = this->getActiveView();
     if (mdi && mdi->isDerivedFrom<Gui::View3DInventor>()) {
         static_cast<Gui::View3DInventor*>(mdi)->getViewer()->redraw();
@@ -3671,6 +3690,10 @@ bool ViewProviderSketch::setEdit(int ModNum)
     preselection.reset();
     selection.reset();
     editCoinManager = std::make_unique<EditModeCoinManager>(*this);
+    lazyExternalGeometryLayer = std::make_unique<LazyExternalGeometryLayer>();
+    lazyExternalGeometryLayer->attachTo(editCoinManager->getRootEditNode());
+    lazyExternalGeometryLayer->rebuildFromSupport(getSketchObject());
+    editCoinManager->drawLazyExternalGeometryLayer(*lazyExternalGeometryLayer);
     snapManager = std::make_unique<SnapManager>(*this);
 
 
@@ -3975,6 +3998,7 @@ void ViewProviderSketch::unsetEdit(int ModNum)
             deactivateHandler();
         }
 
+        lazyExternalGeometryLayer = nullptr;
         editCoinManager = nullptr;
         snapManager = nullptr;
         preselection.reset();
@@ -4252,6 +4276,83 @@ int ViewProviderSketch::getPreselectCross() const
     return -1;
 }
 
+int ViewProviderSketch::getPreselectLazyExternal() const
+{
+    if (isInEditMode()) {
+        return preselection.PreselectLazyExternalId;
+    }
+    return Preselection::InvalidLazyExternal;
+}
+
+bool ViewProviderSketch::isPreselectLazyExternalVertex() const
+{
+    return isInEditMode() && preselection.isLazyExternalVertex();
+}
+
+LazyExternalGeometryLayer* ViewProviderSketch::getLazyExternalGeometryLayer()
+{
+    return lazyExternalGeometryLayer.get();
+}
+
+const LazyExternalGeometryLayer* ViewProviderSketch::getLazyExternalGeometryLayer() const
+{
+    return lazyExternalGeometryLayer.get();
+}
+
+int ViewProviderSketch::addLazyExternalReference(App::DocumentObject* sourceObject,
+                                                 const std::string& subName,
+                                                 bool defining,
+                                                 bool intersection)
+{
+    if (!isInEditMode() || !lazyExternalGeometryLayer) {
+        return Preselection::InvalidLazyExternal;
+    }
+
+    int id = lazyExternalGeometryLayer->addReference(
+        getSketchObject(), sourceObject, subName, defining, intersection);
+    if (id > Preselection::InvalidLazyExternal) {
+        redrawLazyExternalGeometryLayer();
+    }
+    return id;
+}
+
+void ViewProviderSketch::redrawLazyExternalGeometryLayer()
+{
+    if (editCoinManager && lazyExternalGeometryLayer) {
+        editCoinManager->drawLazyExternalGeometryLayer(*lazyExternalGeometryLayer);
+    }
+}
+
+int ViewProviderSketch::materializeLazyExternalReference(int lazyExternalId)
+{
+    if (!lazyExternalGeometryLayer) {
+        return Sketcher::GeoEnum::GeoUndef;
+    }
+
+    const auto* element = lazyExternalGeometryLayer->getElement(lazyExternalId);
+    if (!element || !element->sourceObject) {
+        return Sketcher::GeoEnum::GeoUndef;
+    }
+
+    auto* sketch = getSketchObject();
+    auto objects = sketch->ExternalGeometry.getValues();
+    auto subElements = sketch->ExternalGeometry.getSubValues();
+
+    for (std::size_t i = 0; i < objects.size() && i < subElements.size(); ++i) {
+        if (objects[i] == element->sourceObject && subElements[i] == element->subName) {
+            return Sketcher::GeoEnum::RefExt - static_cast<int>(i);
+        }
+    }
+
+    const int extIndex = sketch->addExternal(
+        element->sourceObject, element->subName.c_str(), element->defining, element->intersection);
+    if (extIndex < 0) {
+        return Sketcher::GeoEnum::GeoUndef;
+    }
+
+    return Sketcher::GeoEnum::RefExt - extIndex;
+}
+
 Sketcher::SketchObject* ViewProviderSketch::getSketchObject() const
 {
     return dynamic_cast<Sketcher::SketchObject*>(pcObject);
@@ -4516,6 +4617,8 @@ void ViewProviderSketch::setPreselectPoint(int PreselectPoint)
 {
     preselection.PreselectPoint = PreselectPoint;
     preselection.PreselectCurve = Preselection::InvalidCurve;
+    preselection.PreselectLazyExternalId = Preselection::InvalidLazyExternal;
+    preselection.PreselectLazyExternalVertex = false;
     preselection.PreselectCross = Preselection::Axes::None;
     ;
     preselection.PreselectConstraintSet.clear();
@@ -4525,6 +4628,8 @@ void ViewProviderSketch::setPreselectRootPoint()
 {
     preselection.PreselectPoint = Preselection::InvalidPoint;
     preselection.PreselectCurve = Preselection::InvalidCurve;
+    preselection.PreselectLazyExternalId = Preselection::InvalidLazyExternal;
+    preselection.PreselectLazyExternalVertex = false;
     preselection.PreselectCross = Preselection::Axes::RootPoint;
     preselection.PreselectConstraintSet.clear();
 }
@@ -4534,6 +4639,8 @@ void ViewProviderSketch::resetPreselectPoint()
 {
     preselection.PreselectPoint = Preselection::InvalidPoint;
     preselection.PreselectCurve = Preselection::InvalidCurve;
+    preselection.PreselectLazyExternalId = Preselection::InvalidLazyExternal;
+    preselection.PreselectLazyExternalVertex = false;
     preselection.PreselectCross = Preselection::Axes::None;
     ;
     preselection.PreselectConstraintSet.clear();

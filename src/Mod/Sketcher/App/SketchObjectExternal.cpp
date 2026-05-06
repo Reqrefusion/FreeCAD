@@ -2294,6 +2294,138 @@ void processFace (const Rotation& invRot,
 
 }  // anonymous namespace
 
+
+std::vector<std::unique_ptr<Part::Geometry>> SketchObject::buildExternalGeometryPreview(
+    App::DocumentObject* Obj,
+    const char* SubName,
+    bool intersection
+) const
+{
+    std::vector<std::unique_ptr<Part::Geometry>> geos;
+
+    if (!Obj || Base::Tools::isNullOrEmpty(SubName)) {
+        return geos;
+    }
+
+    if (!isExternalAllowed(Obj->getDocument(), Obj)) {
+        return geos;
+    }
+
+    std::string subName(SubName);
+    const bool isEdge = subName.size() > 4 && subName.substr(0, 4) == "Edge";
+    const bool isVertex = subName.size() > 6 && subName.substr(0, 6) == "Vertex";
+
+    // The lazy layer is intentionally limited to edge and vertex references. Faces and whole-object
+    // references stay out of the edit-session virtual layer and continue to use the explicit external
+    // geometry command path.
+    if (!isEdge && !isVertex) {
+        return geos;
+    }
+
+    Base::Placement Plm = Placement.getValue();
+    Base::Vector3d Pos = Plm.getPosition();
+    Base::Rotation Rot = Plm.getRotation();
+    Base::Rotation invRot = Rot.inverse();
+    Base::Vector3d dN(0, 0, 1);
+    Rot.multVec(dN, dN);
+    Base::Vector3d dX(1, 0, 0);
+    Rot.multVec(dX, dX);
+
+    Base::Placement invPlm = Plm.inverse();
+    Base::Matrix4D invMat = invPlm.toMatrix();
+    gp_Trsf mov;
+    mov.SetValues(invMat[0][0],
+                  invMat[0][1],
+                  invMat[0][2],
+                  invMat[0][3],
+                  invMat[1][0],
+                  invMat[1][1],
+                  invMat[1][2],
+                  invMat[1][3],
+                  invMat[2][0],
+                  invMat[2][1],
+                  invMat[2][2],
+                  invMat[2][3]);
+
+    gp_Ax3 sketchAx3(
+        gp_Pnt(Pos.x, Pos.y, Pos.z), gp_Dir(dN.x, dN.y, dN.z), gp_Dir(dX.x, dX.y, dX.z));
+    gp_Pln sketchPlane(sketchAx3);
+    Handle(Geom_Plane) gPlane = new Geom_Plane(sketchPlane);
+    BRepBuilderAPI_MakeFace mkFace(sketchPlane);
+    TopoDS_Shape aProjFace = mkFace.Shape();
+
+    auto importVertex = [&](const TopoDS_Shape& refSubShape) {
+        gp_Pnt P = BRep_Tool::Pnt(TopoDS::Vertex(refSubShape));
+        GeomAPI_ProjectPointOnSurf proj(P, gPlane);
+        P = proj.NearestPoint();
+        Base::Vector3d p(P.X(), P.Y(), P.Z());
+        invPlm.multVec(p, p);
+
+        auto* point = new Part::GeomPoint(p);
+        GeometryFacade::setConstruction(point, true);
+        geos.emplace_back(point);
+    };
+
+    try {
+        auto wholeShape = Part::Feature::getTopoShape(
+            Obj,
+            Part::ShapeOption::ResolveLink | Part::ShapeOption::Transform
+        );
+        TopoDS_Shape refSubShape = wholeShape.getSubShape(subName.c_str());
+
+        if (isEdge && refSubShape.ShapeType() == TopAbs_EDGE) {
+            if (intersection) {
+                FCBRepAlgoAPI_Section maker(refSubShape, sketchPlane);
+                maker.Approximation(Standard_True);
+                if (!maker.IsDone()) {
+                    return geos;
+                }
+                Part::TopoShape intersectionShape(maker.Shape());
+                for (const auto& s : intersectionShape.getSubTopoShapes(TopAbs_EDGE)) {
+                    TopoDS_Edge edge = TopoDS::Edge(s.getShape());
+                    processEdge(edge, geos, gPlane, invPlm, mov, sketchPlane, invRot, sketchAx3, aProjFace);
+                }
+                for (const auto& s : intersectionShape.getSubShapes(TopAbs_VERTEX, TopAbs_EDGE)) {
+                    importVertex(s);
+                }
+            }
+            else {
+                const TopoDS_Edge& edge = TopoDS::Edge(refSubShape);
+                processEdge(edge, geos, gPlane, invPlm, mov, sketchPlane, invRot, sketchAx3, aProjFace);
+            }
+        }
+        else if (isVertex && refSubShape.ShapeType() == TopAbs_VERTEX) {
+            importVertex(refSubShape);
+        }
+    }
+    catch (Base::Exception& e) {
+        FC_ERR("Failed to build lazy external geometry preview in "
+               << getFullName() << ": " << Obj->getNameInDocument() << "." << subName
+               << std::endl << e.what());
+        geos.clear();
+    }
+    catch (Standard_Failure& e) {
+        FC_ERR("Failed to build lazy external geometry preview in "
+               << getFullName() << ": " << Obj->getNameInDocument() << "." << subName
+               << std::endl << e.GetMessageString());
+        geos.clear();
+    }
+    catch (std::exception& e) {
+        FC_ERR("Failed to build lazy external geometry preview in "
+               << getFullName() << ": " << Obj->getNameInDocument() << "." << subName
+               << std::endl << e.what());
+        geos.clear();
+    }
+    catch (...) {
+        FC_ERR("Failed to build lazy external geometry preview in "
+               << getFullName() << ": " << Obj->getNameInDocument() << "." << subName
+               << std::endl << "Unknown exception");
+        geos.clear();
+    }
+
+    return geos;
+}
+
 void SketchObject::rebuildExternalGeometry(std::optional<ExternalToAdd> extToAdd)
 {
     Base::StateLocker lock(managedoperation, true); // no need to check input data validity as this is an sketchobject managed operation.

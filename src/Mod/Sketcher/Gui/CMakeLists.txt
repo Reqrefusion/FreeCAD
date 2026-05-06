@@ -122,6 +122,8 @@ SET(SketcherGui_SRCS
     EditModeGeometryCoinManager.h
     EditModeConstraintCoinManager.cpp
     EditModeConstraintCoinManager.h
+    LazyExternalGeometryLayer.cpp
+    LazyExternalGeometryLayer.h
     ViewProviderSketchCoinAttorney.cpp
     ViewProviderSketchCoinAttorney.h
     ViewProviderSketch.cpp

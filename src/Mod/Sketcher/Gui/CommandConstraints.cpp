@@ -902,8 +902,11 @@ namespace SketcherGui
 
 struct SelIdPair
 {
-    int GeoId;
-    Sketcher::PointPos PosId;
+    int GeoId = Sketcher::GeoEnum::GeoUndef;
+    Sketcher::PointPos PosId = Sketcher::PointPos::none;
+    int LazyExternalId = -1;
+    bool IsLazyExternal = false;
+    bool LazyExternalVertex = false;
 };
 
 struct SketchSelection
@@ -1146,6 +1149,26 @@ public:
         return true;
     }
 
+    bool materializeLazySelections(std::vector<SelIdPair>& sequence)
+    {
+        for (auto& item : sequence) {
+            if (!item.IsLazyExternal) {
+                continue;
+            }
+
+            const int geoId = sketchgui->materializeLazyExternalReference(item.LazyExternalId);
+            if (geoId == Sketcher::GeoEnum::GeoUndef) {
+                return false;
+            }
+
+            item.GeoId = geoId;
+            item.PosId = item.LazyExternalVertex ? Sketcher::PointPos::start : Sketcher::PointPos::none;
+            item.IsLazyExternal = false;
+        }
+
+        return true;
+    }
+
     bool releaseButton(Base::Vector2d onSketchPos) override
     {
         SelIdPair selIdPair;
@@ -1158,6 +1181,8 @@ public:
         int VtId = getPreselectPoint();
         int CrvId = getPreselectCurve();
         int CrsId = getPreselectCross();
+        int LazyExtId = getPreselectLazyExternal();
+        bool LazyExtVertex = isPreselectLazyExternalVertex();
         if (allowedSelTypes & SelRoot && CrsId == 0) {
             selIdPair.GeoId = Sketcher::GeoEnum::RtPnt;
             selIdPair.PosId = Sketcher::PointPos::start;
@@ -1168,6 +1193,13 @@ public:
             sketchgui->getSketchObject()->getGeoVertexIndex(VtId, selIdPair.GeoId, selIdPair.PosId);
             newSelType = SelVertex;
             ss << "Vertex" << VtId + 1;
+        }
+        else if (allowedSelTypes & SelVertex && LazyExtId >= 0 && LazyExtVertex) {
+            selIdPair.IsLazyExternal = true;
+            selIdPair.LazyExternalId = LazyExtId;
+            selIdPair.LazyExternalVertex = true;
+            newSelType = SelVertex;
+            ss << "LazyExternalVertex" << LazyExtId;
         }
         else if (allowedSelTypes & SelEdge && CrvId >= 0) {
             selIdPair.GeoId = CrvId;
@@ -1190,8 +1222,15 @@ public:
             newSelType = SelExternalEdge;
             ss << "ExternalEdge" << Sketcher::GeoEnum::RefExt + 1 - CrvId;
         }
+        else if (allowedSelTypes & SelExternalEdge && LazyExtId >= 0 && !LazyExtVertex) {
+            selIdPair.IsLazyExternal = true;
+            selIdPair.LazyExternalId = LazyExtId;
+            selIdPair.LazyExternalVertex = false;
+            newSelType = SelExternalEdge;
+            ss << "LazyExternalEdge" << LazyExtId;
+        }
 
-        if (selIdPair.GeoId == GeoEnum::GeoUndef) {
+        if (selIdPair.GeoId == GeoEnum::GeoUndef && !selIdPair.IsLazyExternal) {
             // If mouse is released on "blank" space, start over
             selSeq.clear();
             resetOngoingSequences();
@@ -1200,12 +1239,14 @@ public:
         else {
             // If mouse is released on something allowed, select it and move forward
             selSeq.push_back(selIdPair);
-            Gui::Selection().addSelection(sketchgui->getSketchObject()->getDocument()->getName(),
-                                          sketchgui->getSketchObject()->getNameInDocument(),
-                                          ss.str().c_str(),
-                                          onSketchPos.x,
-                                          onSketchPos.y,
-                                          0.f);
+            if (!selIdPair.IsLazyExternal) {
+                Gui::Selection().addSelection(sketchgui->getSketchObject()->getDocument()->getName(),
+                                              sketchgui->getSketchObject()->getNameInDocument(),
+                                              ss.str().c_str(),
+                                              onSketchPos.x,
+                                              onSketchPos.y,
+                                              0.f);
+            }
             _tempOnSequences.clear();
             allowedSelTypes = 0;
             for (std::set<int>::iterator token = ongoingSequences.begin();
@@ -1213,8 +1254,43 @@ public:
                  ++token) {
                 if ((cmd->allowedSelSequences).at(*token).at(seqIndex) & newSelType) {
                     if (seqIndex == (cmd->allowedSelSequences).at(*token).size() - 1) {
-                        // One of the sequences is completed. Pass to cmd->applyConstraint
-                        cmd->applyConstraint(selSeq, *token);// replace arg 2 by ongoingToken
+                        // One of the sequences is completed. Materialize only the lazy external
+                        // references that were actually used, then pass real GeoIds to the command.
+                        auto* sketchObject = sketchgui->getSketchObject();
+                        const int externalCountBefore = sketchObject->getExternalGeometryCount();
+                        const std::size_t constraintCountBefore = sketchObject->Constraints.getValues().size();
+
+                        if (!materializeLazySelections(selSeq)) {
+                            selSeq.clear();
+                            resetOngoingSequences();
+                            Gui::Selection().clearSelection();
+                            updateHint();
+                            return true;
+                        }
+
+                        auto rollbackMaterializedExternals = [&]() {
+                            const int externalCountAfter = sketchObject->getExternalGeometryCount();
+                            std::vector<int> externalsToRollback;
+                            for (int extGeoId = externalCountAfter - 1; extGeoId >= externalCountBefore; --extGeoId) {
+                                externalsToRollback.push_back(extGeoId);
+                            }
+                            if (!externalsToRollback.empty()) {
+                                sketchObject->delExternal(externalsToRollback);
+                            }
+                        };
+
+                        try {
+                            cmd->applyConstraint(selSeq, *token);// replace arg 2 by ongoingToken
+                        }
+                        catch (...) {
+                            rollbackMaterializedExternals();
+                            throw;
+                        }
+
+                        const std::size_t constraintCountAfter = sketchObject->Constraints.getValues().size();
+                        if (constraintCountAfter <= constraintCountBefore) {
+                            rollbackMaterializedExternals();
+                        }
 
                         selSeq.clear();
                         resetOngoingSequences();

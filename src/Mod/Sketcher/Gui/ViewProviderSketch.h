@@ -32,6 +32,7 @@
 #include <QMetaObject>
 #include <fastsignals/signal.h>
 #include <memory>
+#include <string>
 
 #include <Base/Parameter.h>
 #include <Base/Placement.h>
@@ -77,6 +78,11 @@ class SoTranslation;
 class SbString;
 class SbTime;
 
+namespace App
+{
+class DocumentObject;
+}
+
 namespace Part
 {
 class Geometry;
@@ -98,6 +104,7 @@ namespace SketcherGui
 {
 
 class EditModeCoinManager;
+class LazyExternalGeometryLayer;
 class SnapManager;
 class DrawSketchHandler;
 class ViewProviderSketchCommandConstraintsAttorney;
@@ -349,7 +356,8 @@ private:
         {
             InvalidPoint = -1,
             InvalidCurve = -1,
-            ExternalCurve = -3
+            ExternalCurve = -3,
+            InvalidLazyExternal = -1
         };
 
         enum class Axes
@@ -369,6 +377,8 @@ private:
         {
             PreselectPoint = InvalidPoint;
             PreselectCurve = InvalidCurve;
+            PreselectLazyExternalId = InvalidLazyExternal;
+            PreselectLazyExternalVertex = false;
             PreselectCross = Axes::None;
             PreselectConstraintSet.clear();
             blockedPreselection = false;
@@ -394,6 +404,18 @@ private:
         {
             return PreselectCurve <= ExternalCurve;
         }
+        bool isLazyExternalPreselected() const
+        {
+            return PreselectLazyExternalId > InvalidLazyExternal;
+        }
+        bool isLazyExternalVertex() const
+        {
+            return isLazyExternalPreselected() && PreselectLazyExternalVertex;
+        }
+        bool isLazyExternalEdge() const
+        {
+            return isLazyExternalPreselected() && !PreselectLazyExternalVertex;
+        }
 
         int getPreselectionVertexIndex() const
         {
@@ -412,6 +434,8 @@ private:
                               // (NOTE -1 is NOT the root point)
         int PreselectCurve;   // EdgeN, with N = PreselectCurve + 1 for positive values ;
                               // ExternalEdgeN, with N = -PreselectCurve - 2
+        int PreselectLazyExternalId;  // Session-local lazy external reference id. Not a document GeoId.
+        bool PreselectLazyExternalVertex;
         Axes PreselectCross;  // 0 => rootPoint, 1 => HAxis, 2 => VAxis
         std::set<int> PreselectConstraintSet;  // ConstraintN, N = index + 1
         bool blockedPreselection;
@@ -747,6 +771,21 @@ protected:
     void unsetEdit(int ModNum) override;
     void setEditViewer(Gui::View3DInventorViewer*, int ModNum) override;
     void unsetEditViewer(Gui::View3DInventorViewer*) override;
+
+public:
+    /** @name Lazy external geometry edit-session layer */
+    //@{
+    LazyExternalGeometryLayer* getLazyExternalGeometryLayer();
+    const LazyExternalGeometryLayer* getLazyExternalGeometryLayer() const;
+    int addLazyExternalReference(App::DocumentObject* sourceObject,
+                                 const std::string& subName,
+                                 bool defining = false,
+                                 bool intersection = false);
+    int materializeLazyExternalReference(int lazyExternalId);
+    void redrawLazyExternalGeometryLayer();
+    //@}
+
+protected:
     static void camSensCB(void* data, SoSensor*);        // camera sensor callback
     static void camSensDeleteCB(void* data, SoSensor*);  // camera sensor callback
     void onCameraChanged(SoCamera* cam);
@@ -821,6 +860,8 @@ private:
     int getPreselectPoint() const;
     int getPreselectCurve() const;
     int getPreselectCross() const;
+    int getPreselectLazyExternal() const;
+    bool isPreselectLazyExternalVertex() const;
     void setPreselectPoint(int PreselectPoint);
     void setPreselectRootPoint();
     void resetPreselectPoint();
@@ -1013,6 +1054,7 @@ private:
     std::unique_ptr<ShortcutListener> listener;
 
     std::unique_ptr<EditModeCoinManager> editCoinManager;
+    std::unique_ptr<LazyExternalGeometryLayer> lazyExternalGeometryLayer;
 
     std::unique_ptr<SnapManager> snapManager;
 
