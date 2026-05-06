@@ -22,6 +22,7 @@
 #include <Inventor/nodes/SoLineSet.h>
 #include <Inventor/nodes/SoMarkerSet.h>
 #include <Inventor/nodes/SoMaterial.h>
+#include <Inventor/nodes/SoPickStyle.h>
 #include <Inventor/nodes/SoSeparator.h>
 #include <Inventor/SoPickedPoint.h>
 
@@ -118,13 +119,20 @@ void LazyExternalGeometryLayer::resetNodes()
     }
 
     root = nullptr;
-    material = nullptr;
+    pickMaterial = nullptr;
+    highlightMaterial = nullptr;
     pointCoordinates = nullptr;
     curveCoordinates = nullptr;
+    highlightPointCoordinates = nullptr;
+    highlightCurveCoordinates = nullptr;
     pointDrawStyle = nullptr;
     curveDrawStyle = nullptr;
+    highlightPointDrawStyle = nullptr;
+    highlightCurveDrawStyle = nullptr;
     pointSet = nullptr;
     curveSet = nullptr;
+    highlightPointSet = nullptr;
+    highlightCurveSet = nullptr;
 }
 
 void LazyExternalGeometryLayer::createNodes()
@@ -134,33 +142,69 @@ void LazyExternalGeometryLayer::createNodes()
     root->setName("Sketch_LazyExternalGeometryRoot");
     root->renderCaching = SoSeparator::OFF;
 
-    material = new SoMaterial;
-    material->setName("LazyExternalGeometryMaterial");
-    root->addChild(material);
+    // Pick geometry: all lazy external references live here so the user can hover/click them.
+    // The material is fully transparent; it participates in picking but does not render as a
+    // permanent overlay. A separate highlight set below draws only hovered/selected references.
+    pickMaterial = new SoMaterial;
+    pickMaterial->setName("LazyExternalGeometryPickMaterial");
+    pickMaterial->transparency = 1.0f;
+    root->addChild(pickMaterial);
 
     pointCoordinates = new SoCoordinate3;
-    pointCoordinates->setName("LazyExternalGeometryPointCoordinates");
+    pointCoordinates->setName("LazyExternalGeometryPickPointCoordinates");
     root->addChild(pointCoordinates);
 
     pointDrawStyle = new SoDrawStyle;
-    pointDrawStyle->setName("LazyExternalGeometryPointDrawStyle");
+    pointDrawStyle->setName("LazyExternalGeometryPickPointDrawStyle");
     root->addChild(pointDrawStyle);
 
     pointSet = new SoMarkerSet;
-    pointSet->setName("LazyExternalGeometryPointSet");
+    pointSet->setName("LazyExternalGeometryPickPointSet");
     root->addChild(pointSet);
 
     curveCoordinates = new SoCoordinate3;
-    curveCoordinates->setName("LazyExternalGeometryCurveCoordinates");
+    curveCoordinates->setName("LazyExternalGeometryPickCurveCoordinates");
     root->addChild(curveCoordinates);
 
     curveDrawStyle = new SoDrawStyle;
-    curveDrawStyle->setName("LazyExternalGeometryCurveDrawStyle");
+    curveDrawStyle->setName("LazyExternalGeometryPickCurveDrawStyle");
     root->addChild(curveDrawStyle);
 
     curveSet = new SoLineSet;
-    curveSet->setName("LazyExternalGeometryCurveSet");
+    curveSet->setName("LazyExternalGeometryPickCurveSet");
     root->addChild(curveSet);
+
+    auto* highlightPickStyle = new SoPickStyle;
+    highlightPickStyle->style = SoPickStyle::UNPICKABLE;
+    root->addChild(highlightPickStyle);
+
+    highlightMaterial = new SoMaterial;
+    highlightMaterial->setName("LazyExternalGeometryHighlightMaterial");
+    root->addChild(highlightMaterial);
+
+    highlightPointCoordinates = new SoCoordinate3;
+    highlightPointCoordinates->setName("LazyExternalGeometryHighlightPointCoordinates");
+    root->addChild(highlightPointCoordinates);
+
+    highlightPointDrawStyle = new SoDrawStyle;
+    highlightPointDrawStyle->setName("LazyExternalGeometryHighlightPointDrawStyle");
+    root->addChild(highlightPointDrawStyle);
+
+    highlightPointSet = new SoMarkerSet;
+    highlightPointSet->setName("LazyExternalGeometryHighlightPointSet");
+    root->addChild(highlightPointSet);
+
+    highlightCurveCoordinates = new SoCoordinate3;
+    highlightCurveCoordinates->setName("LazyExternalGeometryHighlightCurveCoordinates");
+    root->addChild(highlightCurveCoordinates);
+
+    highlightCurveDrawStyle = new SoDrawStyle;
+    highlightCurveDrawStyle->setName("LazyExternalGeometryHighlightCurveDrawStyle");
+    root->addChild(highlightCurveDrawStyle);
+
+    highlightCurveSet = new SoLineSet;
+    highlightCurveSet->setName("LazyExternalGeometryHighlightCurveSet");
+    root->addChild(highlightCurveSet);
 }
 
 void LazyExternalGeometryLayer::clear()
@@ -168,6 +212,8 @@ void LazyExternalGeometryLayer::clear()
     elements.clear();
     pointIndexToElementId.clear();
     curveIndexToElementId.clear();
+    preselectedElementIds.clear();
+    selectedElementIds.clear();
     nextId = 1;
 
     if (pointCoordinates) {
@@ -178,6 +224,15 @@ void LazyExternalGeometryLayer::clear()
     }
     if (curveSet) {
         curveSet->numVertices.setNum(0);
+    }
+    if (highlightPointCoordinates) {
+        highlightPointCoordinates->point.setNum(0);
+    }
+    if (highlightCurveCoordinates) {
+        highlightCurveCoordinates->point.setNum(0);
+    }
+    if (highlightCurveSet) {
+        highlightCurveSet->numVertices.setNum(0);
     }
 }
 
@@ -286,10 +341,49 @@ const std::vector<LazyExternalGeometryLayer::Element>& LazyExternalGeometryLayer
     return elements;
 }
 
+void LazyExternalGeometryLayer::setPreselectedElement(int id)
+{
+    preselectedElementIds.clear();
+    if (id >= 0) {
+        preselectedElementIds.insert(id);
+    }
+}
+
+void LazyExternalGeometryLayer::clearPreselectedElement()
+{
+    preselectedElementIds.clear();
+}
+
+void LazyExternalGeometryLayer::setSelectedElement(int id, bool selected)
+{
+    if (id < 0) {
+        return;
+    }
+
+    if (selected) {
+        selectedElementIds.insert(id);
+    }
+    else {
+        selectedElementIds.erase(id);
+    }
+}
+
+void LazyExternalGeometryLayer::clearSelectedElements()
+{
+    selectedElementIds.clear();
+}
+
+bool LazyExternalGeometryLayer::isVisibleElement(const Element& element) const
+{
+    return preselectedElementIds.find(element.id) != preselectedElementIds.end()
+        || selectedElementIds.find(element.id) != selectedElementIds.end();
+}
+
 void LazyExternalGeometryLayer::appendGeometryToCoin(const Element& element,
                                                      std::vector<Base::Vector3d>& points,
                                                      std::vector<Base::Vector3d>& curveCoords,
-                                                     std::vector<int32_t>& curveVertexCounts)
+                                                     std::vector<int32_t>& curveVertexCounts,
+                                                     bool updatePickMap)
 {
     for (const auto& geometry : element.geometry) {
         if (!geometry) {
@@ -297,7 +391,9 @@ void LazyExternalGeometryLayer::appendGeometryToCoin(const Element& element,
         }
 
         if (auto point = freecad_cast<const Part::GeomPoint*>(geometry.get())) {
-            pointIndexToElementId.push_back(element.id);
+            if (updatePickMap) {
+                pointIndexToElementId.push_back(element.id);
+            }
             points.push_back(point->getPoint());
             continue;
         }
@@ -305,10 +401,12 @@ void LazyExternalGeometryLayer::appendGeometryToCoin(const Element& element,
         const auto curvesBefore = curveVertexCounts.size();
         appendSampledCurve(geometry.get(), curveCoords, curveVertexCounts, 40);
         const auto curvesAfter = curveVertexCounts.size();
-        for (auto i = curvesBefore; i < curvesAfter; ++i) {
-            const int segmentCount = std::max<int>(0, curveVertexCounts[i] - 1);
-            for (int segment = 0; segment < segmentCount; ++segment) {
-                curveIndexToElementId.push_back(element.id);
+        if (updatePickMap) {
+            for (auto i = curvesBefore; i < curvesAfter; ++i) {
+                const int segmentCount = std::max<int>(0, curveVertexCounts[i] - 1);
+                for (int segment = 0; segment < segmentCount; ++segment) {
+                    curveIndexToElementId.push_back(element.id);
+                }
             }
         }
     }
@@ -323,18 +421,27 @@ void LazyExternalGeometryLayer::draw(const DrawingParameters& parameters, int vi
     pointIndexToElementId.clear();
     curveIndexToElementId.clear();
 
-    std::vector<Base::Vector3d> points;
-    std::vector<Base::Vector3d> curveCoords;
-    std::vector<int32_t> curveVertexCounts;
+    std::vector<Base::Vector3d> pickPoints;
+    std::vector<Base::Vector3d> pickCurveCoords;
+    std::vector<int32_t> pickCurveVertexCounts;
+    std::vector<Base::Vector3d> highlightPoints;
+    std::vector<Base::Vector3d> highlightCurveCoords;
+    std::vector<int32_t> highlightCurveVertexCounts;
 
     for (const auto& element : elements) {
-        appendGeometryToCoin(element, points, curveCoords, curveVertexCounts);
+        appendGeometryToCoin(element, pickPoints, pickCurveCoords, pickCurveVertexCounts, true);
+
+        if (isVisibleElement(element)) {
+            appendGeometryToCoin(
+                element, highlightPoints, highlightCurveCoords, highlightCurveVertexCounts, false);
+        }
     }
 
     const float pointz = viewOrientationFactor * parameters.zLowPoints * LazyLayerZOffset;
     const float linez = viewOrientationFactor * parameters.zLowLines * LazyLayerZOffset;
 
-    material->diffuseColor = DrawingParameters::CurveExternalColor;
+    pickMaterial->diffuseColor = DrawingParameters::CurveExternalColor;
+    pickMaterial->transparency = 1.0f;
     pointDrawStyle->pointSize = 8 * parameters.pixelScalingFactor;
     pointSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex(
         "CIRCLE_FILLED",
@@ -345,30 +452,67 @@ void LazyExternalGeometryLayer::draw(const DrawingParameters& parameters, int vi
     curveDrawStyle->linePattern = parameters.ExternalPattern;
     curveDrawStyle->linePatternScaleFactor = 2;
 
-    pointCoordinates->point.setNum(points.size());
+    pointCoordinates->point.setNum(pickPoints.size());
     SbVec3f* pverts = pointCoordinates->point.startEditing();
     int i = 0;
-    for (const auto& point : points) {
+    for (const auto& point : pickPoints) {
         pverts[i++].setValue(point.x, point.y, pointz);
     }
     pointCoordinates->point.finishEditing();
 
-    curveCoordinates->point.setNum(curveCoords.size());
-    curveSet->numVertices.setNum(curveVertexCounts.size());
+    curveCoordinates->point.setNum(pickCurveCoords.size());
+    curveSet->numVertices.setNum(pickCurveVertexCounts.size());
 
     SbVec3f* cverts = curveCoordinates->point.startEditing();
     i = 0;
-    for (const auto& point : curveCoords) {
+    for (const auto& point : pickCurveCoords) {
         cverts[i++].setValue(point.x, point.y, linez);
     }
     curveCoordinates->point.finishEditing();
 
     int32_t* vertexCounts = curveSet->numVertices.startEditing();
     i = 0;
-    for (auto count : curveVertexCounts) {
+    for (auto count : pickCurveVertexCounts) {
         vertexCounts[i++] = count;
     }
     curveSet->numVertices.finishEditing();
+
+    highlightMaterial->diffuseColor = DrawingParameters::CurveExternalColor;
+    highlightMaterial->transparency = 0.0f;
+    highlightPointDrawStyle->pointSize = 8 * parameters.pixelScalingFactor;
+    highlightPointSet->markerIndex = Gui::Inventor::MarkerBitmaps::getMarkerIndex(
+        "CIRCLE_FILLED",
+        parameters.markerSize
+    );
+
+    highlightCurveDrawStyle->lineWidth = parameters.ExternalWidth * parameters.pixelScalingFactor;
+    highlightCurveDrawStyle->linePattern = parameters.ExternalPattern;
+    highlightCurveDrawStyle->linePatternScaleFactor = 2;
+
+    highlightPointCoordinates->point.setNum(highlightPoints.size());
+    pverts = highlightPointCoordinates->point.startEditing();
+    i = 0;
+    for (const auto& point : highlightPoints) {
+        pverts[i++].setValue(point.x, point.y, pointz);
+    }
+    highlightPointCoordinates->point.finishEditing();
+
+    highlightCurveCoordinates->point.setNum(highlightCurveCoords.size());
+    highlightCurveSet->numVertices.setNum(highlightCurveVertexCounts.size());
+
+    cverts = highlightCurveCoordinates->point.startEditing();
+    i = 0;
+    for (const auto& point : highlightCurveCoords) {
+        cverts[i++].setValue(point.x, point.y, linez);
+    }
+    highlightCurveCoordinates->point.finishEditing();
+
+    vertexCounts = highlightCurveSet->numVertices.startEditing();
+    i = 0;
+    for (auto count : highlightCurveVertexCounts) {
+        vertexCounts[i++] = count;
+    }
+    highlightCurveSet->numVertices.finishEditing();
 }
 
 bool LazyExternalGeometryLayer::isLazyPointNode(const SoNode* node) const

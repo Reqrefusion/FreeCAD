@@ -2632,6 +2632,12 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint* Point)
             preselection.PreselectLazyExternalId = result.LazyExternalId;
             preselection.PreselectLazyExternalVertex = result.LazyExternalVertex;
             preselection.blockedPreselection = false;
+
+            if (lazyExternalGeometryLayer) {
+                lazyExternalGeometryLayer->setPreselectedElement(result.LazyExternalId);
+                redrawLazyExternalGeometryLayer();
+            }
+
             updateToolTip();
 
             return true;
@@ -4353,6 +4359,26 @@ int ViewProviderSketch::materializeLazyExternalReference(int lazyExternalId)
     return Sketcher::GeoEnum::RefExt - extIndex;
 }
 
+void ViewProviderSketch::setLazyExternalReferenceSelected(int lazyExternalId, bool selected)
+{
+    if (!lazyExternalGeometryLayer) {
+        return;
+    }
+
+    lazyExternalGeometryLayer->setSelectedElement(lazyExternalId, selected);
+    redrawLazyExternalGeometryLayer();
+}
+
+void ViewProviderSketch::clearSelectedLazyExternalReferences()
+{
+    if (!lazyExternalGeometryLayer) {
+        return;
+    }
+
+    lazyExternalGeometryLayer->clearSelectedElements();
+    redrawLazyExternalGeometryLayer();
+}
+
 Sketcher::SketchObject* ViewProviderSketch::getSketchObject() const
 {
     return dynamic_cast<Sketcher::SketchObject*>(pcObject);
@@ -4615,6 +4641,8 @@ void ViewProviderSketch::resetPositionText()
 
 void ViewProviderSketch::setPreselectPoint(int PreselectPoint)
 {
+    const bool hadLazyPreselection = preselection.isLazyExternalPreselected();
+
     preselection.PreselectPoint = PreselectPoint;
     preselection.PreselectCurve = Preselection::InvalidCurve;
     preselection.PreselectLazyExternalId = Preselection::InvalidLazyExternal;
@@ -4622,21 +4650,35 @@ void ViewProviderSketch::setPreselectPoint(int PreselectPoint)
     preselection.PreselectCross = Preselection::Axes::None;
     ;
     preselection.PreselectConstraintSet.clear();
+
+    if (hadLazyPreselection && lazyExternalGeometryLayer) {
+        lazyExternalGeometryLayer->clearPreselectedElement();
+        redrawLazyExternalGeometryLayer();
+    }
 }
 
 void ViewProviderSketch::setPreselectRootPoint()
 {
+    const bool hadLazyPreselection = preselection.isLazyExternalPreselected();
+
     preselection.PreselectPoint = Preselection::InvalidPoint;
     preselection.PreselectCurve = Preselection::InvalidCurve;
     preselection.PreselectLazyExternalId = Preselection::InvalidLazyExternal;
     preselection.PreselectLazyExternalVertex = false;
     preselection.PreselectCross = Preselection::Axes::RootPoint;
     preselection.PreselectConstraintSet.clear();
+
+    if (hadLazyPreselection && lazyExternalGeometryLayer) {
+        lazyExternalGeometryLayer->clearPreselectedElement();
+        redrawLazyExternalGeometryLayer();
+    }
 }
 
 
 void ViewProviderSketch::resetPreselectPoint()
 {
+    const bool hadLazyPreselection = preselection.isLazyExternalPreselected();
+
     preselection.PreselectPoint = Preselection::InvalidPoint;
     preselection.PreselectCurve = Preselection::InvalidCurve;
     preselection.PreselectLazyExternalId = Preselection::InvalidLazyExternal;
@@ -4644,6 +4686,11 @@ void ViewProviderSketch::resetPreselectPoint()
     preselection.PreselectCross = Preselection::Axes::None;
     ;
     preselection.PreselectConstraintSet.clear();
+
+    if (hadLazyPreselection && lazyExternalGeometryLayer) {
+        lazyExternalGeometryLayer->clearPreselectedElement();
+        redrawLazyExternalGeometryLayer();
+    }
 }
 
 void ViewProviderSketch::addSelectPoint(int SelectPoint)

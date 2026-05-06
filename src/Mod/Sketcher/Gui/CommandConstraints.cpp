@@ -1169,6 +1169,11 @@ public:
         return true;
     }
 
+    bool isVertexSelection(const SelIdPair& item) const
+    {
+        return item.IsLazyExternal ? item.LazyExternalVertex : isVertex(item.GeoId, item.PosId);
+    }
+
     bool releaseButton(Base::Vector2d onSketchPos) override
     {
         SelIdPair selIdPair;
@@ -1239,7 +1244,10 @@ public:
         else {
             // If mouse is released on something allowed, select it and move forward
             selSeq.push_back(selIdPair);
-            if (!selIdPair.IsLazyExternal) {
+            if (selIdPair.IsLazyExternal) {
+                sketchgui->setLazyExternalReferenceSelected(selIdPair.LazyExternalId, true);
+            }
+            else {
                 Gui::Selection().addSelection(sketchgui->getSketchObject()->getDocument()->getName(),
                                               sketchgui->getSketchObject()->getNameInDocument(),
                                               ss.str().c_str(),
@@ -1325,7 +1333,7 @@ public:
         if (selectionStep == 0) {
             return {{QObject::tr(PICK_POINT_OR_EDGE), {Gui::InputHint::UserInput::MouseLeft}}};
         } else if (selectionStep == 1 && !selSeq.empty()) {
-            if (isVertex(selSeq[0].GeoId, selSeq[0].PosId)) {
+            if (isVertexSelection(selSeq[0])) {
                 return {{QObject::tr(PICK_EDGE), {Gui::InputHint::UserInput::MouseLeft}}};
             } else {
                 return {{QObject::tr(PICK_POINT), {Gui::InputHint::UserInput::MouseLeft}}};
@@ -1338,7 +1346,7 @@ public:
         if (selectionStep == 0) {
             return {{QObject::tr(PICK_EDGE_OR_FIRST_POINT), {Gui::InputHint::UserInput::MouseLeft}}};
         } else if (selectionStep == 1 && !selSeq.empty()) {
-            if (isVertex(selSeq[0].GeoId, selSeq[0].PosId)) {
+            if (isVertexSelection(selSeq[0])) {
                 // Point + Edge + Edge workflow
                 return {{QObject::tr(PICK_FIRST_EDGE), {Gui::InputHint::UserInput::MouseLeft}}};
             } else {
@@ -1347,10 +1355,10 @@ public:
                 return {{QObject::tr(PICK_SECOND_LINE_OR_POINT), {Gui::InputHint::UserInput::MouseLeft}}};
             }
         } else if (selectionStep == 2 && !selSeq.empty()) {
-            if (isVertex(selSeq[0].GeoId, selSeq[0].PosId)) {
+            if (isVertexSelection(selSeq[0])) {
                 // Point + Edge + Edge workflow
                 return {{QObject::tr(PICK_SECOND_EDGE), {Gui::InputHint::UserInput::MouseLeft}}};
-            } else if (isVertex(selSeq[1].GeoId, selSeq[1].PosId)) {
+            } else if (isVertexSelection(selSeq[1])) {
                 // Edge + Point + Edge workflow
                 return {{QObject::tr(PICK_SECOND_EDGE), {Gui::InputHint::UserInput::MouseLeft}}};
             }
@@ -1362,7 +1370,7 @@ public:
         if (selectionStep == 0) {
             return {{QObject::tr(PICK_EDGE_OR_FIRST_POINT), {Gui::InputHint::UserInput::MouseLeft}}};
         } else if (selectionStep == 1 && !selSeq.empty()) {
-            if (isVertex(selSeq[0].GeoId, selSeq[0].PosId)) {
+            if (isVertexSelection(selSeq[0])) {
                 // Point + Edge + Edge workflow
                 return {{QObject::tr(PICK_FIRST_EDGE), {Gui::InputHint::UserInput::MouseLeft}}};
             } else {
@@ -1370,10 +1378,10 @@ public:
                 return {{QObject::tr(PICK_SECOND_EDGE_OR_POINT), {Gui::InputHint::UserInput::MouseLeft}}};
             }
         } else if (selectionStep == 2 && !selSeq.empty()) {
-            if (isVertex(selSeq[0].GeoId, selSeq[0].PosId)) {
+            if (isVertexSelection(selSeq[0])) {
                 // Point + Edge + Edge workflow
                 return {{QObject::tr(PICK_SECOND_EDGE), {Gui::InputHint::UserInput::MouseLeft}}};
-            } else if (isVertex(selSeq[1].GeoId, selSeq[1].PosId)) {
+            } else if (isVertexSelection(selSeq[1])) {
                 // Edge + Point + Edge workflow
                 return {{QObject::tr(PICK_SECOND_EDGE), {Gui::InputHint::UserInput::MouseLeft}}};
             }
@@ -1385,7 +1393,7 @@ public:
         if (selectionStep == 0) {
             return {{QObject::tr(PICK_EDGE_OR_FIRST_POINT), {Gui::InputHint::UserInput::MouseLeft}}};
         } else if (selectionStep == 1 && !selSeq.empty()) {
-            if (isVertex(selSeq[0].GeoId, selSeq[0].PosId)) {
+            if (isVertexSelection(selSeq[0])) {
                 // Point + Edge + Edge workflow
                 return {{QObject::tr(PICK_FIRST_EDGE), {Gui::InputHint::UserInput::MouseLeft}}};
             } else {
@@ -1393,10 +1401,10 @@ public:
                 return {{QObject::tr(PICK_SECOND_EDGE_OR_POINT), {Gui::InputHint::UserInput::MouseLeft}}};
             }
         } else if (selectionStep == 2 && !selSeq.empty()) {
-            if (isVertex(selSeq[0].GeoId, selSeq[0].PosId)) {
+            if (isVertexSelection(selSeq[0])) {
                 // Point + Edge + Edge workflow
                 return {{QObject::tr(PICK_SECOND_EDGE), {Gui::InputHint::UserInput::MouseLeft}}};
-            } else if (isVertex(selSeq[1].GeoId, selSeq[1].PosId)) {
+            } else if (isVertexSelection(selSeq[1])) {
                 // Edge + Point + Edge workflow
                 return {{QObject::tr(PICK_SECOND_EDGE), {Gui::InputHint::UserInput::MouseLeft}}};
             }
@@ -1408,7 +1416,7 @@ public:
         if (selectionStep == 0) {
             return {{QObject::tr(PICK_POINT_OR_EDGE), {Gui::InputHint::UserInput::MouseLeft}}};
         } else if (selectionStep == 1 && !selSeq.empty()) {
-            if (isVertex(selSeq[0].GeoId, selSeq[0].PosId)) {
+            if (isVertexSelection(selSeq[0])) {
                 // Point + Point workflow
                 return {{QObject::tr(PICK_SECOND_POINT), {Gui::InputHint::UserInput::MouseLeft}}};
             } else {
@@ -1423,7 +1431,7 @@ public:
         if (selectionStep == 0) {
             return {{QObject::tr(PICK_POINT_OR_EDGE), {Gui::InputHint::UserInput::MouseLeft}}};
         } else if (selectionStep == 1 && !selSeq.empty()) {
-            if (isVertex(selSeq[0].GeoId, selSeq[0].PosId)) {
+            if (isVertexSelection(selSeq[0])) {
                 // Point + Point workflow
                 return {{QObject::tr(PICK_SECOND_POINT), {Gui::InputHint::UserInput::MouseLeft}}};
             } else {
@@ -1438,7 +1446,7 @@ public:
         if (selectionStep == 0) {
             return {{QObject::tr(PICK_EDGE_OR_FIRST_POINT), {Gui::InputHint::UserInput::MouseLeft}}};
         } else if (selectionStep == 1 && !selSeq.empty()) {
-            if (isVertex(selSeq[0].GeoId, selSeq[0].PosId)) {
+            if (isVertexSelection(selSeq[0])) {
                 // Point + Edge + Point or Point + Point + Edge/Point workflow
                 return {{QObject::tr(PICK_EDGE_OR_SECOND_POINT), {Gui::InputHint::UserInput::MouseLeft}}};
             } else {
@@ -1446,10 +1454,10 @@ public:
                 return {{QObject::tr(PICK_SYMMETRY_POINT), {Gui::InputHint::UserInput::MouseLeft}}};
             }
         } else if (selectionStep == 2 && !selSeq.empty()) {
-            if (isVertex(selSeq[0].GeoId, selSeq[0].PosId) && isVertex(selSeq[1].GeoId, selSeq[1].PosId)) {
+            if (isVertexSelection(selSeq[0]) && isVertexSelection(selSeq[1])) {
                 // Point + Point + Edge workflow
                 return {{QObject::tr(PICK_SYMMETRY_LINE_OR_POINT), {Gui::InputHint::UserInput::MouseLeft}}};
-            } else if (isVertex(selSeq[0].GeoId, selSeq[0].PosId) && !isVertex(selSeq[1].GeoId, selSeq[1].PosId)) {
+            } else if (isVertexSelection(selSeq[0]) && !isVertexSelection(selSeq[1])) {
                 // Point + Edge + Point workflow
                 return {{QObject::tr(PICK_POINT), {Gui::InputHint::UserInput::MouseLeft}}};
             }
@@ -1702,6 +1710,8 @@ protected:
 
     void resetOngoingSequences()
     {
+        sketchgui->clearSelectedLazyExternalReferences();
+
         ongoingSequences.clear();
         for (unsigned int i = 0; i < cmd->allowedSelSequences.size(); i++) {
             ongoingSequences.insert(i);

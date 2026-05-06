@@ -14,6 +14,7 @@
 #pragma once
 
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -100,6 +101,11 @@ public:
     bool empty() const;
     const std::vector<Element>& getElements() const;
 
+    void setPreselectedElement(int id);
+    void clearPreselectedElement();
+    void setSelectedElement(int id, bool selected);
+    void clearSelectedElements();
+
     void draw(const DrawingParameters& parameters, int viewOrientationFactor);
 
     bool isLazyPointNode(const SoNode* node) const;
@@ -113,22 +119,33 @@ private:
     void appendGeometryToCoin(const Element& element,
                               std::vector<Base::Vector3d>& points,
                               std::vector<Base::Vector3d>& curveCoords,
-                              std::vector<int32_t>& curveVertexCounts);
+                              std::vector<int32_t>& curveVertexCounts,
+                              bool updatePickMap);
+    bool isVisibleElement(const Element& element) const;
 
 private:
     SoSeparator* parentRoot = nullptr;
     SoSeparator* root = nullptr;
-    SoMaterial* material = nullptr;
+    SoMaterial* pickMaterial = nullptr;
+    SoMaterial* highlightMaterial = nullptr;
     SoCoordinate3* pointCoordinates = nullptr;
     SoCoordinate3* curveCoordinates = nullptr;
+    SoCoordinate3* highlightPointCoordinates = nullptr;
+    SoCoordinate3* highlightCurveCoordinates = nullptr;
     SoDrawStyle* pointDrawStyle = nullptr;
     SoDrawStyle* curveDrawStyle = nullptr;
+    SoDrawStyle* highlightPointDrawStyle = nullptr;
+    SoDrawStyle* highlightCurveDrawStyle = nullptr;
     SoMarkerSet* pointSet = nullptr;
     SoLineSet* curveSet = nullptr;
+    SoMarkerSet* highlightPointSet = nullptr;
+    SoLineSet* highlightCurveSet = nullptr;
 
     std::vector<Element> elements;
     std::vector<int> pointIndexToElementId;
     std::vector<int> curveIndexToElementId;
+    std::set<int> preselectedElementIds;
+    std::set<int> selectedElementIds;
     int nextId = 1;
 };
 

@@ -782,6 +782,8 @@ public:
                                  bool defining = false,
                                  bool intersection = false);
     int materializeLazyExternalReference(int lazyExternalId);
+    void setLazyExternalReferenceSelected(int lazyExternalId, bool selected);
+    void clearSelectedLazyExternalReferences();
     void redrawLazyExternalGeometryLayer();
     //@}
 
