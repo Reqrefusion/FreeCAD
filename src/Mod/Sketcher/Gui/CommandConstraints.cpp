@@ -1035,10 +1035,12 @@ public:
         std::string element(sSubName);
         if ((allowedSelTypes & SelRoot && element.substr(0, 9) == "RootPoint")
             || (allowedSelTypes & SelVertex && element.substr(0, 6) == "Vertex")
+            || (allowedSelTypes & SelVertex && element.substr(0, 18) == "LazyExternalVertex")
             || (allowedSelTypes & SelEdge && element.substr(0, 4) == "Edge")
             || (allowedSelTypes & SelHAxis && element.substr(0, 6) == "H_Axis")
             || (allowedSelTypes & SelVAxis && element.substr(0, 6) == "V_Axis")
-            || (allowedSelTypes & SelExternalEdge && element.substr(0, 12) == "ExternalEdge")) {
+            || (allowedSelTypes & SelExternalEdge && element.substr(0, 12) == "ExternalEdge")
+            || (allowedSelTypes & SelExternalEdge && element.substr(0, 16) == "LazyExternalEdge")) {
             return true;
         }
 
@@ -1997,6 +1999,7 @@ public:
     void deactivated() override
     {
         abortCommand();
+        sketchgui->clearSelectedLazyExternalReferences();
         if (availableConstraint != AvailableConstraint::FIRST) {
             Obj->solve();
         }
@@ -2087,6 +2090,10 @@ public:
         int VtId = getPreselectPoint();
         int CrvId = getPreselectCurve();
         int CrsId = getPreselectCross();
+        int LazyExtId = getPreselectLazyExternal();
+        bool LazyExtVertex = isPreselectLazyExternalVertex();
+        const int externalCountBefore = Obj->getExternalGeometryCount();
+        bool materializedLazyExternal = false;
 
         if (VtId >= 0) { //Vertex
             Obj->getGeoVertexIndex(VtId,
@@ -2109,6 +2116,28 @@ public:
             selIdPair.GeoId = Sketcher::GeoEnum::VAxis;
             newselGeoType = Part::GeomLineSegment::getClassTypeId();
             ss << "V_Axis";
+        }
+        else if (LazyExtId >= 0) {
+            selIdPair.GeoId = sketchgui->materializeLazyExternalReference(LazyExtId);
+            if (selIdPair.GeoId != GeoEnum::GeoUndef) {
+                materializedLazyExternal = Obj->getExternalGeometryCount() > externalCountBefore;
+                selIdPair.PosId = LazyExtVertex ? Sketcher::PointPos::start : Sketcher::PointPos::none;
+                selIdPair.IsLazyExternal = true;
+                selIdPair.LazyExternalId = LazyExtId;
+                selIdPair.LazyExternalVertex = LazyExtVertex;
+
+                if (LazyExtVertex) {
+                    newselGeoType = Part::GeomPoint::getClassTypeId();
+                    ss << "LazyExternalVertex" << LazyExtId;
+                }
+                else {
+                    const Part::Geometry* geo = Obj->getGeometry(selIdPair.GeoId);
+                    if (geo) {
+                        newselGeoType = geo->getTypeId();
+                    }
+                    ss << "LazyExternalEdge" << LazyExtId;
+                }
+            }
         }
         else if (CrvId >= 0 || CrvId <= Sketcher::GeoEnum::RefExt) { //Curves
             selIdPair.GeoId = CrvId;
@@ -2139,12 +2168,29 @@ public:
             bool selAllowed = makeAppropriateConstraint(onSketchPos);
 
             if (selAllowed) {
-                // If mouse is released on something allowed, select it
-                sketchgui->addSelection2(ss.str().c_str(), onSketchPos.x, onSketchPos.y, 0.f);
+                // If mouse is released on something allowed, select it. Lazy external references
+                // are shown by the sketch-local layer instead of the global selection list.
+                if (selIdPair.IsLazyExternal) {
+                    sketchgui->setLazyExternalReferenceSelected(selIdPair.LazyExternalId, true);
+                }
+                else {
+                    sketchgui->addSelection2(ss.str().c_str(), onSketchPos.x, onSketchPos.y, 0.f);
+                }
                 sketchgui->draw(false, false); // Redraw
             }
             else {
                 selVector.pop_back();
+                if (materializedLazyExternal) {
+                    std::vector<int> externalsToRollback;
+                    for (int extGeoId = Obj->getExternalGeometryCount() - 1;
+                         extGeoId >= externalCountBefore;
+                         --extGeoId) {
+                        externalsToRollback.push_back(extGeoId);
+                    }
+                    if (!externalsToRollback.empty()) {
+                        Obj->delExternal(externalsToRollback);
+                    }
+                }
             }
         }
         else {
@@ -2157,7 +2203,12 @@ public:
                 restartCommand(QT_TRANSLATE_NOOP("Command", "Dimension"));
             }
 
-            sketchgui->rmvSelection(ss.str().c_str());
+            if (selIdPair.IsLazyExternal) {
+                sketchgui->setLazyExternalReferenceSelected(selIdPair.LazyExternalId, false);
+            }
+            else {
+                sketchgui->rmvSelection(ss.str().c_str());
+            }
             sketchgui->draw(false, false); // Redraw
         }
 
@@ -2221,6 +2272,7 @@ protected:
 
     void clearRefVectors()
     {
+        sketchgui->clearSelectedLazyExternalReferences();
         selPoints.clear();
         selLine.clear();
         selCircleArc.clear();
@@ -2321,6 +2373,8 @@ protected:
             commitCommand();
         }
 
+        sketchgui->clearSelectedLazyExternalReferences();
+
         // This code enables the continuous creation mode.
         bool continuousMode = hGrp->GetBool("ContinuousCreationMode", true);
         if (continuousMode) {
@@ -2362,6 +2416,14 @@ protected:
         auto contains = [&](const std::vector<SelIdPair>& vec, const SelIdPair& elem) {
             for (const auto& x : vec)
             {
+                if (x.IsLazyExternal || elem.IsLazyExternal) {
+                    if (x.IsLazyExternal == elem.IsLazyExternal
+                        && x.LazyExternalId == elem.LazyExternalId
+                        && x.LazyExternalVertex == elem.LazyExternalVertex) {
+                        return true;
+                    }
+                    continue;
+                }
                 if (x.GeoId == elem.GeoId && x.PosId == elem.PosId)
                     return true;
             }
@@ -2371,12 +2433,14 @@ protected:
         return !contains(selPoints, elem)
             && !contains(selLine, elem)
             && !contains(selCircleArc, elem)
-            && !contains(selEllipseAndCo, elem);
+            && !contains(selEllipseAndCo, elem)
+            && !contains(selSplineAndCo, elem);
     }
 
     bool selectionEmpty() const
     {
-        return selPoints.empty() && selLine.empty() && selCircleArc.empty() && selEllipseAndCo.empty();
+        return selPoints.empty() && selLine.empty() && selCircleArc.empty() && selEllipseAndCo.empty()
+            && selSplineAndCo.empty();
     }
 
     bool makeAppropriateConstraint(Base::Vector2d onSketchPos) {

@@ -2627,20 +2627,30 @@ bool ViewProviderSketch::detectAndShowPreselection(SoPickedPoint* Point)
         else if (result.LazyExternalId != EditModeCoinManager::PreselectionResult::InvalidLazyExternal
                  && (result.LazyExternalId != preselection.PreselectLazyExternalId
                      || result.LazyExternalVertex != preselection.PreselectLazyExternalVertex)) {
-            resetPreselectPoint();
-            Gui::Selection().rmvPreselect();
-            preselection.PreselectLazyExternalId = result.LazyExternalId;
-            preselection.PreselectLazyExternalVertex = result.LazyExternalVertex;
-            preselection.blockedPreselection = false;
+            std::stringstream ss;
+            ss << (result.LazyExternalVertex ? "LazyExternalVertex" : "LazyExternalEdge")
+               << result.LazyExternalId;
 
-            if (lazyExternalGeometryLayer) {
-                lazyExternalGeometryLayer->setPreselectedElement(result.LazyExternalId);
-                redrawLazyExternalGeometryLayer();
+            bool accepted =
+                setPreselect(
+                    ss.str(), Point->getPoint()[0], Point->getPoint()[1], Point->getPoint()[2])
+                != 0;
+            preselection.blockedPreselection = !accepted;
+
+            if (accepted) {
+                resetPreselectPoint();
+                preselection.PreselectLazyExternalId = result.LazyExternalId;
+                preselection.PreselectLazyExternalVertex = result.LazyExternalVertex;
+
+                if (lazyExternalGeometryLayer) {
+                    lazyExternalGeometryLayer->setPreselectedElement(result.LazyExternalId);
+                    redrawLazyExternalGeometryLayer();
+                }
+
+                updateToolTip();
+
+                return true;
             }
-
-            updateToolTip();
-
-            return true;
         }
         else if (!result.ConstrIndices.empty()
                  && result.ConstrIndices
