@@ -27,8 +27,10 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <limits>
+#include <utility>
 
 #include <Inventor/nodes/SoCoordinate3.h>
 #include <Inventor/nodes/SoDrawStyle.h>
@@ -39,9 +41,7 @@
 #include <Inventor/nodes/SoSeparator.h>
 
 #include <Precision.hxx>
-#include <TopAbs_ShapeEnum.hxx>
 #include <App/DocumentObject.h>
-#include <App/Document.h>
 #include <App/GeoFeatureGroupExtension.h>
 #include <App/GroupExtension.h>
 #include <App/IndexedName.h>
@@ -50,33 +50,32 @@
 #include <Gui/Inventor/MarkerBitmaps.h>
 #include <Gui/ViewProvider.h>
 #include <Mod/Part/App/Geometry.h>
-#include <Mod/Part/App/TopoShape.h>
 #include <Mod/Sketcher/App/SketchObject.h>
 
 #include "EditModeCoinManagerParameters.h"
 #include "LazyExternalGeometryLayer.h"
 
-using namespace SketcherGui;
-
 namespace
 {
-constexpr int HitTestCurveSampleCount = 96;
-constexpr int MinimumCurveSampleCount = 8;
 constexpr int DisplayCurveMaxSubdivisionDepth = 8;
 constexpr double DisplayCurveRelativeDeviation = 0.01;
 
+bool isIndexedSubNameOfType(const std::string& subName, const char* type)
+{
+    const char* lastPart = std::strrchr(subName.c_str(), '.');
+    const Data::IndexedName indexedSubName(lastPart ? lastPart + 1 : subName.c_str());
+    return indexedSubName && indexedSubName.getIndex() > 0
+        && std::strcmp(indexedSubName.getType(), type) == 0;
+}
+
 bool isEdgeSubName(const std::string& subName)
 {
-    const Data::IndexedName indexedSubName(subName.c_str());
-    return indexedSubName && indexedSubName.getIndex() > 0
-        && std::strcmp(indexedSubName.getType(), "Edge") == 0;
+    return isIndexedSubNameOfType(subName, "Edge");
 }
 
 bool isVertexSubName(const std::string& subName)
 {
-    const Data::IndexedName indexedSubName(subName.c_str());
-    return indexedSubName && indexedSubName.getIndex() > 0
-        && std::strcmp(indexedSubName.getType(), "Vertex") == 0;
+    return isIndexedSubNameOfType(subName, "Vertex");
 }
 
 bool isSourceVisible(App::DocumentObject* object)
@@ -106,16 +105,10 @@ bool isSourceVisible(App::DocumentObject* object)
     return true;
 }
 
-bool isValidSource(App::DocumentObject* object)
+bool isValidExternalSource(App::DocumentObject* object)
 {
     return object && !Base::Tools::isNullOrEmpty(object->getNameInDocument())
         && !object->isDerivedFrom<Sketcher::SketchObject>() && isSourceVisible(object);
-}
-
-std::string makeElementKey(const LazyExternalGeometryLayer::Element& element)
-{
-    return element.sourceObjectName + "\n" + element.subName + "\n"
-        + (element.intersection ? "1" : "0");
 }
 
 template<typename Elements>
@@ -164,43 +157,6 @@ bool getCurveParameterRange(const Part::GeomCurve& curve, double& first, double&
 
     return std::isfinite(first) && std::isfinite(last)
         && std::abs(last - first) > std::numeric_limits<double>::epsilon();
-}
-
-double distanceToSampledCurve2d(const Part::Geometry* geometry,
-                                const Base::Vector2d& point,
-                                int segments)
-{
-    if (!geometry) {
-        return std::numeric_limits<double>::max();
-    }
-
-    if (auto line = freecad_cast<const Part::GeomLineSegment*>(geometry)) {
-        return distancePointToSegment2d(point,
-                                        toVector2d(line->getStartPoint()),
-                                        toVector2d(line->getEndPoint()));
-    }
-
-    if (auto curve = freecad_cast<const Part::GeomCurve*>(geometry)) {
-        const int sampleCount = std::max(segments, MinimumCurveSampleCount);
-        double first = 0.0;
-        double last = 0.0;
-        if (!getCurveParameterRange(*curve, first, last)) {
-            return std::numeric_limits<double>::max();
-        }
-
-        const double step = (last - first) / sampleCount;
-        Base::Vector2d previous = toVector2d(curve->value(first));
-        double best = std::numeric_limits<double>::max();
-        for (int i = 1; i <= sampleCount; ++i) {
-            const double parameter = i == sampleCount ? last : first + i * step;
-            const Base::Vector2d current = toVector2d(curve->value(parameter));
-            best = std::min(best, distancePointToSegment2d(point, previous, current));
-            previous = current;
-        }
-        return best;
-    }
-
-    return std::numeric_limits<double>::max();
 }
 
 void appendAdaptiveCurveSegment(const Part::GeomCurve& curve,
@@ -279,51 +235,6 @@ bool matchesExternalType(long type, bool intersection)
 namespace SketcherGui
 {
 
-std::vector<LazyExternalGeometryLayer::Source> LazyExternalGeometryLayer::collectSources(
-    Sketcher::SketchObject* sketch)
-{
-    std::vector<Source> sources;
-    if (!sketch || !sketch->getDocument()) {
-        return sources;
-    }
-
-    for (auto* object : sketch->getDocument()->getObjects()) {
-        if (object == sketch || !isValidSource(object)) {
-            continue;
-        }
-
-        try {
-            const auto shape = Part::Feature::getTopoShape(
-                object,
-                Part::ShapeOption::ResolveLink | Part::ShapeOption::Transform);
-            const int edgeCount = shape.countSubShapes(TopAbs_EDGE);
-            const int vertexCount = shape.countSubShapes(TopAbs_VERTEX);
-            if (edgeCount > 0 || vertexCount > 0) {
-                sources.push_back({object, edgeCount, vertexCount});
-            }
-        }
-        catch (const Base::Exception&) {
-        }
-        catch (const std::exception&) {
-        }
-    }
-
-    return sources;
-}
-
-std::vector<std::string> LazyExternalGeometryLayer::getSourceNames(
-    const std::vector<Source>& sources)
-{
-    std::vector<std::string> names;
-    names.reserve(sources.size());
-
-    for (const auto& source : sources) {
-        names.emplace_back(source.object->getNameInDocument());
-    }
-
-    return names;
-}
-
 ExternalGeometryMatch findExternalMatch(Sketcher::SketchObject* sketch,
                                         App::DocumentObject* sourceObject,
                                         const std::string& subName,
@@ -360,22 +271,12 @@ ExternalGeometryMatch findExternalMatch(Sketcher::SketchObject* sketch,
 int resolveExternalGeometryIndex(Sketcher::SketchObject* sketch,
                                  App::DocumentObject* sourceObject,
                                  const std::string& subName,
-                                 bool intersection,
-                                 int fallbackIndex)
+                                 bool intersection)
 {
     const auto match = findExternalMatch(sketch, sourceObject, subName, intersection);
-    if (match.isValid()) {
-        return match.matchesType ? match.index : -1;
-    }
-
-    if (sketch && fallbackIndex >= 0 && fallbackIndex < sketch->getExternalGeometryCount()) {
-        return fallbackIndex;
-    }
-
-    return -1;
+    return match.isValid() && match.matchesType ? match.index : -1;
 }
 
-}  // namespace SketcherGui
 
 LazyExternalGeometryLayer::LazyExternalGeometryLayer() = default;
 
@@ -465,109 +366,42 @@ void LazyExternalGeometryLayer::createNodes()
     root->addChild(highlightCurveSet);
 }
 
-void LazyExternalGeometryLayer::clear()
+int LazyExternalGeometryLayer::preselectSourceReference(Sketcher::SketchObject* sketch,
+                                                    App::DocumentObject* sourceObject,
+                                                    const std::string& subName,
+                                                    bool intersection)
 {
-    elements.clear();
-    preselectedElementId = -1;
-    selectedElementIds.clear();
-    sourceObjectNames.clear();
-    nextId = 1;
+    if (!enabled) {
+        clearPreselectedElement();
+        return -1;
+    }
 
-    if (highlightPointCoordinates) {
-        highlightPointCoordinates->point.setNum(0);
+    if (const Element* existing = findElementBySource(sourceObject, subName, intersection)) {
+        preselectedElementId = existing->id;
+        return existing->id;
     }
-    if (highlightCurveCoordinates) {
-        highlightCurveCoordinates->point.setNum(0);
+
+    clearPreselectedElement();
+
+    const int id = addSourceReference(sketch, sourceObject, subName, intersection);
+    if (id < 0) {
+        return -1;
     }
-    if (highlightCurveSet) {
-        highlightCurveSet->numVertices.setNum(0);
-    }
+
+    preselectedElementId = id;
+    return id;
 }
 
-void LazyExternalGeometryLayer::rebuildSources(Sketcher::SketchObject* sketch)
+int LazyExternalGeometryLayer::addSourceReference(Sketcher::SketchObject* sketch,
+                                                  App::DocumentObject* sourceObject,
+                                                  const std::string& subName,
+                                                  bool intersection)
 {
-    auto sources = collectSources(sketch);
-    rebuildFromSourceObjects(sketch, sources, getSourceNames(sources));
-}
-
-bool LazyExternalGeometryLayer::syncSources(Sketcher::SketchObject* sketch)
-{
-    auto sources = collectSources(sketch);
-    auto sourceNames = getSourceNames(sources);
-
-    if (sourceNames == sourceObjectNames) {
-        return false;
+    if (!sketch || !isValidExternalSource(sourceObject)) {
+        return -1;
     }
 
-    rebuildFromSourceObjects(sketch, sources, std::move(sourceNames));
-    return true;
-}
-
-void LazyExternalGeometryLayer::rebuildFromSourceObjects(
-    Sketcher::SketchObject* sketch,
-    const std::vector<Source>& sources,
-    std::vector<std::string> sourceNames)
-{
-    std::set<std::string> selectedKeys;
-    for (int id : selectedElementIds) {
-        if (const Element* element = getElement(id)) {
-            selectedKeys.insert(makeElementKey(*element));
-        }
-    }
-
-    std::string preselectedKey;
-    if (const Element* element = getElement(preselectedElementId)) {
-        preselectedKey = makeElementKey(*element);
-    }
-
-    clear();
-    sourceObjectNames = std::move(sourceNames);
-
-    if (!sketch) {
-        return;
-    }
-
-    for (const auto& source : sources) {
-        std::vector<std::unique_ptr<Part::Geometry>> visibleGeometry;
-        if (!showHiddenEdges) {
-            visibleGeometry = sketch->buildVisibleExternalGeometryOnSketchPlane(source.object);
-        }
-        const auto* visibleGeometryPtr = visibleGeometry.empty() ? nullptr : &visibleGeometry;
-
-        for (int i = 1; i <= source.edgeCount; ++i) {
-            addSourceReference(sketch,
-                               source.object,
-                               "Edge" + std::to_string(i),
-                               false,
-                               false,
-                               visibleGeometryPtr);
-        }
-        for (int i = 1; i <= source.vertexCount; ++i) {
-            addSourceReference(
-                sketch, source.object, "Vertex" + std::to_string(i), false, false);
-        }
-    }
-
-    for (const auto& element : elements) {
-        const std::string key = makeElementKey(element);
-        if (selectedKeys.find(key) != selectedKeys.end()) {
-            selectedElementIds.insert(element.id);
-        }
-        if (!preselectedKey.empty() && key == preselectedKey) {
-            preselectedElementId = element.id;
-        }
-    }
-}
-
-int LazyExternalGeometryLayer::addSourceReference(
-    Sketcher::SketchObject* sketch,
-    App::DocumentObject* sourceObject,
-    const std::string& subName,
-    bool intersection,
-    bool buildPreview,
-    const std::vector<std::unique_ptr<Part::Geometry>>* visibleGeometry)
-{
-    if (!sketch || !sourceObject || Base::Tools::isNullOrEmpty(sourceObject->getNameInDocument())) {
+    if (!sketch->isExternalAllowed(sourceObject->getDocument(), sourceObject)) {
         return -1;
     }
 
@@ -582,25 +416,13 @@ int LazyExternalGeometryLayer::addSourceReference(
         return -1;
     }
 
-    std::vector<std::unique_ptr<Part::Geometry>> preview;
-    const bool needsVisibilityCheck = !showHiddenEdges && isEdge && visibleGeometry;
-    const bool needsPreview = buildPreview || needsVisibilityCheck;
-    if (needsPreview) {
-        preview = sketch->buildProjectedExternalGeometry(sourceObject,
-                                                         subName.c_str(),
-                                                         intersection);
-        if (preview.empty()) {
-            return -1;
-        }
-    }
-
-    if (needsVisibilityCheck
-        && !sketch->isProjectedExternalGeometryVisibleOnSketchPlane(preview, *visibleGeometry)) {
-        return -1;
-    }
-
     if (const Element* existing = findElementBySource(sourceObject, subName, intersection)) {
         return existing->id;
+    }
+
+    auto preview = sketch->buildProjectedExternalGeometry(sourceObject, subName.c_str(), intersection);
+    if (preview.empty()) {
+        return -1;
     }
 
     Element element;
@@ -660,46 +482,88 @@ const Part::Geometry* LazyExternalGeometryLayer::getPreviewGeometry(int id) cons
 bool LazyExternalGeometryLayer::isElementVertex(int id) const
 {
     const Element* element = getElement(id);
-    return element && element->type == ElementType::Vertex;
+    return element && element->isVertex();
+}
+
+bool LazyExternalGeometryLayer::getSourceReference(int id,
+                                                   std::string& sourceObjectName,
+                                                   std::string& subName,
+                                                   bool& intersection,
+                                                   bool& vertex) const
+{
+    const Element* element = getElement(id);
+    if (!element) {
+        return false;
+    }
+
+    sourceObjectName = element->sourceObjectName;
+    subName = element->subName;
+    intersection = element->intersection;
+    vertex = element->isVertex();
+    return true;
+}
+
+bool LazyExternalGeometryLayer::selectElement(int id, bool selected)
+{
+    Element* element = getElement(id);
+    if (!element) {
+        return false;
+    }
+
+    element->selected = selected;
+    if (!selected && preselectedElementId != id) {
+        elements.erase(std::remove_if(elements.begin(),
+                                      elements.end(),
+                                      [id](const Element& candidate) {
+                                          return candidate.id == id;
+                                      }),
+                       elements.end());
+    }
+    return true;
 }
 
 bool LazyExternalGeometryLayer::isElementSelected(int id) const
 {
-    return selectedElementIds.find(id) != selectedElementIds.end();
+    const Element* element = getElement(id);
+    return element && element->selected;
 }
 
 std::vector<int> LazyExternalGeometryLayer::getSelectedElementIds() const
 {
-    return std::vector<int>(selectedElementIds.begin(), selectedElementIds.end());
-}
-
-void LazyExternalGeometryLayer::setPreselectedElement(int id)
-{
-    preselectedElementId = id >= 0 ? id : -1;
-}
-
-void LazyExternalGeometryLayer::clearPreselectedElement()
-{
-    preselectedElementId = -1;
-}
-
-void LazyExternalGeometryLayer::setSelectedElement(int id, bool selected)
-{
-    if (id < 0) {
-        return;
+    std::vector<int> ids;
+    for (const auto& element : elements) {
+        if (element.selected) {
+            ids.push_back(element.id);
+        }
     }
-
-    if (selected) {
-        selectedElementIds.insert(id);
-    }
-    else {
-        selectedElementIds.erase(id);
-    }
+    return ids;
 }
 
 void LazyExternalGeometryLayer::clearSelectedElements()
 {
-    selectedElementIds.clear();
+    elements.erase(std::remove_if(elements.begin(),
+                                  elements.end(),
+                                  [this](const Element& element) {
+                                      return element.selected && element.id != preselectedElementId;
+                                  }),
+                   elements.end());
+
+    if (Element* element = getElement(preselectedElementId)) {
+        element->selected = false;
+    }
+}
+
+void LazyExternalGeometryLayer::clearPreselectedElement()
+{
+    const int oldPreselectedId = preselectedElementId;
+    preselectedElementId = -1;
+
+    elements.erase(std::remove_if(elements.begin(),
+                                  elements.end(),
+                                  [oldPreselectedId](const Element& element) {
+                                      return element.id == oldPreselectedId && !element.selected;
+                                  }),
+                   elements.end());
 }
 
 void LazyExternalGeometryLayer::setEnabled(bool on)
@@ -710,7 +574,7 @@ void LazyExternalGeometryLayer::setEnabled(bool on)
 
     enabled = on;
     if (!enabled) {
-        preselectedElementId = -1;
+        clearPreselectedElement();
     }
 }
 
@@ -719,151 +583,7 @@ bool LazyExternalGeometryLayer::isEnabled() const
     return enabled;
 }
 
-void LazyExternalGeometryLayer::setShowHiddenEdges(bool showHidden)
-{
-    showHiddenEdges = showHidden;
-}
-
-bool LazyExternalGeometryLayer::ensurePreview(Sketcher::SketchObject* sketch, Element& element)
-{
-    if (!element.geometry.empty()) {
-        return true;
-    }
-
-    if (!sketch) {
-        return false;
-    }
-
-    App::Document* document = sketch->getDocument();
-    App::DocumentObject* sourceObject = document
-        ? document->getObject(element.sourceObjectName.c_str())
-        : nullptr;
-    if (!sourceObject) {
-        return false;
-    }
-
-    element.geometry = sketch->buildProjectedExternalGeometry(sourceObject,
-                                                            element.subName.c_str(),
-                                                            element.intersection);
-    return !element.geometry.empty();
-}
-
-LazyExternalGeometryLayer::HitResult LazyExternalGeometryLayer::findClosestElement(
-    Sketcher::SketchObject* sketch,
-    const Base::Vector2d& point,
-    double maxDistance)
-{
-    if (!enabled || !std::isfinite(maxDistance) || maxDistance <= 0.0) {
-        return {};
-    }
-
-    auto hitTest = [this, sketch, &point](Element& element) -> HitResult {
-        if (!ensurePreview(sketch, element)) {
-            return {};
-        }
-
-        HitResult hit;
-        hit.id = element.id;
-        hit.isVertex = element.type == ElementType::Vertex;
-        hit.distance = std::numeric_limits<double>::max();
-
-        for (const auto& geometry : element.geometry) {
-            if (!geometry) {
-                continue;
-            }
-
-            if (element.type == ElementType::Vertex) {
-                if (auto geomPoint = freecad_cast<const Part::GeomPoint*>(geometry.get())) {
-                    hit.distance = std::min(hit.distance,
-                                            distance2d(point, toVector2d(geomPoint->getPoint())));
-                }
-                continue;
-            }
-
-            hit.distance = std::min(hit.distance,
-                                    distanceToSampledCurve2d(geometry.get(),
-                                                             point,
-                                                             HitTestCurveSampleCount));
-        }
-
-        return hit.distance == std::numeric_limits<double>::max() ? HitResult{} : hit;
-    };
-
-    auto findClosestVertex = [&]() -> HitResult {
-        HitResult bestVertex;
-        bestVertex.distance = std::numeric_limits<double>::max();
-
-        for (auto& element : elements) {
-            if (element.type != ElementType::Vertex) {
-                continue;
-            }
-
-            const HitResult hit = hitTest(element);
-            if (hit.isValid() && hit.distance < bestVertex.distance) {
-                bestVertex = hit;
-            }
-        }
-
-        return bestVertex;
-    };
-
-    if (auto* lastElement = getElement(preselectedElementId)) {
-        const HitResult lastHit = hitTest(*lastElement);
-        const double lastMaxDistance = lastHit.isVertex ? maxDistance : maxDistance * 0.6;
-        if (lastHit.isValid() && lastHit.distance <= lastMaxDistance) {
-            if (lastHit.isVertex) {
-                return lastHit;
-            }
-
-            const HitResult vertexHit = findClosestVertex();
-            if (vertexHit.isValid() && vertexHit.distance <= maxDistance) {
-                return vertexHit;
-            }
-
-            return lastHit;
-        }
-    }
-
-    HitResult bestVertex;
-    HitResult bestEdge;
-    bestVertex.distance = std::numeric_limits<double>::max();
-    bestEdge.distance = std::numeric_limits<double>::max();
-
-    for (auto& element : elements) {
-        const HitResult hit = hitTest(element);
-        if (!hit.isValid()) {
-            continue;
-        }
-
-        if (hit.isVertex) {
-            if (hit.distance < bestVertex.distance) {
-                bestVertex = hit;
-            }
-            continue;
-        }
-
-        if (hit.distance < bestEdge.distance) {
-            bestEdge = hit;
-        }
-    }
-
-    if (bestVertex.isValid() && bestVertex.distance <= maxDistance) {
-        return bestVertex;
-    }
-    if (bestEdge.isValid() && bestEdge.distance <= maxDistance) {
-        return bestEdge;
-    }
-
-    return {};
-}
-
-bool LazyExternalGeometryLayer::shouldDraw(const Element& element) const
-{
-    return element.id == preselectedElementId
-        || selectedElementIds.find(element.id) != selectedElementIds.end();
-}
-
-void LazyExternalGeometryLayer::appendElementToCoin(const Element& element,
+void LazyExternalGeometryLayer::appendElementGeometry(const Element& element,
                                                    std::vector<Base::Vector3d>& points,
                                                    std::vector<Base::Vector3d>& curveCoords,
                                                    std::vector<int32_t>& curveVertexCounts)
@@ -894,8 +614,8 @@ void LazyExternalGeometryLayer::draw(const DrawingParameters& parameters, int vi
 
     if (enabled) {
         for (const auto& element : elements) {
-            if (shouldDraw(element)) {
-                appendElementToCoin(element,
+            if (element.selected || element.id == preselectedElementId) {
+                appendElementGeometry(element,
                                      highlightPoints,
                                      highlightCurveCoords,
                                      highlightCurveVertexCounts);
@@ -917,20 +637,20 @@ void LazyExternalGeometryLayer::draw(const DrawingParameters& parameters, int vi
     highlightCurveDrawStyle->linePattern = parameters.ExternalPattern;
 
     highlightPointCoordinates->point.setNum(highlightPoints.size());
-    SbVec3f* pverts = highlightPointCoordinates->point.startEditing();
+    SbVec3f* pointVertices = highlightPointCoordinates->point.startEditing();
     for (const auto& point : highlightPoints) {
-        pverts->setValue(point.x, point.y, pointz);
-        ++pverts;
+        pointVertices->setValue(point.x, point.y, pointz);
+        ++pointVertices;
     }
     highlightPointCoordinates->point.finishEditing();
 
     highlightCurveCoordinates->point.setNum(highlightCurveCoords.size());
     highlightCurveSet->numVertices.setNum(highlightCurveVertexCounts.size());
 
-    SbVec3f* cverts = highlightCurveCoordinates->point.startEditing();
+    SbVec3f* curveVertices = highlightCurveCoordinates->point.startEditing();
     for (const auto& point : highlightCurveCoords) {
-        cverts->setValue(point.x, point.y, linez);
-        ++cverts;
+        curveVertices->setValue(point.x, point.y, linez);
+        ++curveVertices;
     }
     highlightCurveCoordinates->point.finishEditing();
 
@@ -941,3 +661,5 @@ void LazyExternalGeometryLayer::draw(const DrawingParameters& parameters, int vi
     }
     highlightCurveSet->numVertices.finishEditing();
 }
+
+}  // namespace SketcherGui

@@ -25,8 +25,10 @@
 #pragma once
 
 #include <cstring>
+#include <string>
 #include <App/Datums.h>
 #include <App/IndexedName.h>
+#include <Base/Tools.h>
 #include <Mod/Part/App/DatumFeature.h>
 
 #include <Gui/Notifications.h>
@@ -235,6 +237,11 @@ public:
 private:
     void activated() override
     {
+        if (materializeSelectedLazyExternalReferences()) {
+            sketchgui->purgeHandler();
+            return;
+        }
+
         suspendLazyExternalLayer();
 
         setAxisPickStyle(false);
@@ -261,6 +268,79 @@ private:
     {
         resumeLazyExternalLayer();
         setAxisPickStyle(true);
+    }
+
+    bool allowLazyExternalPreselection() const override
+    {
+        return false;
+    }
+
+    bool materializeSelectedLazyExternalReferences()
+    {
+        if (intersection || !sketchgui) {
+            return false;
+        }
+
+        const auto lazyExternalIds = sketchgui->getSelectedLazyExternalReferenceIds();
+        if (lazyExternalIds.empty()) {
+            return false;
+        }
+
+        try {
+            openCommand(QT_TRANSLATE_NOOP("Command", "Add external geometry"));
+
+            bool materializationFailed = false;
+            for (int lazyExternalId : lazyExternalIds) {
+                std::string sourceObjectName;
+                std::string sourceSubName;
+                bool sourceIntersection = false;
+                bool sourceVertex = false;
+                if (!sketchgui->getLazyExternalSourceReference(
+                        lazyExternalId, sourceObjectName, sourceSubName, sourceIntersection, sourceVertex)) {
+                    materializationFailed = true;
+                    break;
+                }
+
+                const int geoId = sketchgui->materializeLazyExternalSourceReference(
+                    sourceObjectName,
+                    sourceSubName,
+                    sourceIntersection,
+                    !(alwaysReference || isConstructionMode()));
+                if (geoId == Sketcher::GeoEnum::GeoUndef) {
+                    materializationFailed = true;
+                    break;
+                }
+            }
+
+            if (materializationFailed) {
+                abortCommand();
+                sketchgui->clearSelectedLazyExternalReferences();
+                Gui::Selection().clearSelection();
+                Gui::NotifyError(
+                    sketchgui,
+                    QT_TRANSLATE_NOOP("Notifications", "Error"),
+                    QT_TRANSLATE_NOOP("Notifications", "Failed to add external geometry")
+                );
+                return true;
+            }
+
+            commitCommand();
+            tryAutoRecomputeIfNotSolve(sketchgui->getObject<Sketcher::SketchObject>());
+            sketchgui->clearSelectedLazyExternalReferences();
+            Gui::Selection().clearSelection();
+        }
+        catch (const Base::Exception&) {
+            Gui::NotifyError(
+                sketchgui,
+                QT_TRANSLATE_NOOP("Notifications", "Error"),
+                QT_TRANSLATE_NOOP("Notifications", "Failed to add external geometry")
+            );
+            sketchgui->clearSelectedLazyExternalReferences();
+            Gui::Selection().clearSelection();
+            abortCommand();
+        }
+
+        return true;
     }
 
     void suspendLazyExternalLayer()

@@ -144,9 +144,9 @@ inline int ViewProviderSketchDrawSketchHandlerAttorney::getPreselectCross(const 
     return vp.getPreselectCross();
 }
 
-inline int ViewProviderSketchDrawSketchHandlerAttorney::getPreselectLazyExternal(const ViewProviderSketch& vp)
+inline int ViewProviderSketchDrawSketchHandlerAttorney::getPreselectLazyExternalId(const ViewProviderSketch& vp)
 {
-    return vp.getPreselectLazyExternal();
+    return vp.getPreselectLazyExternalId();
 }
 
 inline bool ViewProviderSketchDrawSketchHandlerAttorney::isPreselectLazyExternalVertex(const ViewProviderSketch& vp)
@@ -1154,9 +1154,9 @@ int DrawSketchHandler::getPreselectCross() const
     return ViewProviderSketchDrawSketchHandlerAttorney::getPreselectCross(*sketchgui);
 }
 
-int DrawSketchHandler::getPreselectLazyExternal() const
+int DrawSketchHandler::getPreselectLazyExternalId() const
 {
-    return ViewProviderSketchDrawSketchHandlerAttorney::getPreselectLazyExternal(*sketchgui);
+    return ViewProviderSketchDrawSketchHandlerAttorney::getPreselectLazyExternalId(*sketchgui);
 }
 
 bool DrawSketchHandler::isPreselectLazyExternalVertex() const
