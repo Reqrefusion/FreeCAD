@@ -141,6 +141,15 @@ void doEndpointToEdgeTangency(
 /// notifications
 void notifyConstraintSubstitutions(const QString& message);
 
+/// Applies the current Sketcher datum placement preparation used by constraint commands.
+/// This keeps Dimension option previews aligned with normal created constraints without
+/// moving the placement implementation out of CommandConstraints.cpp.
+bool prepareConstraintForLatestDatumPlacement(const Sketcher::SketchObject& sketch,
+                                             Sketcher::Constraint& constraint);
+bool prepareConstraintForLatestDatumPlacement(const Sketcher::SketchObject& sketch,
+                                             Sketcher::Constraint& constraint,
+                                             const Base::Vector2d& labelPosition);
+
 std::string escapeForPython(const std::string& input);
 bool addListConstraint(
     Sketcher::SketchObject* Obj,
