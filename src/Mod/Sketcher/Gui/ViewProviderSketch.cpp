@@ -23,7 +23,6 @@
  ***************************************************************************/
 
 #include <boost/bind/bind.hpp>
-#include <boost/core/ignore_unused.hpp>
 #include <Inventor/SbBox3f.h>
 #include <Inventor/SbLine.h>
 #include <Inventor/SbTime.h>
@@ -48,6 +47,10 @@
 #include <QTextStream>
 #include <QToolTip>
 #include <QWindow>
+#include <QEvent>
+#include <QMouseEvent>
+#include <algorithm>
+#include <cmath>
 
 #include <algorithm>
 #include <cmath>
@@ -61,6 +64,7 @@
 #include <Base/Converter.h>
 #include <Base/ServiceProvider.h>
 #include <Base/Vector3D.h>
+#include <App/Application.h>
 #include <Gui/Application.h>
 #include <Gui/BitmapFactory.h>
 #include <Gui/CommandT.h>
@@ -81,6 +85,7 @@
 #include <Mod/Sketcher/App/SketchObject.h>
 #include <Mod/Sketcher/App/SolverGeometryExtension.h>
 
+#include "DimensionOption.h"
 #include "DrawSketchHandler.h"
 #include "DrawSketchHandlerDragAutoConstraint.h"
 #include "EditDatumDialog.h"
@@ -113,6 +118,26 @@ using namespace SketcherGui;
 using namespace Sketcher;
 namespace sp = std::placeholders;
 
+void ViewProviderSketch::updateOrderedSelectionItem(Selection& selection,
+                                                    Selection::OrderedItem::Kind kind,
+                                                    int id,
+                                                    bool isSelected)
+{
+    std::erase_if(selection.SelOrder, [kind, id](const Selection::OrderedItem& item) {
+        return item.kind == kind && item.id == id;
+    });
+
+    if (!isSelected) {
+        return;
+    }
+
+    selection.SelOrder.push_back({kind, id});
+
+    // Keep the full active selection order. Preview is limited to 1-2 selections,
+    // but we must still see the entire active set so any extra picks suppress
+    // preview instead of reviving last-selected subset behavior.
+}
+
 namespace
 {
 bool isFiniteVector(const SbVec3f& vector)
@@ -125,7 +150,6 @@ bool isFiniteVector(const Base::Vector3d& vector)
     return std::isfinite(vector.x) && std::isfinite(vector.y) && std::isfinite(vector.z);
 }
 }  // namespace
-
 /************** ViewProviderSketch::ParameterObserver *********************/
 
 template<typename T>
@@ -716,6 +740,9 @@ void ViewProviderSketch::slotUndoDocument(const Gui::Document& /*doc*/)
         resetPositionText();
     }
 
+    cancelDimensionOptionInteraction();
+    clearDimensionOptions();
+
     // Note 1: this slot is only operative during edit mode (see signal connection/disconnection)
     // Note 2: ViewProviderSketch::UpdateData does not generate updates during undo/redo
     //         transactions as mid-transaction data may not be in a valid state (e.g. constraints
@@ -734,6 +761,9 @@ void ViewProviderSketch::slotRedoDocument(const Gui::Document& /*doc*/)
         setSketchMode(STATUS_NONE);
         resetPositionText();
     }
+
+    cancelDimensionOptionInteraction();
+    clearDimensionOptions();
 
     // Note 1: this slot is only operative during edit mode (see signal connection/disconnection)
     // Note 2: ViewProviderSketch::UpdateData does not generate updates during undo/redo
@@ -1266,6 +1296,12 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
             // Do things depending on the mode of the user interaction
             switch (Mode) {
                 case STATUS_NONE: {
+                    if (beginDimensionOptionInteraction(QPoint(cursorPos[0], cursorPos[1]), pp.get())) {
+                        const_cast<Gui::View3DInventorViewer*>(viewer)->redraw();
+                        setSketchMode(STATUS_NONE);
+                        return true;
+                    }
+
                     bool done = false;
                     detectAndShowPreselection(resolvedClickResult);
 
@@ -1330,6 +1366,16 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
             }
         }
         else {// Button 1 released
+            // Dimension option preview must be committable with a plain click. Some selection-side
+            // updates can temporarily drift Mode away from STATUS_NONE before release arrives,
+            // even though the dimension option interaction is still the active gesture. When that
+            // happens, the old code would enter the regular selection release branches and never
+            // call finalizeDimensionOptionInteraction(), making drag appear mandatory. If the
+            // interaction is active, it owns the release regardless of the transient mode.
+            if (dimensionOptionInteraction.active) {
+                return finalizeDimensionOptionInteraction();
+            }
+
             // Do things depending on the mode of the user interaction
             switch (Mode) {
                 case STATUS_SELECT_Point:
@@ -1812,29 +1858,55 @@ bool ViewProviderSketch::mouseMove(const SbVec2s& cursorPos, Gui::View3DInventor
     }
 
     std::unique_ptr<SnapManager::SnapHandle> snapHandle;
-    double x, y;
-    if (!getCoordsOnSketchPlane(line.getPosition(), line.getDirection(), x, y)) {
+    Base::Vector2d rawOnSketchPos;
+    try {
+        double x, y;
+        if (!getCoordsOnSketchPlane(line.getPosition(), line.getDirection(), x, y)) {
+            return false;
+        }
+        rawOnSketchPos = Base::Vector2d(x, y);
+        snapHandle = std::make_unique<SnapManager::SnapHandle>(snapManager.get(), rawOnSketchPos);
+    }
+    catch (const Base::ZeroDivisionError&) {
         return false;
     }
-    snapHandle = std::make_unique<SnapManager::SnapHandle>(snapManager.get(), Base::Vector2d(x, y));
+
+    const bool freezeDimensionOptionPreview = dimensionOptionInteraction.active;
 
     bool preselectChanged = false;
-    if (Mode != STATUS_SELECT_Point && Mode != STATUS_SELECT_Edge
+    std::unique_ptr<SoPickedPoint> Point;
+    if (!freezeDimensionOptionPreview && Mode != STATUS_SELECT_Point && Mode != STATUS_SELECT_Edge
         && Mode != STATUS_SELECT_Constraint && Mode != STATUS_SKETCH_Drag
         && Mode != STATUS_SKETCH_DragConstraint && Mode != STATUS_SKETCH_UseRubberBand) {
-        auto result = getPreselectionResultAtViewportPos(cursorPos, viewer);
-        cachePreselectionResult(cursorPos, result);
-        preselectChanged = detectAndShowPreselection(result);
+        Point.reset(this->getPointOnRay(cursorPos, viewer));
+
+        preselectChanged = detectAndShowPreselection(Point.get());
+    }
+
+    if (!freezeDimensionOptionPreview && Mode != STATUS_NONE && Mode != STATUS_SKETCH_UseHandler) {
+        clearDimensionOptions();
     }
 
     switch (Mode) {
-        case STATUS_NONE:
+        case STATUS_NONE: {
+            bool optionPreviewUpdated = false;
+            bool optionHoverChanged = false;
+            if (dimensionOptionInteraction.active) {
+                optionPreviewUpdated = updateDimensionOptionInteraction(QPoint(cursorPos[0], cursorPos[1]), rawOnSketchPos);
+            }
+            else if (editCoinManager && !dimensionOptions.empty()) {
+                const int hoverIdx = editCoinManager->pickDimensionOption(Point.get());
+                optionHoverChanged = editCoinManager->setActiveDimensionOption(hoverIdx);
+            }
             if (preselectChanged) {
                 editCoinManager->drawConstraintIcons();
                 updateColor();
-                return true;
             }
-            return false;
+            if (optionPreviewUpdated || optionHoverChanged) {
+                viewer->redraw();
+            }
+            return preselectChanged || optionPreviewUpdated || optionHoverChanged;
+        }
         case STATUS_SELECT_Point:
             if (!getSolvedSketch().hasConflicts() && preselection.isPreselectPointValid()) {
                 int geoId;
@@ -2655,6 +2727,7 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                     if (shapetype.size() > 4 && shapetype.substr(0, 4) == "Edge") {
                         int GeoId = std::atoi(&shapetype[4]) - 1;
                         selection.SelCurvSet.insert(GeoId);
+                        updateOrderedSelectionItem(selection, Selection::OrderedItem::Kind::Geometry, GeoId, true);
 
                         // Check if this is in a group.
                         // If so we cancel this addition and select the group instead
@@ -2670,6 +2743,7 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                         int GeoId = std::atoi(&shapetype[12]) - 1;
                         GeoId = -GeoId - 3;
                         selection.SelCurvSet.insert(GeoId);
+                        updateOrderedSelectionItem(selection, Selection::OrderedItem::Kind::Geometry, GeoId, true);
                     }
                     else if (shapetype.size() > 6 && shapetype.substr(0, 6) == "Vertex") {
                         int VtId = std::atoi(&shapetype[6]) - 1;
@@ -2680,9 +2754,17 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                     }
                     else if (shapetype == "H_Axis") {
                         selection.SelCurvSet.insert(Selection::HorizontalAxis);
+                        updateOrderedSelectionItem(selection,
+                                                   Selection::OrderedItem::Kind::Geometry,
+                                                   Selection::HorizontalAxis,
+                                                   true);
                     }
                     else if (shapetype == "V_Axis") {
                         selection.SelCurvSet.insert(Selection::VerticalAxis);
+                        updateOrderedSelectionItem(selection,
+                                                   Selection::OrderedItem::Kind::Geometry,
+                                                   Selection::VerticalAxis,
+                                                   true);
                     }
                     else if (shapetype.size() > 10 && shapetype.substr(0, 10) == "Constraint") {
                         int ConstrId =
@@ -2708,12 +2790,20 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                         if (shapetype.size() > 4 && shapetype.substr(0, 4) == "Edge") {
                             int GeoId = std::atoi(&shapetype[4]) - 1;
                             selection.SelCurvSet.erase(GeoId);
+                            updateOrderedSelectionItem(selection,
+                                                       Selection::OrderedItem::Kind::Geometry,
+                                                       GeoId,
+                                                       false);
                         }
                         else if (shapetype.size() > 12
                                  && shapetype.substr(0, 12) == "ExternalEdge") {
                             int GeoId = std::atoi(&shapetype[12]) - 1;
                             GeoId = -GeoId - 3;
                             selection.SelCurvSet.erase(GeoId);
+                            updateOrderedSelectionItem(selection,
+                                                       Selection::OrderedItem::Kind::Geometry,
+                                                       GeoId,
+                                                       false);
                         }
                         else if (shapetype.size() > 6 && shapetype.substr(0, 6) == "Vertex") {
                             int VtId = std::atoi(&shapetype[6]) - 1;
@@ -2724,9 +2814,17 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
                         }
                         else if (shapetype == "H_Axis") {
                             selection.SelCurvSet.erase(Sketcher::GeoEnum::HAxis);
+                            updateOrderedSelectionItem(selection,
+                                                       Selection::OrderedItem::Kind::Geometry,
+                                                       Sketcher::GeoEnum::HAxis,
+                                                       false);
                         }
                         else if (shapetype == "V_Axis") {
                             selection.SelCurvSet.erase(Sketcher::GeoEnum::VAxis);
+                            updateOrderedSelectionItem(selection,
+                                                       Selection::OrderedItem::Kind::Geometry,
+                                                       Sketcher::GeoEnum::VAxis,
+                                                       false);
                         }
                         else if (shapetype.size() > 10 && shapetype.substr(0, 10) == "Constraint") {
                             int ConstrId =
@@ -2783,6 +2881,32 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
         }
         else if (msg.Type == Gui::SelectionChanges::RmvPreselect) {
             resetPreselectPoint();
+        }
+
+        if (msg.Type == Gui::SelectionChanges::ClrSelection
+            || msg.Type == Gui::SelectionChanges::AddSelection
+            || msg.Type == Gui::SelectionChanges::RmvSelection) {
+            // Clicking a dimension option preview can temporarily raise selection updates from the
+            // Coin scene before mouse release arrives. If we cancel the interaction here, a simple
+            // click never reaches finalizeDimensionOptionInteraction() and the user is forced to
+            // drag first. Keep the interaction alive until release while the preview is active.
+            if (dimensionOptionInteraction.finalizing) {
+                return;
+            }
+
+            if (dimensionOptionInteraction.active) {
+                return;
+            }
+            else {
+                cancelDimensionOptionInteraction();
+                refreshDimensionOptionPreview();
+
+                if (auto* view = qobject_cast<Gui::View3DInventor*>(this->getActiveView())) {
+                    if (auto* viewer = view->getViewer()) {
+                        const_cast<Gui::View3DInventorViewer*>(viewer)->redraw();
+                    }
+                }
+            }
         }
     }
 }
@@ -4969,16 +5093,21 @@ void ViewProviderSketch::resetPreselectPoint()
 void ViewProviderSketch::addSelectPoint(int SelectPoint)
 {
     selection.SelPointSet.insert(SelectPoint);
+    updateOrderedSelectionItem(selection, Selection::OrderedItem::Kind::Point, SelectPoint, true);
 }
 
 void ViewProviderSketch::removeSelectPoint(int SelectPoint)
 {
     selection.SelPointSet.erase(SelectPoint);
+    updateOrderedSelectionItem(selection, Selection::OrderedItem::Kind::Point, SelectPoint, false);
 }
 
 void ViewProviderSketch::clearSelectPoints()
 {
     selection.SelPointSet.clear();
+    std::erase_if(selection.SelOrder, [](const Selection::OrderedItem& item) {
+        return item.kind == Selection::OrderedItem::Kind::Point;
+    });
 }
 
 bool ViewProviderSketch::isSelected(const std::string& subNameSuffix) const
@@ -5060,18 +5189,6 @@ const GeoList ViewProviderSketch::getGeoList() const
 bool ViewProviderSketch::constraintHasExpression(int constrid) const
 {
     return getSketchObject()->constraintHasExpression(constrid);
-}
-
-std::unique_ptr<SoRayPickAction> ViewProviderSketch::getRayPickAction() const
-{
-    assert(isInEditMode());
-    Gui::MDIView* mdi =
-        Gui::Application::Instance->editViewOfNode(editCoinManager->getRootEditNode());
-    if (!(mdi && mdi->isDerivedFrom<Gui::View3DInventor>()))
-        return nullptr;
-    Gui::View3DInventorViewer* viewer = static_cast<Gui::View3DInventor*>(mdi)->getViewer();
-
-    return std::make_unique<SoRayPickAction>(viewer->getSoRenderManager()->getViewportRegion());
 }
 
 SbVec2f ViewProviderSketch::getScreenCoordinates(SbVec2f sketchcoordinates) const

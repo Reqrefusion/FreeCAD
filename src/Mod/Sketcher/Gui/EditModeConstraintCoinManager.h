@@ -24,11 +24,14 @@
 
 #pragma once
 
+#include <functional>
+#include <memory>
 #include <vector>
 
 #include <QColor>
 #include <QImage>
 #include <QRect>
+#include <QPoint>
 
 #include <Inventor/nodes/SoImage.h>
 #include <Inventor/nodes/SoInfo.h>
@@ -37,13 +40,18 @@
 #include <Mod/Sketcher/App/Constraint.h>
 
 #include "EditModeCoinManagerParameters.h"
-
+#include "DimensionOption.h"
 
 class SbVec3f;
 class SbVec2s;
 class SoRayPickAction;
 class SoPickedPoint;
 class SbVec3s;
+class SoSeparator;
+namespace Gui
+{
+class SoDatumLabel;
+}
 
 namespace Base
 {
@@ -141,6 +149,11 @@ public:
     );
 
     SoSeparator* getConstraintIdSeparator(int i) const;
+
+    void setDimensionOptions(const std::vector<DimensionOption>& options);
+    bool setActiveDimensionOption(int index);
+    int pickDimensionOption(const SoPickedPoint* point) const;
+    bool resolveDimensionOption(int index, DimensionOption& option) const;
 
     void createEditModeInventorNodes();
 
@@ -282,8 +295,26 @@ private:
         double angle,
         double startAngle,
         double endAngle
-    );
+    ) const;
     //@}
+
+    void ensureDimensionOptionRoot();
+    void rebuildDimensionOptionNodes();
+    Gui::SoDatumLabel* createDimensionDatumLabel(const Sketcher::Constraint& constraint,
+                                                 bool preview,
+                                                 bool isActive) const;
+    bool preparePreviewDatum(
+        const DimensionOption& option,
+        std::unique_ptr<Sketcher::Constraint>& constraint,
+        Gui::SoDatumLabel*& datum) const;
+    const std::vector<DimensionOption>& currentDimensionOptions() const;
+    int pickedDimensionOption(const SoPickedPoint* point) const;
+    bool configureDimensionDatumLabel(const GeoListFacade& geolistfacade,
+                                      const Sketcher::Constraint& constraint,
+                                      Gui::SoDatumLabel& datum,
+                                      double zConstrH) const;
+    bool configurePreviewDatumLabel(const Sketcher::Constraint& constraint,
+                                    Gui::SoDatumLabel& datum) const;
 
 private:
     ViewProviderSketch& viewProvider;
@@ -295,6 +326,9 @@ private:
     EditModeScenegraphNodes& editModeScenegraphNodes;
 
     CoinMapping& coinMapping;
+    const std::vector<DimensionOption>* dimensionOptionList {nullptr};
+    SoSeparator* dimensionOptionRoot {nullptr};
+    int dimensionOptionActive {-1};
 };
 
 

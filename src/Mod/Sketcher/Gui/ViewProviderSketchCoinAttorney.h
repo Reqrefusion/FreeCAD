@@ -29,7 +29,6 @@
 
 #include <Inventor/SbVec2f.h>
 #include <Inventor/SbVec3f.h>
-#include <Inventor/actions/SoRayPickAction.h>
 
 #include "ViewProviderSketch.h"
 
@@ -93,11 +92,16 @@ private:
     static inline const GeoListFacade getGeoListFacade(const ViewProviderSketch& vp);
     static inline Base::Placement getEditingPlacement(const ViewProviderSketch& vp);
     static inline bool isShownVirtualSpace(const ViewProviderSketch& vp);
-    static inline std::unique_ptr<SoRayPickAction> getRayPickAction(const ViewProviderSketch& vp);
 
     static inline float getScaleFactor(const ViewProviderSketch& vp);
     static inline SbVec2f getScreenCoordinates(const ViewProviderSketch& vp, SbVec2f sketchcoordinates);
-    static inline SbVec2f getScreenCoordinates(const ViewProviderSketch& vp, SbVec3f sketchcoordinates);
+public:
+    static inline QPoint projectSketchPointToScreen(
+        const ViewProviderSketch& vp,
+        const Base::Vector2d& p
+    );
+
+private:
     static inline QFont getApplicationFont(const ViewProviderSketch& vp);
     static inline double getRotation(const ViewProviderSketch& vp, SbVec3f pos0, SbVec3f pos1);
     static inline int defaultApplicationFontSizePixels(const ViewProviderSketch& vp);
@@ -177,13 +181,6 @@ inline bool ViewProviderSketchCoinAttorney::isShownVirtualSpace(const ViewProvid
     return vp.viewProviderParameters.isShownVirtualSpace;
 }
 
-inline std::unique_ptr<SoRayPickAction> ViewProviderSketchCoinAttorney::getRayPickAction(
-    const ViewProviderSketch& vp
-)
-{
-    return vp.getRayPickAction();
-}
-
 inline float ViewProviderSketchCoinAttorney::getScaleFactor(const ViewProviderSketch& vp)
 {
     return vp.getScaleFactor();
@@ -197,6 +194,14 @@ inline SbVec2f ViewProviderSketchCoinAttorney::getScreenCoordinates(
     return vp.getScreenCoordinates(sketchcoordinates);
 }
 
+inline QPoint ViewProviderSketchCoinAttorney::projectSketchPointToScreen(
+    const ViewProviderSketch& vp,
+    const Base::Vector2d& p
+)
+{
+    return vp.projectSketchPointToScreen(p);
+}
+
 inline SbVec2f ViewProviderSketchCoinAttorney::getScreenCoordinates(
     const ViewProviderSketch& vp,
     SbVec3f sketchcoordinates
@@ -204,10 +209,8 @@ inline SbVec2f ViewProviderSketchCoinAttorney::getScreenCoordinates(
 {
     return vp.getScreenCoordinates(sketchcoordinates);
 }
-
-inline QFont ViewProviderSketchCoinAttorney::getApplicationFont(const ViewProviderSketch& vp)
 {
-    return vp.getApplicationFont();
+    return vp.projectSketchPointToScreen(p);
 }
 
 inline double ViewProviderSketchCoinAttorney::getRotation(

@@ -31,6 +31,8 @@
 #include <Inventor/sensors/SoNodeSensor.h>
 #include <QCoreApplication>
 #include <QMetaObject>
+#include <QPoint>
+#include <QPointer>
 #include <fastsignals/signal.h>
 #include <memory>
 
@@ -48,6 +50,7 @@
 #include "EditModeCoinManager.h"
 #include "PropertyVisualLayerList.h"
 #include "AutoConstraint.h"
+#include "DimensionOption.h"
 
 #include "ShortcutListener.h"
 #include "Utils.h"
@@ -107,6 +110,7 @@ class SnapManager;
 class DrawSketchHandler;
 class DrawSketchHandlerDragAutoConstraint;
 class ViewProviderSketchCommandConstraintsAttorney;
+class DimensionOptionReleaseFilter;
 
 using GeoList = Sketcher::GeoList;
 using GeoListFacade = Sketcher::GeoListFacade;
@@ -183,6 +187,10 @@ class SketcherGuiExport ViewProviderSketch: public PartGui::ViewProvider2DObject
     PROPERTY_HEADER_WITH_OVERRIDE(SketcherGui::ViewProviderSketch);
 
 private:
+    friend bool commitDimensionOption(ViewProviderSketch& viewProvider,
+                                         Sketcher::SketchObject& sketch,
+                                         const DimensionOption& option);
+
     /**
      * @brief
      * This nested class is responsible for attaching to the parameters relevant for
@@ -444,6 +452,17 @@ private:
             VerticalAxis = -2
         };
 
+        struct OrderedItem
+        {
+            enum class Kind
+            {
+                Point,
+                Geometry,
+            };
+            Kind kind {Kind::Geometry};
+            int id {0};
+        };
+
         Selection()
         {
             reset();
@@ -454,11 +473,16 @@ private:
             SelPointSet.clear();
             SelCurvSet.clear();
             SelConstraintSet.clear();
+            SelOrder.clear();
         }
 
         std::set<int> SelPointSet;       // Indices as PreselectPoint (and -1 for rootpoint)
         std::set<int> SelCurvSet;        // also holds cross axes at -1 and -2
         std::set<int> SelConstraintSet;  // ConstraintN, N = index + 1.
+        // Dimension option preview only supports 1- and 2-selection groups,
+        // but we still keep the full ordered current selection so any extra picks
+        // suppress preview instead of falling back to a smaller last-selected subset.
+        std::vector<OrderedItem> SelOrder;
         bool selectionBuffering {false};
     };
     //@}
@@ -759,6 +783,7 @@ public:
     friend class ViewProviderSketchCoinAttorney;
     friend class ViewProviderSketchSnapAttorney;
     friend class ViewProviderSketchCommandConstraintsAttorney;
+    friend class DimensionOptionReleaseFilter;
     //@}
 
     bool editingCancelled;
@@ -914,6 +939,25 @@ private:
     void moveAngleConstraint(Sketcher::Constraint*, int constNum, const Base::Vector2d& toPos);
     //@}
 
+    std::vector<DimensionReference> getSelectedDimensionOptionRefs() const;
+    QPoint projectSketchPointToScreen(const Base::Vector2d& p) const;
+    Base::Vector2d projectScreenPointToSketch(const QPoint& p) const;
+    Base::Vector2d clampSketchPointToViewport(const Base::Vector2d& p, int marginPx = 20) const;
+    void setDimensionOptions(const std::vector<DimensionOption>& options);
+    void clearDimensionOptions();
+    bool isDimensionOptionPreviewEnabled() const;
+    bool refreshDimensionOptionPreview();
+    bool beginDimensionOptionInteraction(const QPoint& screenPos, const SoPickedPoint* point);
+    bool updateDimensionOptionInteraction(const QPoint& screenPos, const Base::Vector2d& onSketchPos);
+    bool finalizeDimensionOptionInteraction();
+    void cancelDimensionOptionInteraction();
+    void installDimensionOptionReleaseFilter();
+    void removeDimensionOptionReleaseFilter();
+    void updateOrderedSelectionItem(Selection& selection,
+                                    Selection::OrderedItem::Kind kind,
+                                    int id,
+                                    bool isSelected);
+
     void setupActiveAndInEdit();
     void unsetupActiveAndInEdit();
 
@@ -954,7 +998,6 @@ private:
 
     Base::Placement getEditingPlacement() const;
 
-    std::unique_ptr<SoRayPickAction> getRayPickAction() const;
 
     SbVec2f getScreenCoordinates(SbVec2f sketchcoordinates) const;
     SbVec2f getScreenCoordinates(SbVec3f sketchcoordinates) const;
@@ -1033,6 +1076,16 @@ private:
     //@}
 
 private:
+    struct DimensionOptionInteraction
+    {
+        bool active {false};
+        bool dragged {false};
+        bool finalizing {false};
+        int optionIndex {-1};
+        QPoint pressScreenPos;
+        DimensionOption pressedOption;
+    };
+
     fastsignals::connection connectUndoDocument;
     fastsignals::connection connectRedoDocument;
     fastsignals::connection connectSolverUpdate;
@@ -1069,6 +1122,9 @@ private:
     std::unique_ptr<DrawSketchHandler> sketchHandler;
 
     std::unique_ptr<DrawSketchHandlerDragAutoConstraint> dragAutoConstraintHandler;
+    std::vector<DimensionOption> dimensionOptions;
+    DimensionOptionInteraction dimensionOptionInteraction;
+    QPointer<QObject> dimensionOptionReleaseFilter;
 
     ViewProviderParameters viewProviderParameters;
 

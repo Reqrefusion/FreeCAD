@@ -27,6 +27,8 @@
 #include <initializer_list>
 #include <optional>
 #include <utility>
+#include <iomanip>
+#include <numbers>
 
 #include <Precision.hxx>
 #include <Bnd_Box.hxx>
@@ -58,6 +60,7 @@
 #include <Mod/Sketcher/App/SolverGeometryExtension.h>
 
 #include "CommandConstraints.h"
+#include "DimensionOption.h"
 #include "DrawSketchHandler.h"
 #include "EditDatumDialog.h"
 #include "Utils.h"
@@ -341,6 +344,279 @@ public:
 };
 }  // namespace SketcherGui
 
+namespace SketcherGui::LatestDatumPlacementDetail
+{
+void applyLinearPlacement(const Sketcher::SketchObject& sketch,
+                          Sketcher::Constraint& constr,
+                          const Base::Vector2d& toPos)
+{
+    Base::Vector3d p1(0., 0., 0.);
+    Base::Vector3d p2(0., 0., 0.);
+
+    if (constr.SecondPos != Sketcher::PointPos::none) {
+        p1 = sketch.getPoint(constr.First, constr.FirstPos);
+        p2 = sketch.getPoint(constr.Second, constr.SecondPos);
+    }
+    else if (constr.Second != Sketcher::GeoEnum::GeoUndef) {
+        p1 = sketch.getPoint(constr.First, constr.FirstPos);
+        const Part::Geometry* geo1 = sketch.getGeometry(constr.First);
+        const Part::Geometry* geo2 = sketch.getGeometry(constr.Second);
+        if (!geo1 || !geo2) {
+            return;
+        }
+
+        if (isLineSegment(*geo2)) {
+            if (isCircleOrArc(*geo1) && constr.FirstPos == Sketcher::PointPos::none) {
+                std::swap(geo1, geo2);
+            }
+            else {
+                const auto* lineSeg = static_cast<const Part::GeomLineSegment*>(geo2);
+                Base::Vector3d l2p1 = lineSeg->getStartPoint();
+                Base::Vector3d l2p2 = lineSeg->getEndPoint();
+                p2.ProjectToLine(p1 - l2p1, l2p2 - l2p1);
+                p2 += p1;
+            }
+        }
+
+        if (isCircleOrArc(*geo2)) {
+            if (constr.FirstPos != Sketcher::PointPos::none) {
+                auto [rad, ct] = getRadiusCenterCircleArc(geo2);
+                Base::Vector3d v = p1 - ct;
+                v = v.Normalize();
+                p2 = ct + rad * v;
+            }
+            else if (isCircleOrArc(*geo1)) {
+                GetCirclesMinimalDistance(geo1, geo2, p1, p2);
+            }
+            else if (isLineSegment(*geo1)) {
+                const auto* lineSeg = static_cast<const Part::GeomLineSegment*>(geo1);
+                Base::Vector3d l2p1 = lineSeg->getStartPoint();
+                Base::Vector3d l2p2 = lineSeg->getEndPoint();
+                auto [rad, ct] = getRadiusCenterCircleArc(geo2);
+                p1.ProjectToLine(ct - l2p1, l2p2 - l2p1);
+                Base::Vector3d v = p1;
+                p1 += ct;
+                v.Normalize();
+                p2 = ct + v * rad;
+            }
+        }
+    }
+    else if (constr.FirstPos != Sketcher::PointPos::none) {
+        p2 = sketch.getPoint(constr.First, constr.FirstPos);
+    }
+    else if (constr.First != Sketcher::GeoEnum::GeoUndef) {
+        const Part::Geometry* geo = sketch.getGeometry(constr.First);
+        if (!geo) {
+            return;
+        }
+
+        if (geo->is<Part::GeomLineSegment>()) {
+            const auto* lineSeg = static_cast<const Part::GeomLineSegment*>(geo);
+            p1 = lineSeg->getStartPoint();
+            p2 = lineSeg->getEndPoint();
+        }
+        else if (geo->is<Part::GeomArcOfCircle>() || geo->is<Part::GeomCircle>()) {
+            const bool isArc = geo->is<Part::GeomArcOfCircle>();
+            Base::Vector3d center;
+            double radius = 0.0;
+            double defaultAngle = 0.0;
+
+            if (isArc) {
+                const auto* arc = static_cast<const Part::GeomArcOfCircle*>(geo);
+                center = arc->getCenter();
+                radius = arc->getRadius();
+
+                double startangle = 0.0;
+                double endangle = 0.0;
+                arc->getRange(startangle, endangle, /*emulateCCW=*/true);
+                defaultAngle = (startangle + endangle) / 2.0;
+
+                if (constr.Type == Sketcher::Distance
+                    && constr.Second == Sketcher::GeoEnum::GeoUndef) {
+                    Base::Vector2d arcDirection(std::cos(defaultAngle), std::sin(defaultAngle));
+                    Base::Vector2d centerToToPos = toPos - Base::Vector2d(center.x, center.y);
+                    constr.LabelDistance = centerToToPos * arcDirection;
+                    return;
+                }
+            }
+            else {
+                const auto* circle = static_cast<const Part::GeomCircle*>(geo);
+                center = circle->getCenter();
+                radius = circle->getRadius();
+                defaultAngle = constr.Type == Sketcher::Diameter ? std::numbers::pi / 4.0 : 0.0;
+            }
+
+            p1 = center;
+            Base::Vector3d tmpDir = Base::Vector3d(toPos.x, toPos.y, 0) - center;
+            double angle = tmpDir.Length() > Precision::Confusion()
+                ? atan2(tmpDir.y, tmpDir.x)
+                : constr.LabelPosition;
+            if (angle == 10) {
+                angle = defaultAngle;
+            }
+
+            if (constr.Type == Sketcher::Diameter) {
+                p1 = center - radius * Base::Vector3d(cos(angle), sin(angle), 0.);
+            }
+            p2 = center + radius * Base::Vector3d(cos(angle), sin(angle), 0.);
+        }
+        else {
+            return;
+        }
+    }
+    else {
+        return;
+    }
+
+    Base::Vector3d vec = Base::Vector3d(toPos.x, toPos.y, 0) - p2;
+    Base::Vector3d dir;
+    if (constr.Type == Sketcher::Distance || constr.Type == Sketcher::Radius
+        || constr.Type == Sketcher::Diameter || constr.Type == Sketcher::Weight) {
+        dir = (p2 - p1).Normalize();
+    }
+    else if (constr.Type == Sketcher::DistanceX) {
+        dir = Base::Vector3d((p2.x - p1.x >= std::numeric_limits<float>::epsilon()) ? 1 : -1, 0, 0);
+    }
+    else if (constr.Type == Sketcher::DistanceY) {
+        dir = Base::Vector3d(0, (p2.y - p1.y >= std::numeric_limits<float>::epsilon()) ? 1 : -1, 0);
+    }
+    else {
+        return;
+    }
+
+    if (constr.Type == Sketcher::Radius || constr.Type == Sketcher::Diameter
+        || constr.Type == Sketcher::Weight) {
+        const double distance = vec.x * dir.x + vec.y * dir.y;
+        constr.LabelDistance = distance;
+        constr.LabelPosition = atan2(dir.y, dir.x);
+    }
+    else {
+        Base::Vector3d normal(-dir.y, dir.x, 0);
+        const double distance = vec.x * normal.x + vec.y * normal.y;
+        constr.LabelDistance = distance;
+        if (constr.Type == Sketcher::Distance || constr.Type == Sketcher::DistanceX
+            || constr.Type == Sketcher::DistanceY) {
+            vec = Base::Vector3d(toPos.x, toPos.y, 0) - (p2 + p1) / 2;
+            constr.LabelPosition = vec.x * dir.x + vec.y * dir.y;
+        }
+    }
+}
+
+void applyAnglePlacement(const Sketcher::SketchObject& sketch,
+                         Sketcher::Constraint& constr,
+                         const Base::Vector2d& toPos)
+{
+    Base::Vector3d p0(0., 0., 0.);
+    double factor = 0.5;
+
+    if (constr.Second != Sketcher::GeoEnum::GeoUndef) {
+        if (constr.Third == Sketcher::GeoEnum::GeoUndef) {
+            const Part::Geometry* geo1 = sketch.getGeometry(constr.First);
+            const Part::Geometry* geo2 = sketch.getGeometry(constr.Second);
+            if (!geo1 || !geo2 || !isLineSegment(*geo1) || !isLineSegment(*geo2)) {
+                return;
+            }
+            const auto* lineSeg1 = static_cast<const Part::GeomLineSegment*>(geo1);
+            const auto* lineSeg2 = static_cast<const Part::GeomLineSegment*>(geo2);
+
+            Base::Vector2d l1[2];
+            Base::Vector2d l2[2];
+            l1[0] = Base::Vector2d(lineSeg1->getStartPoint().x, lineSeg1->getStartPoint().y);
+            l1[1] = Base::Vector2d(lineSeg1->getEndPoint().x, lineSeg1->getEndPoint().y);
+            l2[0] = Base::Vector2d(lineSeg2->getStartPoint().x, lineSeg2->getStartPoint().y);
+            l2[1] = Base::Vector2d(lineSeg2->getEndPoint().x, lineSeg2->getEndPoint().y);
+
+            const bool flip1 = (constr.FirstPos == Sketcher::PointPos::end);
+            const bool flip2 = (constr.SecondPos == Sketcher::PointPos::end);
+            Base::Vector2d p11 = flip1 ? l1[1] : l1[0];
+            Base::Vector2d p12 = flip1 ? l1[0] : l1[1];
+            Base::Vector2d p21 = flip2 ? l2[1] : l2[0];
+            Base::Vector2d p22 = flip2 ? l2[0] : l2[1];
+            Base::Vector2d intersection(0., 0.);
+            if (!Base::Line2d(p11, p12).Intersect(Base::Line2d(p21, p22), intersection)) {
+                return;
+            }
+            p0 = Base::Vector3d(intersection.x, intersection.y, 0.);
+        }
+        else {
+            Base::Vector3d p = sketch.getPoint(constr.Third, constr.ThirdPos);
+            p0 = Base::Vector3d(p.x, p.y, 0.);
+        }
+    }
+    else if (constr.First != Sketcher::GeoEnum::GeoUndef) {
+        const Part::Geometry* geo = sketch.getGeometry(constr.First);
+        if (!geo) {
+            return;
+        }
+        if (isLineSegment(*geo)) {
+            const auto* lineSeg = static_cast<const Part::GeomLineSegment*>(geo);
+            p0 = (lineSeg->getEndPoint() + lineSeg->getStartPoint()) / 2;
+        }
+        else if (isArcOfCircle(*geo)) {
+            const auto* arc = static_cast<const Part::GeomArcOfCircle*>(geo);
+            Base::Vector3d center = arc->getCenter();
+            double startangle = 0.0;
+            double endangle = 0.0;
+            arc->getRange(startangle, endangle, /*emulateCCW=*/true);
+            const double arcAngle = (startangle + endangle) / 2.;
+            Base::Vector2d arcDirection(std::cos(arcAngle), std::sin(arcAngle));
+            Base::Vector2d centerToToPos = toPos - Base::Vector2d(center.x, center.y);
+            constr.LabelDistance = factor * centerToToPos * arcDirection;
+            return;
+        }
+        else {
+            return;
+        }
+    }
+    else {
+        return;
+    }
+
+    Base::Vector3d vec = Base::Vector3d(toPos.x, toPos.y, 0) - p0;
+    constr.LabelDistance = factor * vec.Length();
+}
+}  // namespace SketcherGui::LatestDatumPlacementDetail
+
+bool SketcherGui::prepareConstraintForLatestDatumPlacement(const Sketcher::SketchObject& sketch,
+                                                           Sketcher::Constraint& constraint,
+                                                           const Base::Vector2d& labelPosition)
+{
+    if (constraint.Type == Sketcher::Distance || constraint.Type == Sketcher::DistanceX
+        || constraint.Type == Sketcher::DistanceY || constraint.Type == Sketcher::Radius
+        || constraint.Type == Sketcher::Diameter) {
+        LatestDatumPlacementDetail::applyLinearPlacement(sketch, constraint, labelPosition);
+        return true;
+    }
+    if (constraint.Type == Sketcher::Angle) {
+        LatestDatumPlacementDetail::applyAnglePlacement(sketch, constraint, labelPosition);
+        return true;
+    }
+
+    return false;
+}
+
+bool SketcherGui::prepareConstraintForLatestDatumPlacement(const Sketcher::SketchObject& sketch,
+                                                           Sketcher::Constraint& constraint)
+{
+    if (constraint.Type == Sketcher::Distance || constraint.Type == Sketcher::DistanceX
+        || constraint.Type == Sketcher::DistanceY) {
+        Base::Vector2d labelPosition;
+        if (SketcherGui::LinearDatumLabelPlacement::computeLabelPosition(&sketch,
+                                                                         &constraint,
+                                                                         labelPosition)) {
+            return prepareConstraintForLatestDatumPlacement(sketch, constraint, labelPosition);
+        }
+    }
+    else if (constraint.Type == Sketcher::Angle) {
+        if (auto labelPosition = SketcherGui::AngularDatumLabelPlacement::computeLabelPosition(
+                &sketch, &constraint)) {
+            return prepareConstraintForLatestDatumPlacement(sketch, constraint, *labelPosition);
+        }
+    }
+
+    return false;
+}
+
 bool isCreateConstraintActive(Gui::Document* doc)
 {
     if (doc) {
@@ -361,7 +637,9 @@ bool isCreateConstraintActive(Gui::Document* doc)
 void finishDatumConstraint(Gui::Command* cmd,
                            Sketcher::SketchObject* sketch,
                            bool isDriving = true,
-                           unsigned int numberofconstraints = 1)
+                           unsigned int numberofconstraints = 1,
+                           std::optional<Base::Vector2d> datumPlacement = std::nullopt,
+                           bool preserveExistingDatumPlacement = false)
 {
     ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath(
         "User parameter:BaseApp/Preferences/Mod/Sketcher");
@@ -401,7 +679,13 @@ void finishDatumConstraint(Gui::Command* cmd,
         int firstConstraintIndex = lastConstraintIndex - numberofconstraints + 1;
 
         for (int i = lastConstraintIndex; i >= firstConstraintIndex; i--) {
-            if (lastConstraintType == Radius || lastConstraintType == Diameter) {
+            if (preserveExistingDatumPlacement) {
+                continue;
+            }
+            if (datumPlacement.has_value()) {
+                ViewProviderSketchCommandConstraintsAttorney::moveConstraint(*vp, i, *datumPlacement);
+            }
+            else if (lastConstraintType == Radius || lastConstraintType == Diameter) {
                 const Part::Geometry* geo = sketch->getGeometry(ConStr[i]->First);
 
                 if (geo && isCircle(*geo)) {
@@ -443,6 +727,186 @@ void finishDatumConstraint(Gui::Command* cmd,
 
     tryAutoRecompute(sketch);
     cmd->getSelection().clearSelection();
+}
+
+
+namespace CommandConstraintsDetail {
+
+class DimensionOptionCommandProxy final : public Gui::Command
+{
+public:
+    DimensionOptionCommandProxy()
+        : Gui::Command("Sketcher_DimensionOptionProxy")
+    {
+    }
+
+    const char* className() const override
+    {
+        return "SketcherGui::DimensionOptionCommandProxy";
+    }
+
+    void activated(int) override
+    {
+    }
+
+    using Gui::Command::abortCommand;
+    using Gui::Command::commitCommand;
+    using Gui::Command::getActiveGuiDocument;
+    using Gui::Command::getSelection;
+    using Gui::Command::openCommand;
+    using Gui::Command::resetTransactionID;
+    using Gui::Command::transactionID;
+};
+
+std::string dimensionOptionConstraintArgs(const Sketcher::Constraint& constraint)
+{
+    const bool radial = constraint.Type == Sketcher::Radius
+        || constraint.Type == Sketcher::Diameter;
+    const char* name = nullptr;
+    switch (constraint.Type) {
+        case Sketcher::Distance:
+            name = "Distance";
+            break;
+        case Sketcher::DistanceX:
+            name = "DistanceX";
+            break;
+        case Sketcher::DistanceY:
+            name = "DistanceY";
+            break;
+        case Sketcher::Radius:
+            name = "Radius";
+            break;
+        case Sketcher::Diameter:
+            name = "Diameter";
+            break;
+        case Sketcher::Angle:
+            name = constraint.Third == Sketcher::GeoEnum::GeoUndef ? "Angle" : "AngleViaPoint";
+            break;
+        default:
+            return {};
+    }
+
+    std::ostringstream args;
+    args << std::setprecision(17) << '\'' << name << '\'' << ',' << constraint.First;
+    if (constraint.Type == Sketcher::Angle
+        && constraint.Third != Sketcher::GeoEnum::GeoUndef) {
+        args << ',' << constraint.Second << ',' << constraint.Third << ','
+             << static_cast<int>(constraint.ThirdPos);
+    }
+    else if (constraint.Second != Sketcher::GeoEnum::GeoUndef) {
+        if (constraint.SecondPos != Sketcher::PointPos::none) {
+            args << ',' << static_cast<int>(constraint.FirstPos) << ',' << constraint.Second
+                 << ',' << static_cast<int>(constraint.SecondPos);
+        }
+        else if (constraint.FirstPos != Sketcher::PointPos::none) {
+            args << ',' << static_cast<int>(constraint.FirstPos) << ',' << constraint.Second;
+        }
+        else {
+            args << ',' << constraint.Second;
+        }
+    }
+    else if (!radial
+             && constraint.Type != Sketcher::Angle
+             && constraint.FirstPos != Sketcher::PointPos::none) {
+        args << ',' << static_cast<int>(constraint.FirstPos);
+    }
+
+    args << ',' << constraint.getValue();
+    return args.str();
+}
+
+bool addDimensionOptionConstraint(Sketcher::SketchObject& sketch,
+                                 const Sketcher::Constraint& constraint)
+{
+    const std::string args = dimensionOptionConstraintArgs(constraint);
+    if (args.empty()) {
+        return false;
+    }
+
+    Gui::cmdAppObjectArgs(&sketch,
+                          "addConstraint(Sketcher.Constraint(%s))",
+                          args.c_str());
+    return true;
+}
+
+int addDimensionOptionConstraint(Sketcher::SketchObject& sketch,
+                                 const DimensionOption& option,
+                                 bool isDriving)
+{
+    auto constraint = buildDimensionConstraint(sketch, option);
+    if (!constraint) {
+        return -1;
+    }
+
+    constraint->isDriving = isDriving;
+    if (!addDimensionOptionConstraint(sketch, *constraint)) {
+        return -1;
+    }
+
+    const int createdIndex = static_cast<int>(sketch.Constraints.getValues().size()) - 1;
+    if (!isDriving) {
+        Gui::cmdAppObjectArgs(&sketch, "setDriving(%d,%s)", createdIndex, "False");
+    }
+
+    return createdIndex;
+}
+
+} // namespace CommandConstraintsDetail
+
+bool shouldCreateDrivingDimension(const Sketcher::SketchObject* sketch, int geoId1, int geoId2)
+{
+    const bool fixed = geoId2 == Sketcher::GeoEnum::GeoUndef
+        ? isPointOrSegmentFixed(sketch, geoId1)
+        : areBothPointsOrSegmentsFixed(sketch, geoId1, geoId2);
+
+    return !(fixed || constraintCreationMode == Reference);
+}
+
+bool SketcherGui::commitDimensionOption(ViewProviderSketch& viewProvider,
+                                           Sketcher::SketchObject& sketch,
+                                           const SketcherGui::DimensionOption& option)
+{
+    (void)viewProvider;
+
+    const int geoId1 = !option.refs.empty()
+        ? option.refs[0].geoId
+        : Sketcher::GeoEnum::GeoUndef;
+    const int geoId2 = option.refs.size() > 1
+        ? option.refs[1].geoId
+        : Sketcher::GeoEnum::GeoUndef;
+    const bool isDriving = shouldCreateDrivingDimension(&sketch, geoId1, geoId2);
+
+    CommandConstraintsDetail::DimensionOptionCommandProxy cmd;
+    cmd.openCommand(QT_TRANSLATE_NOOP("Command", "Dimension option"));
+
+    const int createdIndex = CommandConstraintsDetail::addDimensionOptionConstraint(
+        sketch,
+        option,
+        isDriving);
+    if (createdIndex < 0) {
+        cmd.abortCommand();
+        return false;
+    }
+
+    const auto& constraints = sketch.Constraints.getValues();
+    if (option.hasPreparedDatumPlacement && createdIndex >= 0
+        && createdIndex < static_cast<int>(constraints.size())) {
+        constraints[createdIndex]->LabelDistance = option.preparedLabelDistance;
+        constraints[createdIndex]->LabelPosition = option.preparedLabelPosition;
+    }
+
+    const std::optional<Base::Vector2d> datumPlacement =
+        (!option.hasPreparedDatumPlacement && option.hasCustomLabelPos)
+        ? std::optional<Base::Vector2d>(option.labelPos)
+        : std::nullopt;
+    cmd.getSelection().clearSelection();
+    finishDatumConstraint(&cmd,
+                          &sketch,
+                          isDriving,
+                          1,
+                          datumPlacement,
+                          option.hasPreparedDatumPlacement);
+    return true;
 }
 
 void showNoConstraintBetweenExternal(const App::DocumentObject* obj)

@@ -71,6 +71,8 @@ SET(SketcherGui_SRCS
     DrawSketchHandlerRotate.h
     DrawSketchHandlerScale.h
     DrawSketchHandlerSymmetry.h
+    DimensionOption.h
+    DimensionOption.cpp
     CommandCreateGeo.cpp
     CommandConstraints.h
     CommandConstraints.cpp
@@ -123,10 +125,14 @@ SET(SketcherGui_SRCS
     EditModeGeometryCoinManager.cpp
     EditModeGeometryCoinManager.h
     EditModeConstraintCoinManager.cpp
+    EditModeConstraintCoinManagerDimensionOption.cpp
+    EditModeConstraintCoinManagerDimensionOption.h
     EditModeConstraintCoinManager.h
     ViewProviderSketchCoinAttorney.cpp
     ViewProviderSketchCoinAttorney.h
     ViewProviderSketch.cpp
+    ViewProviderSketchDimensionOption.cpp
+    ViewProviderSketchDimensionOption.h
     ViewProviderSketch.h
     DrawSketchHandler.cpp
     DrawSketchHandler.h
