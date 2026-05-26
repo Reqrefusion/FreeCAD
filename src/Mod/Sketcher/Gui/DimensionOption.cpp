@@ -9,6 +9,7 @@
 #include <Mod/Sketcher/App/SketchObject.h>
 
 #include <Base/Precision.h>
+#include <Base/Type.h>
 
 #include <algorithm>
 #include <cassert>
@@ -149,7 +150,7 @@ bool isRoundGeometry(const Part::Geometry* geometry)
 const Part::GeomLineSegment* asLineSegment(const Sketcher::SketchObject& sketch, int geoId)
 {
     const Part::Geometry* geometry = sketch.getGeometry(geoId);
-    return isLineGeometry(geometry) ? static_cast<const Part::GeomLineSegment*>(geometry) : nullptr;
+    return freecad_cast<const Part::GeomLineSegment*>(geometry);
 }
 
 DistanceSegment makeDistanceSegment(const Base::Vector3d& a,
@@ -444,9 +445,7 @@ std::vector<DimensionOption> buildRoundOptions(Sketcher::SketchObject* sketch, i
     result.push_back({DimensionSemantic::Radius, radius, {ref}});
     result.push_back({DimensionSemantic::Diameter, radius * 2.0, {ref}});
 
-    if (const auto* arc = geometry->is<Part::GeomArcOfCircle>()
-            ? static_cast<const Part::GeomArcOfCircle*>(geometry)
-            : nullptr) {
+    if (const auto* arc = freecad_cast<const Part::GeomArcOfCircle*>(geometry)) {
         result.push_back({DimensionSemantic::Angle, arc->getAngle(true), {ref}});
     }
 
@@ -767,9 +766,7 @@ std::unique_ptr<Sketcher::Constraint> buildDimensionConstraint(
         bool isArc = false;
         if (!option.refs.empty()) {
             const Part::Geometry* geometry = sketch.getGeometry(option.refs.front().geoId);
-            if (const auto* arc = geometry && geometry->is<Part::GeomArcOfCircle>()
-                    ? static_cast<const Part::GeomArcOfCircle*>(geometry)
-                    : nullptr) {
+            if (const auto* arc = freecad_cast<const Part::GeomArcOfCircle*>(geometry)) {
                 double startAngle = 0.0;
                 double endAngle = 0.0;
                 arc->getRange(startAngle, endAngle, /*emulateCCW=*/true);
@@ -790,9 +787,7 @@ std::unique_ptr<Sketcher::Constraint> buildDimensionConstraint(
     }
     else if (option.semantic == DimensionSemantic::Angle && option.refs.size() == 1) {
         const Part::Geometry* geometry = sketch.getGeometry(option.refs.front().geoId);
-        if (const auto* arc = geometry && geometry->is<Part::GeomArcOfCircle>()
-                ? static_cast<const Part::GeomArcOfCircle*>(geometry)
-                : nullptr) {
+        if (const auto* arc = freecad_cast<const Part::GeomArcOfCircle*>(geometry)) {
             double startAngle = 0.0;
             double endAngle = 0.0;
             arc->getRange(startAngle, endAngle, /*emulateCCW=*/true);

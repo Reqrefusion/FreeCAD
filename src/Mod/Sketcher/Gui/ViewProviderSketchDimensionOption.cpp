@@ -41,8 +41,6 @@
 #include "ViewProviderSketchDimensionOption.h"
 #include "EditModeCoinManager.h"
 
-using namespace SketcherGui;
-
 namespace SketcherGui {
 
 class DimensionOptionReleaseFilter : public QObject
@@ -81,7 +79,6 @@ private:
     ViewProviderSketch* owner;
 };
 
-} // namespace SketcherGui
 
 std::vector<DimensionReference> ViewProviderSketch::getSelectedDimensionOptionRefs() const
 {
@@ -434,3 +431,4 @@ void ViewProviderSketch::cancelDimensionOptionInteraction()
     }
 }
 
+} // namespace SketcherGui
