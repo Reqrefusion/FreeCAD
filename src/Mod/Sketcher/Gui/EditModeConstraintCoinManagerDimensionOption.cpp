@@ -47,10 +47,7 @@
 #include "ViewProviderSketch.h"
 #include "ViewProviderSketchCoinAttorney.h"
 
-using namespace Gui;
-using namespace SketcherGui;
-using namespace Sketcher;
-
+namespace SketcherGui {
 namespace {
 
 std::unique_ptr<Sketcher::Constraint> buildPreparedPreviewConstraint(
@@ -314,3 +311,4 @@ void EditModeConstraintCoinManager::rebuildDimensionOptionNodes()
     }
 }
 
+} // namespace SketcherGui
