@@ -38,7 +38,7 @@
 #include <Gui/View3DInventorViewer.h>
 #include <Mod/Sketcher/App/SketchObject.h>
 
-#include "ViewProviderSketchDimensionOption.h"
+#include "ViewProviderSketch.h"
 #include "EditModeCoinManager.h"
 
 namespace SketcherGui {
