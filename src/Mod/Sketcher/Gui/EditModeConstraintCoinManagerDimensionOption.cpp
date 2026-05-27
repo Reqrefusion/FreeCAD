@@ -42,7 +42,7 @@
 #include <Mod/Sketcher/App/Constraint.h>
 #include <Mod/Sketcher/App/SketchObject.h>
 
-#include "EditModeConstraintCoinManagerDimensionOption.h"
+#include "EditModeConstraintCoinManager.h"
 #include "CommandConstraints.h"
 #include "ViewProviderSketch.h"
 #include "ViewProviderSketchCoinAttorney.h"
