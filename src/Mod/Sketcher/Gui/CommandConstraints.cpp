@@ -451,7 +451,7 @@ void applyLinearPlacement(const Sketcher::SketchObject& sketch,
             double angle = tmpDir.Length() > Precision::Confusion()
                 ? atan2(tmpDir.y, tmpDir.x)
                 : constr.LabelPosition;
-            if (angle == 10) {
+            if (isAutoDatumLabelPosition(angle)) {
                 angle = defaultAngle;
             }
 

@@ -80,6 +80,7 @@
 
 #include "EditModeConstraintCoinManager.h"
 #include "CommandConstraints.h"
+#include "DimensionOption.h"
 #include "SoZoomTranslation.h"
 #include "Utils.h"
 #include "ViewProviderSketch.h"
@@ -3104,7 +3105,7 @@ bool EditModeConstraintCoinManager::configureDimensionDatumLabel(
                 double startAngle, endAngle;
                 arc->getRange(startAngle, endAngle, /*emulateCCW=*/true);
 
-                if (angle == 10) {
+                if (isAutoDatumLabelPosition(angle)) {
                     angle = (startAngle + endAngle) / 2;
                 }
 
@@ -3125,7 +3126,7 @@ bool EditModeConstraintCoinManager::configureDimensionDatumLabel(
                 auto* circle = static_cast<const Part::GeomCircle*>(geo);
                 double radius = circle->getRadius();
                 double angle = static_cast<double>(constraint.LabelPosition);
-                if (angle == 10) {
+                if (isAutoDatumLabelPosition(angle)) {
                     angle = 0;
                 }
                 Base::Vector3d center = circle->getCenter();

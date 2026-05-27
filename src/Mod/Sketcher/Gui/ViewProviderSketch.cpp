@@ -2466,7 +2466,7 @@ void ViewProviderSketch::moveConstraint(Sketcher::Constraint* Constr, int constN
                     // radius and diameter
                     p1 = center;
                     double angle = Constr->LabelPosition;
-                    if (angle == 10) {
+                    if (isAutoDatumLabelPosition(angle)) {
                         angle = (startangle + endangle) / 2;
                     }
                     else {

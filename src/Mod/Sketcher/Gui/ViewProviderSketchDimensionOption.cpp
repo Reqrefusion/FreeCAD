@@ -79,6 +79,27 @@ private:
     ViewProviderSketch* owner;
 };
 
+class DimensionOptionFinalizingGuard
+{
+public:
+    explicit DimensionOptionFinalizingGuard(ViewProviderSketch& owner)
+        : owner(owner)
+    {
+        owner.dimensionOptionInteraction.finalizing = true;
+    }
+
+    ~DimensionOptionFinalizingGuard() noexcept
+    {
+        owner.dimensionOptionInteraction.finalizing = false;
+    }
+
+    DimensionOptionFinalizingGuard(const DimensionOptionFinalizingGuard&) = delete;
+    DimensionOptionFinalizingGuard& operator=(const DimensionOptionFinalizingGuard&) = delete;
+
+private:
+    ViewProviderSketch& owner;
+};
+
 
 std::vector<DimensionReference> ViewProviderSketch::getSelectedDimensionOptionRefs() const
 {
@@ -388,6 +409,12 @@ bool ViewProviderSketch::finalizeDimensionOptionInteraction()
         return false;
     }
 
+    auto* sketch = getSketchObject();
+    if (!sketch) {
+        cancelDimensionOptionInteraction();
+        return false;
+    }
+
     DimensionOption option = dimensionOptionInteraction.dragged
         ? dimensionOptions[idx]
         : dimensionOptionInteraction.pressedOption;
@@ -398,7 +425,7 @@ bool ViewProviderSketch::finalizeDimensionOptionInteraction()
         }
     }
 
-    dimensionOptionInteraction.finalizing = true;
+    DimensionOptionFinalizingGuard finalizingGuard(*this);
     removeDimensionOptionReleaseFilter();
     dimensionOptionInteraction.active = false;
     if (editCoinManager) {
@@ -408,7 +435,7 @@ bool ViewProviderSketch::finalizeDimensionOptionInteraction()
     setDimensionOptions({});
 
     const bool ok = commitDimensionOption(*this,
-                                             *getSketchObject(),
+                                             *sketch,
                                              option);
 
     dimensionOptionInteraction = DimensionOptionInteraction();

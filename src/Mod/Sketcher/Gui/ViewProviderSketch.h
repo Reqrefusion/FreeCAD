@@ -111,6 +111,7 @@ class DrawSketchHandler;
 class DrawSketchHandlerDragAutoConstraint;
 class ViewProviderSketchCommandConstraintsAttorney;
 class DimensionOptionReleaseFilter;
+class DimensionOptionFinalizingGuard;
 
 using GeoList = Sketcher::GeoList;
 using GeoListFacade = Sketcher::GeoListFacade;
@@ -784,6 +785,7 @@ public:
     friend class ViewProviderSketchSnapAttorney;
     friend class ViewProviderSketchCommandConstraintsAttorney;
     friend class DimensionOptionReleaseFilter;
+    friend class DimensionOptionFinalizingGuard;
     //@}
 
     bool editingCancelled;
