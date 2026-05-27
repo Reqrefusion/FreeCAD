@@ -79,21 +79,15 @@ struct DimensionOption
     double preparedLabelPosition {0.0};
 };
 
-/// Create the constraint represented by a dimension option.
 [[nodiscard]] std::unique_ptr<Sketcher::Constraint> buildDimensionConstraint(
     const Sketcher::SketchObject& sketch,
     const DimensionOption& option);
 
-class ViewProviderSketch;
-
-/// Build all dimension options that are valid for the current selection.
 [[nodiscard]] std::vector<DimensionOption> buildDimensionOptions(
     Sketcher::SketchObject* sketch,
     const std::vector<DimensionReference>& selectionRefs);
 
-/// Commit a selected dimension option through the regular constraint command flow.
-bool commitDimensionOption(ViewProviderSketch& viewProvider,
-                           Sketcher::SketchObject& sketch,
+bool commitDimensionOption(Sketcher::SketchObject& sketch,
                            const DimensionOption& option);
 
 } // namespace SketcherGui

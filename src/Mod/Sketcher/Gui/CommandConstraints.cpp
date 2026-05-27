@@ -862,12 +862,9 @@ bool shouldCreateDrivingDimension(const Sketcher::SketchObject* sketch, int geoI
     return !(fixed || constraintCreationMode == Reference);
 }
 
-bool SketcherGui::commitDimensionOption(ViewProviderSketch& viewProvider,
-                                           Sketcher::SketchObject& sketch,
-                                           const SketcherGui::DimensionOption& option)
+bool SketcherGui::commitDimensionOption(Sketcher::SketchObject& sketch,
+                                         const SketcherGui::DimensionOption& option)
 {
-    (void)viewProvider;
-
     const int geoId1 = !option.refs.empty()
         ? option.refs[0].geoId
         : Sketcher::GeoEnum::GeoUndef;
