@@ -389,6 +389,20 @@ void ViewProviderSketch::ParameterObserver::initParameters()
               updateRecalculateInitialSolutionWhileDragging(string, property);
           },
           nullptr}},
+        {"EnableDimensionOptionPreview",
+         {[this](const std::string&, App::Property*) {
+              if (!Client.isInEditMode()) {
+                  return;
+              }
+              Client.cancelDimensionOptionInteraction();
+              if (Client.isDimensionOptionPreviewEnabled()) {
+                  Client.refreshDimensionOptionPreview();
+              }
+              else {
+                  Client.clearDimensionOptions();
+              }
+          },
+          nullptr}},
         {"GridSizePixelThreshold",
          {[this](const std::string& string, [[maybe_unused]] App::Property* property) {
               auto v = getSketcherGeneralParameter(string, 15);
