@@ -36,6 +36,14 @@ class Constraint;
 
 namespace SketcherGui {
 
+/// Legacy datum label-position sentinel used to request automatic placement.
+inline constexpr double kAutoDatumLabelPosition = 10.0;
+
+[[nodiscard]] inline bool isAutoDatumLabelPosition(double labelPosition)
+{
+    return labelPosition == kAutoDatumLabelPosition;
+}
+
 enum class DimensionSemantic
 {
     Unknown,
