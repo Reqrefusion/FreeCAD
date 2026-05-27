@@ -38,6 +38,8 @@ SET(SurfaceGui_SRCS
     TaskGeomFillSurface.h
     TaskSections.cpp
     TaskSections.h
+    TaskThroughCurveMesh.cpp
+    TaskThroughCurveMesh.h
     AppSurfaceGui.cpp
     Command.cpp
     PreCompiled.h

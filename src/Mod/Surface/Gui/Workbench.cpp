@@ -50,6 +50,7 @@ Gui::MenuItem* Workbench::setupMenuBar() const
     *surface << "Surface_Filling"
              << "Surface_GeomFillSurface"
              << "Surface_Sections"
+             << "Surface_ThroughCurveMesh"
              << "Surface_ExtendFace"
              << "Surface_CurveOnMesh"
              << "Surface_BlendCurve";
@@ -69,6 +70,7 @@ Gui::ToolBarItem* Workbench::setupToolBars() const
     *surface << "Surface_Filling"
              << "Surface_GeomFillSurface"
              << "Surface_Sections"
+             << "Surface_ThroughCurveMesh"
              << "Surface_ExtendFace"
              << "Surface_CurveOnMesh"
              << "Surface_BlendCurve";

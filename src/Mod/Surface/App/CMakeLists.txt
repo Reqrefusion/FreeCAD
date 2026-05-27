@@ -41,6 +41,8 @@ SET(Surface_SRCS
   FeatureFilling.h
   FeatureSections.cpp
   FeatureSections.h
+  FeatureThroughCurveMesh.cpp
+  FeatureThroughCurveMesh.h
   FeatureSewing.cpp
   FeatureSewing.h
   FeatureCut.cpp

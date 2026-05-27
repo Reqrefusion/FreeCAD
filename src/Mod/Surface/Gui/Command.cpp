@@ -352,6 +352,42 @@ bool CmdSurfaceSections::isActive()
     return hasActiveDocument();
 }
 
+DEF_STD_CMD_A(CmdSurfaceThroughCurveMesh)
+
+CmdSurfaceThroughCurveMesh::CmdSurfaceThroughCurveMesh()
+    : Command("Surface_ThroughCurveMesh")
+{
+    sAppModule = "Surface";
+    sGroup = QT_TR_NOOP("Surface");
+    sMenuText = QT_TR_NOOP("Through Curve Mesh");
+    sToolTipText = QT_TR_NOOP(
+        "Creates a surface from two intersecting curve families. "
+        "Use the task panel to add primary curves and cross curves."
+    );
+    sStatusTip = sToolTipText;
+    sWhatsThis = "Surface_ThroughCurveMesh";
+    sPixmap = "Surface_ThroughCurveMesh";
+}
+
+void CmdSurfaceThroughCurveMesh::activated(int iMsg)
+{
+    Q_UNUSED(iMsg);
+    std::string FeatName = getUniqueObjectName("ThroughCurveMesh");
+
+    openCommand(QT_TRANSLATE_NOOP("Command", "Create through curve mesh"));
+    doCommand(
+        Doc,
+        "App.ActiveDocument.addObject(\"Surface::ThroughCurveMesh\",\"%s\")",
+        FeatName.c_str()
+    );
+    doCommand(Doc, "Gui.ActiveDocument.setEdit('%s',0)", FeatName.c_str());
+}
+
+bool CmdSurfaceThroughCurveMesh::isActive()
+{
+    return hasActiveDocument();
+}
+
 void CreateSurfaceCommands()
 {
     Gui::CommandManager& rcCmdMgr = Gui::Application::Instance->commandManager();
@@ -361,6 +397,7 @@ void CreateSurfaceCommands()
     rcCmdMgr.addCommand(new CmdSurfaceFilling());
     rcCmdMgr.addCommand(new CmdSurfaceGeomFillSurface());
     rcCmdMgr.addCommand(new CmdSurfaceSections());
+    rcCmdMgr.addCommand(new CmdSurfaceThroughCurveMesh());
     rcCmdMgr.addCommand(new CmdSurfaceExtendFace());
     rcCmdMgr.addCommand(new CmdSurfaceCurveOnMesh());
     rcCmdMgr.addCommand(new CmdBlendCurve());
