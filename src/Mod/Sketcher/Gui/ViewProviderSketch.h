@@ -476,9 +476,6 @@ private:
         std::set<int> SelPointSet;       // Indices as PreselectPoint (and -1 for rootpoint)
         std::set<int> SelCurvSet;        // also holds cross axes at -1 and -2
         std::set<int> SelConstraintSet;  // ConstraintN, N = index + 1.
-        // Dimension option preview only supports 1- and 2-selection groups,
-        // but we still keep the full ordered current selection so any extra picks
-        // suppress preview instead of falling back to a smaller last-selected subset.
         std::vector<OrderedItem> SelOrder;
         bool selectionBuffering {false};
     };

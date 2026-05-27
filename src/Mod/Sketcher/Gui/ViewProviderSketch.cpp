@@ -1366,12 +1366,6 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
             }
         }
         else {// Button 1 released
-            // Dimension option preview must be committable with a plain click. Some selection-side
-            // updates can temporarily drift Mode away from STATUS_NONE before release arrives,
-            // even though the dimension option interaction is still the active gesture. When that
-            // happens, the old code would enter the regular selection release branches and never
-            // call finalizeDimensionOptionInteraction(), making drag appear mandatory. If the
-            // interaction is active, it owns the release regardless of the transient mode.
             if (dimensionOptionInteraction.active) {
                 return finalizeDimensionOptionInteraction();
             }
@@ -2886,10 +2880,6 @@ void ViewProviderSketch::onSelectionChanged(const Gui::SelectionChanges& msg)
         if (msg.Type == Gui::SelectionChanges::ClrSelection
             || msg.Type == Gui::SelectionChanges::AddSelection
             || msg.Type == Gui::SelectionChanges::RmvSelection) {
-            // Clicking a dimension option preview can temporarily raise selection updates from the
-            // Coin scene before mouse release arrives. If we cancel the interaction here, a simple
-            // click never reaches finalizeDimensionOptionInteraction() and the user is forced to
-            // drag first. Keep the interaction alive until release while the preview is active.
             if (dimensionOptionInteraction.finalizing) {
                 return;
             }
