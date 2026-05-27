@@ -188,10 +188,6 @@ class SketcherGuiExport ViewProviderSketch: public PartGui::ViewProvider2DObject
     PROPERTY_HEADER_WITH_OVERRIDE(SketcherGui::ViewProviderSketch);
 
 private:
-    friend bool commitDimensionOption(ViewProviderSketch& viewProvider,
-                                         Sketcher::SketchObject& sketch,
-                                         const DimensionOption& option);
-
     /**
      * @brief
      * This nested class is responsible for attaching to the parameters relevant for

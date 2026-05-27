@@ -434,9 +434,7 @@ bool ViewProviderSketch::finalizeDimensionOptionInteraction()
 
     setDimensionOptions({});
 
-    const bool ok = commitDimensionOption(*this,
-                                             *sketch,
-                                             option);
+    const bool ok = commitDimensionOption(*sketch, option);
 
     dimensionOptionInteraction = DimensionOptionInteraction();
     if (!ok) {
