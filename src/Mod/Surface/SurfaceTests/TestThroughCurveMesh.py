@@ -30,14 +30,22 @@ class TestThroughCurveMesh(unittest.TestCase):
     def _z(self, x, y):
         return 0.15 * math.sin(x * 0.4) + 0.10 * math.cos(y * 0.35)
 
-    def _build_mesh(self, primary, cross, tolerance=0.08, position_tolerance=0.25, samples=14, auto_sort=False):
+    def _build_mesh(self, primary, cross, tolerance=0.08, position_tolerance=0.25, samples=14, auto_sort=False, parameterization="ChordLength", construction="Approximation"):
         mesh = self.doc.addObject("Surface::ThroughCurveMesh", "ThroughCurveMesh")
         mesh.PrimaryCurves = [(obj, ["Edge1"]) for obj in primary]
         mesh.CrossCurves = [(obj, ["Edge1"]) for obj in cross]
         mesh.Tolerance = tolerance
         mesh.PositionTolerance = position_tolerance
         mesh.Samples = samples
+        mesh.SamplesU = samples
+        mesh.SamplesV = samples
         mesh.AutoSort = auto_sort
+        mesh.Parameterization = parameterization
+        mesh.Construction = construction
+        mesh.SurfaceContinuity = "C2"
+        mesh.BoundaryContinuity = "G0"
+        mesh.MinDegree = 3
+        mesh.MaxDegree = 5
         self.doc.recompute()
         return mesh
 
@@ -196,6 +204,8 @@ class TestThroughCurveMesh(unittest.TestCase):
         mesh.Tolerance = 0.05
         mesh.PositionTolerance = 0.3
         mesh.Samples = 14
+        mesh.SamplesU = 14
+        mesh.SamplesV = 14
         self.doc.recompute()
 
         self.assertFalse(mesh.Shape.isNull())
@@ -222,6 +232,8 @@ class TestThroughCurveMesh(unittest.TestCase):
         mesh.Tolerance = 0.05
         mesh.PositionTolerance = 0.3
         mesh.Samples = 14
+        mesh.SamplesU = 14
+        mesh.SamplesV = 14
         self.doc.recompute()
 
         self.assertFalse(mesh.Shape.isNull())
@@ -289,6 +301,142 @@ class TestThroughCurveMesh(unittest.TestCase):
 
         self.assertTrue(mesh.Shape.isNull())
 
+
+    def test_intersection_and_fit_tolerances_are_independent(self):
+        primary = [
+            self._edge_object("TolP0", [FreeCAD.Vector(0, 0, 0), FreeCAD.Vector(0, 2, 0)]),
+            self._edge_object("TolP1", [FreeCAD.Vector(2, 0, 0), FreeCAD.Vector(2, 2, 0)]),
+        ]
+        cross = [
+            self._edge_object("TolC0", [FreeCAD.Vector(0.02, 0.5, 0), FreeCAD.Vector(2.02, 0.5, 0)]),
+            self._edge_object("TolC1", [FreeCAD.Vector(0.02, 1.5, 0), FreeCAD.Vector(2.02, 1.5, 0)]),
+        ]
+
+        mesh = self._build_mesh(primary, cross, tolerance=0.05, position_tolerance=0.005, samples=10)
+
+        self.assertFalse(mesh.Shape.isNull())
+        self.assertLess(mesh.PositionTolerance, mesh.Tolerance)
+
+    def test_directional_sample_counts_are_applied(self):
+        xs = [0.0, 4.0, 8.0]
+        ys = [0.0, 3.0, 6.0]
+
+        primary = []
+        for index, x in enumerate(xs):
+            points = [FreeCAD.Vector(x, y, self._z(x, y)) for y in ys]
+            primary.append(self._edge_object("SamplesPrimary%d" % index, points))
+
+        cross = []
+        for index, y in enumerate(ys):
+            points = [FreeCAD.Vector(x, y, self._z(x, y)) for x in xs]
+            cross.append(self._edge_object("SamplesCross%d" % index, points))
+
+        mesh = self._build_mesh(primary, cross, samples=12)
+        mesh.SamplesU = 9
+        mesh.SamplesV = 17
+        self.doc.recompute()
+
+        self.assertFalse(mesh.Shape.isNull())
+        self.assertEqual(mesh.SamplesU, 9)
+        self.assertEqual(mesh.SamplesV, 17)
+
+
+    def test_parameterization_modes_and_gap_diagnostics(self):
+        xs = [0.0, 1.0, 4.0, 8.0]
+        ys = [0.0, 0.8, 3.0, 6.0]
+
+        primary = []
+        for index, x in enumerate(xs):
+            points = [FreeCAD.Vector(x, y, self._z(x, y)) for y in ys]
+            primary.append(self._edge_object("ParamPrimary%d" % index, points))
+
+        cross = []
+        for index, y in enumerate(ys):
+            points = [FreeCAD.Vector(x, y, self._z(x, y)) for x in xs]
+            cross.append(self._edge_object("ParamCross%d" % index, points))
+
+        for mode in ("ChordLength", "Centripetal", "Uniform"):
+            mesh = self._build_mesh(primary, cross, samples=12, parameterization=mode)
+            self.assertFalse(mesh.Shape.isNull())
+            self.assertGreaterEqual(mesh.MaxIntersectionGap, 0.0)
+            self.assertLessEqual(mesh.MaxIntersectionGap, mesh.Tolerance)
+            self.assertEqual(mesh.Parameterization, mode)
+
+
+    def test_occt_construction_modes_and_degree_controls(self):
+        xs = [0.0, 4.0, 8.0]
+        ys = [0.0, 3.0, 6.0]
+
+        primary = []
+        for index, x in enumerate(xs):
+            points = [FreeCAD.Vector(x, y, self._z(x, y)) for y in ys]
+            primary.append(self._edge_object("ConstructionPrimary%d" % index, points))
+
+        cross = []
+        for index, y in enumerate(ys):
+            points = [FreeCAD.Vector(x, y, self._z(x, y)) for x in xs]
+            cross.append(self._edge_object("ConstructionCross%d" % index, points))
+
+        for mode in ("Approximation", "Interpolation", "Variational"):
+            mesh = self._build_mesh(primary, cross, samples=12, construction=mode)
+            mesh.MinDegree = 2
+            mesh.MaxDegree = 4
+            mesh.SurfaceContinuity = "C1"
+            if mode == "Variational":
+                mesh.SmoothLengthWeight = 0.01
+                mesh.SmoothCurvatureWeight = 0.01
+                mesh.SmoothTorsionWeight = 0.0
+            self.doc.recompute()
+
+            self.assertFalse(mesh.Shape.isNull())
+            self.assertEqual(mesh.Construction, mode)
+            self.assertEqual(mesh.MinDegree, 2)
+            self.assertEqual(mesh.MaxDegree, 4)
+            self.assertEqual(mesh.SurfaceContinuity, "C1")
+
+
+    def test_endpoint_parameters_snap_to_curve_ends(self):
+        primary = [
+            self._edge_object("SnapP0", [FreeCAD.Vector(0, 0, 0), FreeCAD.Vector(0, 2, 0)]),
+            self._edge_object("SnapP1", [FreeCAD.Vector(2, 0, 0), FreeCAD.Vector(2, 2, 0)]),
+        ]
+        cross = [
+            self._edge_object("SnapC0", [FreeCAD.Vector(0, 1e-7, 0), FreeCAD.Vector(2, 1e-7, 0)]),
+            self._edge_object("SnapC1", [FreeCAD.Vector(0, 1.9999999, 0), FreeCAD.Vector(2, 1.9999999, 0)]),
+        ]
+
+        mesh = self._build_mesh(primary, cross, tolerance=0.01, position_tolerance=0.05, samples=10)
+
+        self.assertFalse(mesh.Shape.isNull())
+        self.assertGreaterEqual(mesh.MaxIntersectionGap, 0.0)
+
+
+    def test_g1_g2_boundary_continuity_requires_support_faces(self):
+        primary = [
+            self._edge_object("ContinuityP0", [FreeCAD.Vector(0, 0, 0), FreeCAD.Vector(0, 2, 0)]),
+            self._edge_object("ContinuityP1", [FreeCAD.Vector(2, 0, 0), FreeCAD.Vector(2, 2, 0)]),
+        ]
+        cross = [
+            self._edge_object("ContinuityC0", [FreeCAD.Vector(0, 0, 0), FreeCAD.Vector(2, 0, 0)]),
+            self._edge_object("ContinuityC1", [FreeCAD.Vector(0, 2, 0), FreeCAD.Vector(2, 2, 0)]),
+        ]
+
+        mesh = self._build_mesh(primary, cross, tolerance=0.01, position_tolerance=0.05, samples=10)
+        self.assertFalse(mesh.Shape.isNull())
+
+        mesh.BoundaryContinuity = "G1"
+        self.doc.recompute()
+
+        self.assertTrue(mesh.Shape.isNull())
+        self.assertEqual(mesh.BoundaryContinuity, "G1")
+
+        mesh.BoundaryContinuity = "G0"
+        self.doc.recompute()
+
+        self.assertFalse(mesh.Shape.isNull())
+        self.assertEqual(mesh.BoundaryContinuity, "G0")
+
+
     def test_rejects_multiple_intersections(self):
         primary = [
             self._edge_object("MultiP0", [FreeCAD.Vector(0, 0, 0), FreeCAD.Vector(0, 2, 0)]),
@@ -317,6 +465,8 @@ class TestThroughCurveMesh(unittest.TestCase):
         mesh.Tolerance = 0.02
         mesh.PositionTolerance = 0.25
         mesh.Samples = 14
+        mesh.SamplesU = 14
+        mesh.SamplesV = 14
         self.doc.recompute()
 
         self.assertTrue(mesh.Shape.isNull())

@@ -22,6 +22,8 @@
 #include <vector>
 
 #include <Approx_ParametrizationType.hxx>
+#include <BRepFill_Filling.hxx>
+#include <BRep_Tool.hxx>
 #include <BRepAdaptor_CompCurve.hxx>
 #include <BRepAdaptor_Curve.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
@@ -37,8 +39,10 @@
 #include <TColgp_Array2OfPnt.hxx>
 #include <TopAbs_ShapeEnum.hxx>
 #include <TopExp_Explorer.hxx>
+#include <TopLoc_Location.hxx>
 #include <TopoDS.hxx>
 #include <TopoDS_Edge.hxx>
+#include <TopoDS_Face.hxx>
 #include <TopoDS_Shape.hxx>
 #include <TopoDS_Wire.hxx>
 #include <gp_Pnt.hxx>
@@ -55,8 +59,33 @@ namespace
 {
 
 const App::PropertyFloatConstraint::Constraints ToleranceRange = {0.0, 100.0, 0.001};
+const App::PropertyFloatConstraint::Constraints SmoothingWeightRange = {0.0, 1000.0, 0.001};
 const App::PropertyIntegerConstraint::Constraints SamplesRange = {4, 200, 1};
+const App::PropertyIntegerConstraint::Constraints DegreeRange = {1, 8, 1};
+constexpr int DefaultSampleCount = 24;
 constexpr double ParameterEpsilon = 1.0e-9;
+constexpr double EndpointParameterSnapTolerance = 1.0e-6;
+
+enum class MeshParameterization
+{
+    ChordLength = 0,
+    Centripetal = 1,
+    Uniform = 2
+};
+
+enum class ConstructionMode
+{
+    Approximation = 0,
+    Interpolation = 1,
+    Variational = 2
+};
+
+enum class BoundaryContinuityMode
+{
+    G0 = 0,
+    G1 = 1,
+    G2 = 2
+};
 
 void raiseFailure(const std::string& message)
 {
@@ -329,6 +358,109 @@ bool containsForbiddenTopology(const TopoDS_Shape& shape)
         return true;
     }
     return false;
+}
+
+
+std::vector<TopoDS_Face> collectFacesFromSupportShape(const TopoDS_Shape& shape)
+{
+    std::vector<TopoDS_Face> faces;
+    if (shape.IsNull()) {
+        return faces;
+    }
+
+    if (shape.ShapeType() == TopAbs_FACE) {
+        faces.push_back(TopoDS::Face(shape));
+        return faces;
+    }
+
+    for (TopExp_Explorer xp(shape, TopAbs_FACE); xp.More(); xp.Next()) {
+        faces.push_back(TopoDS::Face(xp.Current()));
+    }
+    return faces;
+}
+
+std::vector<TopoDS_Face> collectSupportFaces(
+    const App::PropertyLinkSubList& links,
+    App::DocumentObject* owner
+)
+{
+    std::vector<TopoDS_Face> faces;
+    std::vector<App::DocumentObject*> objects = links.getValues();
+    std::vector<std::string> subNames = links.getSubValues();
+    if (objects.size() != subNames.size()) {
+        raiseFailure("Through Curve Mesh has inconsistent support-surface references.");
+    }
+
+    for (std::size_t index = 0; index < objects.size(); ++index) {
+        App::DocumentObject* object = objects[index];
+        if (!object) {
+            raiseFailure("Through Curve Mesh contains an empty support-surface reference.");
+        }
+        if (object == owner) {
+            raiseFailure("Through Curve Mesh cannot use itself as a continuity support surface.");
+        }
+        if (!object->isDerivedFrom<Part::Feature>()) {
+            raiseFailure("Through Curve Mesh support surfaces must be Part::Feature objects.");
+        }
+
+        const Part::TopoShape& topo = static_cast<Part::Feature*>(object)->Shape.getShape();
+        TopoDS_Shape shape = subNames[index].empty()
+            ? topo.getShape()
+            : topo.getSubShape(subNames[index].c_str());
+        std::vector<TopoDS_Face> found = collectFacesFromSupportShape(shape);
+        if (found.empty()) {
+            raiseFailure("Through Curve Mesh continuity supports must be faces or objects containing faces.");
+        }
+        faces.insert(faces.end(), found.begin(), found.end());
+    }
+
+    return faces;
+}
+
+double shapeGap(const TopoDS_Shape& first, const TopoDS_Shape& second)
+{
+    BRepExtrema_DistShapeShape distance(first, second);
+    distance.Perform();
+    if (!distance.IsDone() || distance.NbSolution() < 1) {
+        return std::numeric_limits<double>::max();
+    }
+
+    double bestGap = std::numeric_limits<double>::max();
+    for (int index = 1; index <= distance.NbSolution(); ++index) {
+        bestGap = std::min(
+            bestGap,
+            distance.PointOnShape1(index).Distance(distance.PointOnShape2(index))
+        );
+    }
+    return bestGap;
+}
+
+TopoDS_Face nearestSupportFace(
+    const TopoDS_Edge& edge,
+    const std::vector<TopoDS_Face>& supportFaces,
+    double tolerance,
+    const char* boundaryName
+)
+{
+    double bestGap = std::numeric_limits<double>::max();
+    TopoDS_Face bestFace;
+    for (const TopoDS_Face& face : supportFaces) {
+        const double gap = shapeGap(edge, face);
+        if (gap < bestGap) {
+            bestGap = gap;
+            bestFace = face;
+        }
+    }
+
+    if (bestFace.IsNull() || bestGap > tolerance) {
+        std::ostringstream str;
+        str << "Boundary continuity requires a support face for " << boundaryName
+            << ". Select adjacent faces whose edges match the outer curve mesh boundary. Gap: "
+            << bestGap;
+        raiseFailure(str.str());
+    }
+
+    return bestFace;
 }
 
 std::vector<TopoDS_Edge> collectEdgesFromCurveShape(const TopoDS_Shape& shape)
@@ -746,28 +878,199 @@ void orientCurves(
     }
 }
 
+
+MeshParameterization meshParameterizationFromValue(long value)
+{
+    switch (value) {
+        case 1:
+            return MeshParameterization::Centripetal;
+        case 2:
+            return MeshParameterization::Uniform;
+        default:
+            return MeshParameterization::ChordLength;
+    }
+}
+
+ConstructionMode constructionModeFromValue(long value)
+{
+    switch (value) {
+        case 1:
+            return ConstructionMode::Interpolation;
+        case 2:
+            return ConstructionMode::Variational;
+        default:
+            return ConstructionMode::Approximation;
+    }
+}
+
+BoundaryContinuityMode boundaryContinuityModeFromValue(long value)
+{
+    switch (value) {
+        case 1:
+            return BoundaryContinuityMode::G1;
+        case 2:
+            return BoundaryContinuityMode::G2;
+        default:
+            return BoundaryContinuityMode::G0;
+    }
+}
+
+GeomAbs_Shape boundaryContinuityShape(BoundaryContinuityMode mode)
+{
+    switch (mode) {
+        case BoundaryContinuityMode::G2:
+            return GeomAbs_G2;
+        case BoundaryContinuityMode::G1:
+            return GeomAbs_G1;
+        case BoundaryContinuityMode::G0:
+        default:
+            return GeomAbs_C0;
+    }
+}
+
+GeomAbs_Shape surfaceContinuityFromValue(long value, Standard_Integer maxDegree)
+{
+    if (value >= 2 && maxDegree >= 3) {
+        return GeomAbs_C2;
+    }
+    if (value >= 1 && maxDegree >= 2) {
+        return GeomAbs_C1;
+    }
+    return GeomAbs_C0;
+}
+
+Approx_ParametrizationType approximationParameterization(MeshParameterization parameterization)
+{
+    switch (parameterization) {
+        case MeshParameterization::Centripetal:
+            return Approx_Centripetal;
+        case MeshParameterization::Uniform:
+            // OCCT's iso-parametric mode gives evenly distributed fitting parameters.
+            return Approx_IsoParametric;
+        case MeshParameterization::ChordLength:
+        default:
+            return Approx_ChordLength;
+    }
+}
+
+void ensureStrictlyIncreasing(const std::vector<double>& values, const char* name);
+
+std::vector<double> uniformNodes(std::size_t count)
+{
+    std::vector<double> nodes(count, 0.0);
+    if (count < 2) {
+        return nodes;
+    }
+    for (std::size_t index = 0; index < count; ++index) {
+        nodes[index] = static_cast<double>(index) / static_cast<double>(count - 1);
+    }
+    return nodes;
+}
+
+void appendUniqueParameter(std::vector<double>& parameters, double value)
+{
+    const double clamped = clamp01(value);
+    for (double existing : parameters) {
+        if (std::abs(existing - clamped) <= ParameterEpsilon) {
+            return;
+        }
+    }
+    parameters.push_back(clamped);
+}
+
+std::vector<double> sampleParametersFromNodes(
+    const std::vector<double>& networkNodes,
+    int requestedCount
+)
+{
+    std::vector<double> parameters;
+    const int count = std::max<int>(requestedCount, static_cast<int>(networkNodes.size()));
+    parameters.reserve(static_cast<std::size_t>(count) + networkNodes.size());
+
+    for (int index = 0; index < count; ++index) {
+        appendUniqueParameter(
+            parameters,
+            static_cast<double>(index) / static_cast<double>(count - 1)
+        );
+    }
+    for (double node : networkNodes) {
+        appendUniqueParameter(parameters, node);
+    }
+
+    std::sort(parameters.begin(), parameters.end());
+    parameters.front() = 0.0;
+    parameters.back() = 1.0;
+    ensureStrictlyIncreasing(parameters, "Surface sample parameters");
+    return parameters;
+}
+
+double parameterizedSegmentLength(double distance, MeshParameterization parameterization)
+{
+    if (parameterization == MeshParameterization::Centripetal) {
+        return std::sqrt(std::max(0.0, distance));
+    }
+    return distance;
+}
+
+double maxIntersectionGap(const std::vector<std::vector<IntersectionInfo>>& grid)
+{
+    double maxGap = 0.0;
+    for (const auto& row : grid) {
+        for (const IntersectionInfo& info : row) {
+            maxGap = std::max(maxGap, info.gap);
+        }
+    }
+    return maxGap;
+}
+
 void ensureStrictlyIncreasing(const std::vector<double>& values, const char* name)
 {
     for (std::size_t i = 1; i < values.size(); ++i) {
         if (values[i] <= values[i - 1] + ParameterEpsilon) {
             std::ostringstream str;
-            str << name << " are not strictly increasing. Check curve order and intersections.";
+            str << name << " are not strictly increasing at position " << i
+                << ". Check curve order, enable Auto sort, or inspect duplicate/tangent intersections.";
             raiseFailure(str.str());
         }
     }
 }
 
-std::vector<double> chordNodesU(const std::vector<std::vector<IntersectionInfo>>& grid)
+void snapEndpointParameters(std::vector<double>& parameters)
+{
+    if (parameters.empty()) {
+        return;
+    }
+
+    // Keep the Gordon network anchored to curve ends when the first or last
+    // intersection is only numerically away from the endpoint. This mirrors the
+    // useful CurvesWB/Gordon behaviour without changing the input curves.
+    if (parameters.front() < EndpointParameterSnapTolerance) {
+        parameters.front() = 0.0;
+    }
+    if (1.0 - parameters.back() < EndpointParameterSnapTolerance) {
+        parameters.back() = 1.0;
+    }
+}
+
+std::vector<double> parameterizedNodesU(
+    const std::vector<std::vector<IntersectionInfo>>& grid,
+    MeshParameterization parameterization
+)
 {
     const std::size_t uCount = grid.size();
     const std::size_t vCount = grid.front().size();
+    if (parameterization == MeshParameterization::Uniform) {
+        return uniformNodes(uCount);
+    }
+
     std::vector<double> accum(uCount, 0.0);
     int validRows = 0;
 
     for (std::size_t j = 0; j < vCount; ++j) {
         std::vector<double> distances(uCount, 0.0);
         for (std::size_t i = 1; i < uCount; ++i) {
-            distances[i] = distances[i - 1] + grid[i - 1][j].point.Distance(grid[i][j].point);
+            distances[i] = distances[i - 1]
+                + parameterizedSegmentLength(grid[i - 1][j].point.Distance(grid[i][j].point), parameterization);
         }
         if (distances.back() <= Precision::Confusion()) {
             continue;
@@ -791,17 +1094,25 @@ std::vector<double> chordNodesU(const std::vector<std::vector<IntersectionInfo>>
     return accum;
 }
 
-std::vector<double> chordNodesV(const std::vector<std::vector<IntersectionInfo>>& grid)
+std::vector<double> parameterizedNodesV(
+    const std::vector<std::vector<IntersectionInfo>>& grid,
+    MeshParameterization parameterization
+)
 {
     const std::size_t uCount = grid.size();
     const std::size_t vCount = grid.front().size();
+    if (parameterization == MeshParameterization::Uniform) {
+        return uniformNodes(vCount);
+    }
+
     std::vector<double> accum(vCount, 0.0);
     int validColumns = 0;
 
     for (std::size_t i = 0; i < uCount; ++i) {
         std::vector<double> distances(vCount, 0.0);
         for (std::size_t j = 1; j < vCount; ++j) {
-            distances[j] = distances[j - 1] + grid[i][j - 1].point.Distance(grid[i][j].point);
+            distances[j] = distances[j - 1]
+                + parameterizedSegmentLength(grid[i][j - 1].point.Distance(grid[i][j].point), parameterization);
         }
         if (distances.back() <= Precision::Confusion()) {
             continue;
@@ -874,6 +1185,7 @@ std::vector<std::vector<double>> orientedPrimaryParams(
         for (const IntersectionInfo& info : grid[i]) {
             params[i].push_back(primaryCurves[i].orientedNormalizedFromRaw(info.primaryRawParam));
         }
+        snapEndpointParameters(params[i]);
         ensureStrictlyIncreasing(params[i], "Primary curve intersection parameters");
     }
     return params;
@@ -892,6 +1204,7 @@ std::vector<std::vector<double>> orientedCrossParams(
         for (std::size_t i = 0; i < uCount; ++i) {
             params[j][i] = crossCurves[j].orientedNormalizedFromRaw(grid[i][j].crossRawParam);
         }
+        snapEndpointParameters(params[j]);
         ensureStrictlyIncreasing(params[j], "Cross curve intersection parameters");
     }
     return params;
@@ -954,17 +1267,6 @@ gp_Pnt evaluateGridContribution(
     return interpolatePoints(rowValues, uNodes, u);
 }
 
-GeomAbs_Shape continuityForDegree(Standard_Integer degree)
-{
-    if (degree >= 3) {
-        return GeomAbs_C2;
-    }
-    if (degree == 2) {
-        return GeomAbs_C1;
-    }
-    return GeomAbs_C0;
-}
-
 double pointSurfaceDistance(const gp_Pnt& point, const Handle(Geom_Surface)& surface)
 {
     GeomAPI_ProjectPointOnSurf projector(point, surface);
@@ -990,6 +1292,60 @@ double curveSurfaceDeviation(
     return maxDeviation;
 }
 
+Handle(Geom_BSplineSurface) buildSurfaceFromSamples(
+    const TColgp_Array2OfPnt& points,
+    ConstructionMode construction,
+    MeshParameterization parameterization,
+    Standard_Integer minDegree,
+    Standard_Integer maxDegree,
+    GeomAbs_Shape continuity,
+    double tolerance,
+    double smoothLengthWeight,
+    double smoothCurvatureWeight,
+    double smoothTorsionWeight
+)
+{
+    GeomAPI_PointsToBSplineSurface surfaceBuilder;
+
+    switch (construction) {
+        case ConstructionMode::Interpolation:
+            surfaceBuilder.Interpolate(
+                points,
+                approximationParameterization(parameterization),
+                false
+            );
+            break;
+        case ConstructionMode::Variational:
+            surfaceBuilder.Init(
+                points,
+                smoothLengthWeight,
+                smoothCurvatureWeight,
+                smoothTorsionWeight,
+                maxDegree,
+                continuity,
+                tolerance
+            );
+            break;
+        case ConstructionMode::Approximation:
+        default:
+            surfaceBuilder.Init(
+                points,
+                approximationParameterization(parameterization),
+                minDegree,
+                maxDegree,
+                continuity,
+                tolerance
+            );
+            break;
+    }
+
+    if (!surfaceBuilder.IsDone()) {
+        return Handle(Geom_BSplineSurface)();
+    }
+
+    return surfaceBuilder.Surface();
+}
+
 double computeMaxDeviation(
     const std::vector<CurveShape>& primaryCurves,
     const std::vector<CurveShape>& crossCurves,
@@ -1007,9 +1363,144 @@ double computeMaxDeviation(
     return maxDeviation;
 }
 
+
+std::vector<TopoDS_Edge> orderedEdgesForCurve(const CurveShape& curve, bool reverseForBoundaryLoop)
+{
+    std::vector<TopoDS_Edge> edges = collectEdgesFromCurveShape(curve.shape);
+    const bool reverseDirection = curve.reversed != reverseForBoundaryLoop;
+    if (reverseDirection) {
+        std::reverse(edges.begin(), edges.end());
+        for (TopoDS_Edge& edge : edges) {
+            edge = TopoDS::Edge(edge.Reversed());
+        }
+    }
+    return edges;
+}
+
+struct BoundaryConstraint
+{
+    TopoDS_Edge edge;
+    const char* name {nullptr};
+};
+
+std::vector<BoundaryConstraint> orderedBoundaryConstraints(
+    const std::vector<CurveShape>& primaryCurves,
+    const std::vector<CurveShape>& crossCurves
+)
+{
+    std::vector<BoundaryConstraint> edges;
+    auto append = [&edges](const std::vector<TopoDS_Edge>& input, const char* name) {
+        for (const TopoDS_Edge& edge : input) {
+            edges.push_back({edge, name});
+        }
+    };
+
+    append(orderedEdgesForCurve(primaryCurves.front(), false), "first primary boundary");
+    append(orderedEdgesForCurve(crossCurves.back(), false), "last cross boundary");
+    append(orderedEdgesForCurve(primaryCurves.back(), true), "last primary boundary");
+    append(orderedEdgesForCurve(crossCurves.front(), true), "first cross boundary");
+    return edges;
+}
+
+Handle(Geom_Surface) surfaceFromFace(const TopoDS_Face& face)
+{
+    TopLoc_Location location;
+    return BRep_Tool::Surface(face, location);
+}
+
+struct ContinuityBuildResult
+{
+    TopoDS_Face face;
+    Handle(Geom_Surface) surface;
+    double g0Error {0.0};
+    double g1Error {0.0};
+    double g2Error {0.0};
+};
+
+ContinuityBuildResult buildContinuityFace(
+    const std::vector<CurveShape>& primaryCurves,
+    const std::vector<CurveShape>& crossCurves,
+    const std::vector<std::vector<IntersectionInfo>>& grid,
+    const TColgp_Array2OfPnt& points,
+    const std::vector<TopoDS_Face>& supportFaces,
+    BoundaryContinuityMode continuityMode,
+    Standard_Integer maxDegree,
+    double intersectionTolerance,
+    double positionTolerance
+)
+{
+    if (supportFaces.empty()) {
+        raiseFailure("G1/G2 boundary continuity requires adjacent support faces. Select support faces or set continuity to G0.");
+    }
+
+    const GeomAbs_Shape order = boundaryContinuityShape(continuityMode);
+    const int continuityOrder = continuityMode == BoundaryContinuityMode::G2 ? 2 : 1;
+    const int pointsOnCurve = std::max(
+        static_cast<int>(points.UpperRow() - points.LowerRow() + 1),
+        static_cast<int>(points.UpperCol() - points.LowerCol() + 1)
+    );
+    BRepFill_Filling filling(
+        std::max(3, continuityOrder + 2),
+        pointsOnCurve,
+        2,
+        false,
+        Precision::Confusion(),
+        positionTolerance,
+        0.01,
+        0.1,
+        static_cast<int>(maxDegree),
+        9
+    );
+    filling.SetConstrParam(Precision::Confusion(), positionTolerance, 0.01, 0.1);
+    filling.SetResolParam(std::max(3, continuityOrder + 2), pointsOnCurve, 2, false);
+    filling.SetApproxParam(static_cast<int>(maxDegree), 9);
+
+    for (const BoundaryConstraint& constraint : orderedBoundaryConstraints(primaryCurves, crossCurves)) {
+        const TopoDS_Face support = nearestSupportFace(
+            constraint.edge,
+            supportFaces,
+            intersectionTolerance,
+            constraint.name
+        );
+        filling.Add(constraint.edge, support, order, true);
+    }
+
+    for (const auto& row : grid) {
+        for (const IntersectionInfo& info : row) {
+            filling.Add(info.point);
+        }
+    }
+
+    for (Standard_Integer u = points.LowerRow() + 1; u <= points.UpperRow() - 1; ++u) {
+        for (Standard_Integer v = points.LowerCol() + 1; v <= points.UpperCol() - 1; ++v) {
+            filling.Add(points(u, v));
+        }
+    }
+
+    filling.Build();
+    if (!filling.IsDone()) {
+        raiseFailure("OCCT failed to build the G1/G2 constrained through-curve mesh face.");
+    }
+
+    ContinuityBuildResult result;
+    result.face = filling.Face();
+    result.surface = surfaceFromFace(result.face);
+    result.g0Error = filling.G0Error();
+    result.g1Error = filling.G1Error();
+    result.g2Error = filling.G2Error();
+    if (result.surface.IsNull()) {
+        raiseFailure("OCCT produced a constrained face without a valid surface.");
+    }
+    return result;
+}
+
 }  // namespace
 
 const char* Surface::ThroughCurveMesh::EmphasisEnums[] = {"Both", "Primary", "Cross", nullptr};
+const char* Surface::ThroughCurveMesh::ConstructionEnums[] = {"Approximation", "Interpolation", "Variational", nullptr};
+const char* Surface::ThroughCurveMesh::ParameterizationEnums[] = {"ChordLength", "Centripetal", "Uniform", nullptr};
+const char* Surface::ThroughCurveMesh::SurfaceContinuityEnums[] = {"C0", "C1", "C2", nullptr};
+const char* Surface::ThroughCurveMesh::BoundaryContinuityEnums[] = {"G0", "G1", "G2", nullptr};
 
 PROPERTY_SOURCE(Surface::ThroughCurveMesh, Part::Spline)
 
@@ -1019,26 +1510,64 @@ ThroughCurveMesh::ThroughCurveMesh()
     ADD_PROPERTY_TYPE(PrimaryCurveGroupSizes, (-1), "Through Curve Mesh", App::Prop_Hidden, "Internal primary curve-row grouping");
     ADD_PROPERTY_TYPE(CrossCurves, (nullptr), "Through Curve Mesh", App::Prop_None, "Cross curve rows");
     ADD_PROPERTY_TYPE(CrossCurveGroupSizes, (-1), "Through Curve Mesh", App::Prop_Hidden, "Internal cross curve-row grouping");
-    ADD_PROPERTY_TYPE(Tolerance, (0.1), "Through Curve Mesh", App::Prop_None, "Intersection tolerance");
-    ADD_PROPERTY_TYPE(PositionTolerance, (0.1), "Through Curve Mesh", App::Prop_Hidden, "Internal fitting tolerance used by the through-curve mesh preview");
-    ADD_PROPERTY_TYPE(Samples, (24), "Through Curve Mesh", App::Prop_None, "Number of samples in each surface direction");
-    ADD_PROPERTY_TYPE(AutoSort, (false), "Through Curve Mesh", App::Prop_Hidden, "Automatically sort curve families before building the surface");
+    ADD_PROPERTY_TYPE(SupportFaces, (nullptr), "Through Curve Mesh", App::Prop_None, "Adjacent support faces used only when boundary continuity is G1 or G2");
+    ADD_PROPERTY_TYPE(Tolerance, (0.1), "Through Curve Mesh", App::Prop_None, "Intersection tolerance used to accept curve crossings");
+    ADD_PROPERTY_TYPE(PositionTolerance, (0.1), "Through Curve Mesh", App::Prop_None, "Surface fitting tolerance used after the curve network is sampled");
+    ADD_PROPERTY_TYPE(Samples, (DefaultSampleCount), "Through Curve Mesh", App::Prop_Hidden, "Legacy number of samples in each surface direction");
+    ADD_PROPERTY_TYPE(SamplesU, (DefaultSampleCount), "Through Curve Mesh", App::Prop_None, "Number of samples in the primary-family direction");
+    ADD_PROPERTY_TYPE(SamplesV, (DefaultSampleCount), "Through Curve Mesh", App::Prop_None, "Number of samples in the cross-family direction");
+    ADD_PROPERTY_TYPE(AutoSort, (true), "Through Curve Mesh", App::Prop_None, "Automatically sort and orient curve families before building the surface");
     ADD_PROPERTY(Emphasis, ((long)0));
     Emphasis.setEnums(EmphasisEnums);
+    ADD_PROPERTY(Construction, ((long)0));
+    Construction.setEnums(ConstructionEnums);
+    ADD_PROPERTY(Parameterization, ((long)0));
+    Parameterization.setEnums(ParameterizationEnums);
+    ADD_PROPERTY(SurfaceContinuity, ((long)2));
+    SurfaceContinuity.setEnums(SurfaceContinuityEnums);
+    ADD_PROPERTY(BoundaryContinuity, ((long)0));
+    BoundaryContinuity.setEnums(BoundaryContinuityEnums);
+    ADD_PROPERTY_TYPE(MinDegree, (3), "Through Curve Mesh", App::Prop_None, "Minimum degree for the fitted B-spline surface");
+    ADD_PROPERTY_TYPE(MaxDegree, (5), "Through Curve Mesh", App::Prop_None, "Maximum degree for the fitted B-spline surface");
+    ADD_PROPERTY_TYPE(SmoothLengthWeight, (0.0), "Through Curve Mesh", App::Prop_None, "Variational construction weight for surface length/fairness");
+    ADD_PROPERTY_TYPE(SmoothCurvatureWeight, (0.0), "Through Curve Mesh", App::Prop_None, "Variational construction weight for curvature fairness");
+    ADD_PROPERTY_TYPE(SmoothTorsionWeight, (0.0), "Through Curve Mesh", App::Prop_None, "Variational construction weight for torsion/third-derivative fairness");
     ADD_PROPERTY_TYPE(MaxDeviation, (0.0), "Through Curve Mesh", App::Prop_ReadOnly, "Maximum measured deviation from input curves");
+    ADD_PROPERTY_TYPE(MaxIntersectionGap, (0.0), "Through Curve Mesh", App::Prop_ReadOnly, "Maximum measured gap at accepted primary/cross intersections");
+    ADD_PROPERTY_TYPE(ContinuityG0Error, (0.0), "Through Curve Mesh", App::Prop_ReadOnly, "OCCT boundary-continuity G0 error for constrained filling");
+    ADD_PROPERTY_TYPE(ContinuityG1Error, (0.0), "Through Curve Mesh", App::Prop_ReadOnly, "OCCT boundary-continuity G1 error for constrained filling");
+    ADD_PROPERTY_TYPE(ContinuityG2Error, (0.0), "Through Curve Mesh", App::Prop_ReadOnly, "OCCT boundary-continuity G2 error for constrained filling");
 
     PrimaryCurves.setScope(App::LinkScope::Global);
     CrossCurves.setScope(App::LinkScope::Global);
+    SupportFaces.setScope(App::LinkScope::Global);
     PrimaryCurveGroupSizes.setSize(0);
     CrossCurveGroupSizes.setSize(0);
     Tolerance.setConstraints(&ToleranceRange);
     PositionTolerance.setConstraints(&ToleranceRange);
     Samples.setConstraints(&SamplesRange);
+    SamplesU.setConstraints(&SamplesRange);
+    SamplesV.setConstraints(&SamplesRange);
+    MinDegree.setConstraints(&DegreeRange);
+    MaxDegree.setConstraints(&DegreeRange);
+    SmoothLengthWeight.setConstraints(&SmoothingWeightRange);
+    SmoothCurvatureWeight.setConstraints(&SmoothingWeightRange);
+    SmoothTorsionWeight.setConstraints(&SmoothingWeightRange);
 }
 
 short ThroughCurveMesh::mustExecute() const
 {
-    if (PrimaryCurves.isTouched() || PrimaryCurveGroupSizes.isTouched() || CrossCurves.isTouched() || CrossCurveGroupSizes.isTouched() || Tolerance.isTouched() || PositionTolerance.isTouched() || Samples.isTouched() || AutoSort.isTouched() || Emphasis.isTouched()) {
+    if (PrimaryCurves.isTouched() || PrimaryCurveGroupSizes.isTouched()
+        || CrossCurves.isTouched() || CrossCurveGroupSizes.isTouched()
+        || SupportFaces.isTouched()
+        || Tolerance.isTouched() || PositionTolerance.isTouched()
+        || Samples.isTouched() || SamplesU.isTouched() || SamplesV.isTouched()
+        || AutoSort.isTouched() || Emphasis.isTouched() || Construction.isTouched()
+        || Parameterization.isTouched() || SurfaceContinuity.isTouched()
+        || BoundaryContinuity.isTouched()
+        || MinDegree.isTouched() || MaxDegree.isTouched()
+        || SmoothLengthWeight.isTouched() || SmoothCurvatureWeight.isTouched()
+        || SmoothTorsionWeight.isTouched()) {
         return 1;
     }
     return Spline::mustExecute();
@@ -1048,6 +1577,10 @@ App::DocumentObjectExecReturn* ThroughCurveMesh::execute()
 {
     Shape.setValue(TopoDS_Shape());
     MaxDeviation.setValue(0.0);
+    MaxIntersectionGap.setValue(0.0);
+    ContinuityG0Error.setValue(0.0);
+    ContinuityG1Error.setValue(0.0);
+    ContinuityG2Error.setValue(0.0);
 
     try {
         validateInputReferences(PrimaryCurves, CrossCurves, this);
@@ -1063,7 +1596,27 @@ App::DocumentObjectExecReturn* ThroughCurveMesh::execute()
 
         const double intersectionTolerance = std::max(Tolerance.getValue(), Precision::Confusion());
         const double positionTolerance = std::max(PositionTolerance.getValue(), Precision::Confusion());
-        const int sampleCount = std::max<int>(Samples.getValue(), 4);
+        int sampleCountU = std::max<int>(SamplesU.getValue(), 4);
+        int sampleCountV = std::max<int>(SamplesV.getValue(), 4);
+
+        // Backward compatibility for files or macros that only touched the old
+        // single Samples property before SamplesU/SamplesV were added.
+        const int legacySamples = std::max<int>(Samples.getValue(), 4);
+        if (legacySamples != DefaultSampleCount
+            && sampleCountU == DefaultSampleCount
+            && sampleCountV == DefaultSampleCount) {
+            sampleCountU = legacySamples;
+            sampleCountV = legacySamples;
+        }
+
+        const MeshParameterization parameterization = meshParameterizationFromValue(Parameterization.getValue());
+        const ConstructionMode construction = constructionModeFromValue(Construction.getValue());
+        const BoundaryContinuityMode boundaryContinuity = boundaryContinuityModeFromValue(BoundaryContinuity.getValue());
+        const bool useBoundaryContinuity = boundaryContinuity != BoundaryContinuityMode::G0;
+        std::vector<TopoDS_Face> supportFaces;
+        if (useBoundaryContinuity) {
+            supportFaces = collectSupportFaces(SupportFaces, this);
+        }
         double primaryWeight = 1.0;
         double crossWeight = 1.0;
         switch (Emphasis.getValue()) {
@@ -1085,18 +1638,24 @@ App::DocumentObjectExecReturn* ThroughCurveMesh::execute()
             crossCurves,
             intersectionTolerance
         );
+        MaxIntersectionGap.setValue(maxIntersectionGap(grid));
         orientCurves(primaryCurves, crossCurves, grid);
 
-        const std::vector<double> uNodes = chordNodesU(grid);
-        const std::vector<double> vNodes = chordNodesV(grid);
+        const std::vector<double> uNodes = parameterizedNodesU(grid, parameterization);
+        const std::vector<double> vNodes = parameterizedNodesV(grid, parameterization);
         const std::vector<std::vector<double>> primaryParams = orientedPrimaryParams(primaryCurves, grid);
         const std::vector<std::vector<double>> crossParams = orientedCrossParams(crossCurves, grid);
 
-        TColgp_Array2OfPnt points(1, sampleCount, 1, sampleCount);
-        for (int uIndex = 0; uIndex < sampleCount; ++uIndex) {
-            const double u = static_cast<double>(uIndex) / static_cast<double>(sampleCount - 1);
-            for (int vIndex = 0; vIndex < sampleCount; ++vIndex) {
-                const double v = static_cast<double>(vIndex) / static_cast<double>(sampleCount - 1);
+        const std::vector<double> sampleParametersU = sampleParametersFromNodes(uNodes, sampleCountU);
+        const std::vector<double> sampleParametersV = sampleParametersFromNodes(vNodes, sampleCountV);
+        sampleCountU = static_cast<int>(sampleParametersU.size());
+        sampleCountV = static_cast<int>(sampleParametersV.size());
+
+        TColgp_Array2OfPnt points(1, sampleCountU, 1, sampleCountV);
+        for (int uIndex = 0; uIndex < sampleCountU; ++uIndex) {
+            const double u = sampleParametersU[static_cast<std::size_t>(uIndex)];
+            for (int vIndex = 0; vIndex < sampleCountV; ++vIndex) {
+                const double v = sampleParametersV[static_cast<std::size_t>(vIndex)];
                 const gp_Pnt primary = evaluatePrimaryContribution(
                     primaryCurves,
                     uNodes,
@@ -1124,32 +1683,76 @@ App::DocumentObjectExecReturn* ThroughCurveMesh::execute()
             }
         }
 
-        const Standard_Integer maxDegree = std::min<Standard_Integer>(5, sampleCount - 1);
-        const Standard_Integer minDegree = std::min<Standard_Integer>(3, maxDegree);
-
-        GeomAPI_PointsToBSplineSurface surfaceBuilder;
-        surfaceBuilder.Init(
-            points,
-            Approx_ChordLength,
-            minDegree,
-            maxDegree,
-            continuityForDegree(maxDegree),
-            positionTolerance
+        const int requestedMaxDegreeValue = std::max<int>(
+            1,
+            std::min<int>(static_cast<int>(MaxDegree.getValue()), 8)
+        );
+        const Standard_Integer requestedMaxDegree = static_cast<Standard_Integer>(requestedMaxDegreeValue);
+        const int requestedMinDegreeValue = std::max<int>(
+            1,
+            std::min<int>(static_cast<int>(MinDegree.getValue()), requestedMaxDegreeValue)
+        );
+        const Standard_Integer requestedMinDegree = static_cast<Standard_Integer>(requestedMinDegreeValue);
+        const Standard_Integer maxDegree = std::min<Standard_Integer>(
+            requestedMaxDegree,
+            std::min(sampleCountU, sampleCountV) - 1
+        );
+        const Standard_Integer minDegree = std::min<Standard_Integer>(requestedMinDegree, maxDegree);
+        const GeomAbs_Shape requestedContinuity = surfaceContinuityFromValue(
+            SurfaceContinuity.getValue(),
+            maxDegree
         );
 
-        Handle(Geom_BSplineSurface) surface = surfaceBuilder.Surface();
+        Handle(Geom_BSplineSurface) surface = buildSurfaceFromSamples(
+            points,
+            construction,
+            parameterization,
+            minDegree,
+            maxDegree,
+            requestedContinuity,
+            positionTolerance,
+            SmoothLengthWeight.getValue(),
+            SmoothCurvatureWeight.getValue(),
+            SmoothTorsionWeight.getValue()
+        );
         if (surface.IsNull()) {
             return new App::DocumentObjectExecReturn("Failed to create a surface from the curve mesh.");
         }
-
-        const double maxDeviation = computeMaxDeviation(primaryCurves, crossCurves, surface, sampleCount);
-        MaxDeviation.setValue(maxDeviation);
 
         BRepBuilderAPI_MakeFace mkFace(surface, Precision::Confusion());
         if (!mkFace.IsDone()) {
             return new App::DocumentObjectExecReturn("Failed to build a face from the through-curve mesh surface.");
         }
-        Shape.setValue(mkFace.Face());
+
+        TopoDS_Face resultFace = mkFace.Face();
+        Handle(Geom_Surface) resultSurface = surface;
+        if (useBoundaryContinuity) {
+            const ContinuityBuildResult continuityResult = buildContinuityFace(
+                primaryCurves,
+                crossCurves,
+                grid,
+                points,
+                supportFaces,
+                boundaryContinuity,
+                maxDegree,
+                intersectionTolerance,
+                positionTolerance
+            );
+            resultFace = continuityResult.face;
+            resultSurface = continuityResult.surface;
+            ContinuityG0Error.setValue(continuityResult.g0Error);
+            ContinuityG1Error.setValue(continuityResult.g1Error);
+            ContinuityG2Error.setValue(continuityResult.g2Error);
+        }
+
+        const double maxDeviation = computeMaxDeviation(
+            primaryCurves,
+            crossCurves,
+            resultSurface,
+            std::max(sampleCountU, sampleCountV)
+        );
+        MaxDeviation.setValue(maxDeviation);
+        Shape.setValue(resultFace);
     }
     catch (const Standard_Failure& e) {
         return new App::DocumentObjectExecReturn(e.GetMessageString());

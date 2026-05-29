@@ -33,12 +33,28 @@ public:
     App::PropertyIntegerList PrimaryCurveGroupSizes;
     App::PropertyLinkSubList CrossCurves;
     App::PropertyIntegerList CrossCurveGroupSizes;
+    App::PropertyLinkSubList SupportFaces;
     App::PropertyFloatConstraint Tolerance;
     App::PropertyFloatConstraint PositionTolerance;
     App::PropertyIntegerConstraint Samples;
+    App::PropertyIntegerConstraint SamplesU;
+    App::PropertyIntegerConstraint SamplesV;
     App::PropertyBool AutoSort;
     App::PropertyEnumeration Emphasis;
+    App::PropertyEnumeration Construction;
+    App::PropertyEnumeration Parameterization;
+    App::PropertyEnumeration SurfaceContinuity;
+    App::PropertyEnumeration BoundaryContinuity;
+    App::PropertyIntegerConstraint MinDegree;
+    App::PropertyIntegerConstraint MaxDegree;
+    App::PropertyFloatConstraint SmoothLengthWeight;
+    App::PropertyFloatConstraint SmoothCurvatureWeight;
+    App::PropertyFloatConstraint SmoothTorsionWeight;
     App::PropertyFloat MaxDeviation;
+    App::PropertyFloat MaxIntersectionGap;
+    App::PropertyFloat ContinuityG0Error;
+    App::PropertyFloat ContinuityG1Error;
+    App::PropertyFloat ContinuityG2Error;
 
     short mustExecute() const override;
     App::DocumentObjectExecReturn* execute() override;
@@ -47,6 +63,10 @@ public:
         return "SurfaceGui::ViewProviderThroughCurveMesh";
     }
     static const char* EmphasisEnums[];
+    static const char* ConstructionEnums[];
+    static const char* ParameterizationEnums[];
+    static const char* SurfaceContinuityEnums[];
+    static const char* BoundaryContinuityEnums[];
 };
 
 }  // namespace Surface

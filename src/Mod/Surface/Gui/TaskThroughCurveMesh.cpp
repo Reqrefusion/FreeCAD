@@ -14,6 +14,8 @@
 
 #include <QAction>
 #include <QAbstractItemView>
+#include <QCheckBox>
+#include <QComboBox>
 #include <QDoubleSpinBox>
 #include <QFont>
 #include <QGridLayout>
@@ -30,6 +32,7 @@
 #include <QToolButton>
 #include <QVBoxLayout>
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -61,7 +64,8 @@ namespace
 enum class RowKind
 {
     Curve = 0,
-    Family = 1
+    Family = 1,
+    SupportFace = 2
 };
 
 struct RowMember
@@ -110,7 +114,17 @@ QString subNamesText(const std::vector<RowMember>& members)
 
 QString itemTypeText(RowKind kind)
 {
-    return kind == RowKind::Family ? QObject::tr("Family") : QObject::tr("Curve");
+    if (kind == RowKind::SupportFace) {
+        return QObject::tr("%1  %2").arg(type, memberText(members.front()));
+    }
+
+    if (kind == RowKind::Family) {
+        return QObject::tr("Family");
+    }
+    if (kind == RowKind::SupportFace) {
+        return QObject::tr("Support face");
+    }
+    return QObject::tr("Curve");
 }
 
 bool allMembersShareObject(const std::vector<RowMember>& members)
@@ -227,7 +241,13 @@ std::vector<RowMember> rowMembersFromData(const QList<QVariant>& data)
 RowKind rowKindFromData(const QList<QVariant>& data)
 {
     if (data.size() >= 4) {
-        return data[3].toInt() == static_cast<int>(RowKind::Family) ? RowKind::Family : RowKind::Curve;
+        if (data[3].toInt() == static_cast<int>(RowKind::Family)) {
+            return RowKind::Family;
+        }
+        if (data[3].toInt() == static_cast<int>(RowKind::SupportFace)) {
+            return RowKind::SupportFace;
+        }
+        return RowKind::Curve;
     }
     return rowMembersFromData(data).size() > 1 ? RowKind::Family : RowKind::Curve;
 }
@@ -284,7 +304,9 @@ bool appendItem(QListWidget* list, const std::vector<RowMember>& members, RowKin
     item->setData(Qt::UserRole, data);
     item->setToolTip(kind == RowKind::Family
         ? QObject::tr("Selection family: this row is treated as one composite curve/chain.")
-        : QObject::tr("Single curve row."));
+        : (kind == RowKind::SupportFace
+              ? QObject::tr("Adjacent support face for G1/G2 boundary continuity.")
+              : QObject::tr("Single curve row.")));
     return true;
 }
 
@@ -300,16 +322,19 @@ void updateFamilyListDecorations(QListWidget* list)
         const QString baseText = itemTextFromData(data);
         const RowKind kind = rowKindFromData(data);
         const bool isSelectionFamily = kind == RowKind::Family;
-        item->setText(row == 0 ? QObject::tr("Origin / start  —  %1").arg(baseText) : baseText);
+        const bool isSupportFace = kind == RowKind::SupportFace;
+        item->setText(row == 0 && !isSupportFace ? QObject::tr("Origin / start  —  %1").arg(baseText) : baseText);
 
         QFont font = item->font();
-        font.setBold(row == 0);
+        font.setBold(row == 0 && !isSupportFace);
         item->setFont(font);
-        item->setToolTip(row == 0
-            ? QObject::tr("Origin/reference row for this curve family. %1").arg(baseText)
-            : (isSelectionFamily
-                  ? QObject::tr("Family row: one connected chain/composite curve. %1").arg(baseText)
-                  : QObject::tr("Curve row: one independent curve. %1").arg(baseText)));
+        item->setToolTip(isSupportFace
+            ? QObject::tr("Adjacent support face for G1/G2 boundary continuity. %1").arg(baseText)
+            : (row == 0
+                  ? QObject::tr("Origin/reference row for this curve family. %1").arg(baseText)
+                  : (isSelectionFamily
+                        ? QObject::tr("Family row: one connected chain/composite curve. %1").arg(baseText)
+                        : QObject::tr("Curve row: one independent curve. %1").arg(baseText))));
     }
 }
 
@@ -344,6 +369,23 @@ void appendPropertyRefs(
 
         appendItem(list, members, group > 1 ? RowKind::Family : RowKind::Curve);
         offset += static_cast<std::size_t>(group);
+    }
+}
+
+void appendFaceRefs(
+    QListWidget* list,
+    const App::PropertyLinkSubList& property
+)
+{
+    if (!list) {
+        return;
+    }
+
+    std::vector<App::DocumentObject*> objects = property.getValues();
+    std::vector<std::string> subNames = property.getSubValues();
+    const std::size_t count = std::min(objects.size(), subNames.size());
+    for (std::size_t index = 0; index < count; ++index) {
+        appendItem(list, {{objects[index], subNames[index]}}, RowKind::SupportFace);
     }
 }
 
@@ -388,6 +430,11 @@ bool isCurveSubName(const std::string& subName)
     return subName.rfind("Edge", 0) == 0 || subName.rfind("Wire", 0) == 0;
 }
 
+bool isFaceSubName(const std::string& subName)
+{
+    return subName.rfind("Face", 0) == 0;
+}
+
 int addSelectedSubShapes(QListWidget* list, App::DocumentObject* owner)
 {
     std::vector<RowMember> members;
@@ -423,7 +470,7 @@ int addSelectedSubShapes(QListWidget* list, App::DocumentObject* owner)
         }
     }
 
-    // NX-style selection family behavior: one Add Selection action consumes the
+    // Mesh-style selection family behavior: one Add Selection action consumes the
     // whole current selection as one row. If the user selected several objects
     // or several sub-elements, they form one connected family/chain. To add
     // independent curves, select and add them one at a time.
@@ -433,6 +480,58 @@ int addSelectedSubShapes(QListWidget* list, App::DocumentObject* owner)
 
     const RowKind kind = members.size() > 1 ? RowKind::Family : RowKind::Curve;
     return appendItem(list, members, kind) ? 1 : 0;
+}
+
+
+int addSelectedFaces(QListWidget* list, App::DocumentObject* owner)
+{
+    int added = 0;
+    std::vector<Gui::SelectionObject> selection = Gui::Selection().getSelectionEx(
+        nullptr,
+        Part::Feature::getClassTypeId()
+    );
+
+    for (Gui::SelectionObject& selected : selection) {
+        App::DocumentObject* object = selected.getObject();
+        if (!object || object == owner || !object->isDerivedFrom<Part::Feature>()) {
+            continue;
+        }
+
+        const std::vector<std::string>& selectedSubNames = selected.getSubNames();
+        if (selectedSubNames.empty()) {
+            added += appendItem(list, {{object, std::string()}}, RowKind::SupportFace) ? 1 : 0;
+            continue;
+        }
+
+        for (const std::string& subName : selectedSubNames) {
+            if (isFaceSubName(subName)) {
+                added += appendItem(list, {{object, subName}}, RowKind::SupportFace) ? 1 : 0;
+            }
+        }
+    }
+
+    return added;
+}
+
+void propertyFacesFromList(QListWidget* list, App::PropertyLinkSubList& property)
+{
+    std::vector<App::DocumentObject*> objects;
+    std::vector<std::string> subNames;
+
+    if (list) {
+        for (int row = 0; row < list->count(); ++row) {
+            const std::vector<RowMember> members = rowMembersFromData(list->item(row)->data(Qt::UserRole).toList());
+            for (const RowMember& member : members) {
+                if (!member.object) {
+                    continue;
+                }
+                objects.push_back(member.object);
+                subNames.push_back(member.subName);
+            }
+        }
+    }
+
+    property.setValues(objects, subNames);
 }
 
 QToolButton* makeToolButton(QWidget* parent, const QString& text, const QString& tooltip)
@@ -488,12 +587,21 @@ ThroughCurveMeshPanel::ThroughCurveMeshPanel(
     , editedObject(obj)
     , primaryList(nullptr)
     , crossList(nullptr)
+    , supportFaceList(nullptr)
     , primaryCountLabel(nullptr)
     , crossCountLabel(nullptr)
+    , supportFaceCountLabel(nullptr)
     , statusLabel(nullptr)
     , deviationLabel(nullptr)
-    , toleranceSpin(nullptr)
-    , samplesSpin(nullptr)
+    , gapLabel(nullptr)
+    , intersectionToleranceSpin(nullptr)
+    , fitToleranceSpin(nullptr)
+    , samplesUSpin(nullptr)
+    , samplesVSpin(nullptr)
+    , autoSortCheck(nullptr)
+    , emphasisCombo(nullptr)
+    , parameterizationCombo(nullptr)
+    , continuityCombo(nullptr)
 {
     setupUi();
     populateLists();
@@ -516,37 +624,122 @@ void ThroughCurveMeshPanel::setupUi()
     previewButton->setToolTip(tr("Updates the temporary shape without adding selected curves. Use OK to keep the result or Cancel to discard it."));
     deviationLabel = new QLabel(tr("Deviation: not computed"), previewGroup);
     deviationLabel->setWordWrap(true);
-    previewLayout->addWidget(previewButton, 0, 0);
+    gapLabel = new QLabel(tr("Max gap: not computed"), previewGroup);
+    gapLabel->setWordWrap(true);
+    previewLayout->addWidget(previewButton, 0, 0, 2, 1);
     previewLayout->addWidget(deviationLabel, 0, 1);
+    previewLayout->addWidget(gapLabel, 1, 1);
     connect(previewButton, &QPushButton::clicked, this, &ThroughCurveMeshPanel::validateObject);
     mainLayout->addWidget(previewGroup);
+
+    auto* outputGroup = new QGroupBox(tr("Output surface options"), this);
+    auto* outputLayout = new QGridLayout(outputGroup);
+
+    emphasisCombo = new QComboBox(outputGroup);
+    emphasisCombo->addItem(tr("Both"));
+    emphasisCombo->addItem(tr("Primary"));
+    emphasisCombo->addItem(tr("Cross"));
+    emphasisCombo->setToolTip(tr("Biases the blended Gordon contribution toward one curve family."));
+
+    outputLayout->addWidget(new QLabel(tr("Emphasis"), outputGroup), 0, 0);
+    outputLayout->addWidget(emphasisCombo, 0, 1);
+    mainLayout->addWidget(outputGroup);
+
+    auto* continuityGroup = new QGroupBox(tr("Boundary continuity"), this);
+    auto* continuityLayout = new QGridLayout(continuityGroup);
+
+    continuityCombo = new QComboBox(continuityGroup);
+    continuityCombo->addItem(tr("G0 (Position)"));
+    continuityCombo->addItem(tr("G1 tangent"));
+    continuityCombo->addItem(tr("G2 curvature"));
+    continuityCombo->setToolTip(tr("G0 constrains position along the selected boundary curves and does not require adjacent support faces. G1/G2 requires adjacent support faces."));
+
+    supportFaceCountLabel = new QLabel(continuityGroup);
+    auto* addSupportButton = new QPushButton(tr("Add selected faces"), continuityGroup);
+    addSupportButton->setToolTip(tr("Adds selected adjacent faces used by OCCT for G1/G2 boundary continuity."));
+    auto* removeSupportButton = makeToolButton(continuityGroup, tr("Remove"), tr("Remove selected support faces"));
+    auto* clearSupportButton = makeToolButton(continuityGroup, tr("Clear"), tr("Clear support faces"));
+    supportFaceList = new QListWidget(continuityGroup);
+    supportFaceList->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    supportFaceList->setAlternatingRowColors(true);
+
+    auto* supportButtons = new QVBoxLayout();
+    supportButtons->addWidget(removeSupportButton);
+    supportButtons->addWidget(clearSupportButton);
+    supportButtons->addStretch(1);
+
+    continuityLayout->addWidget(new QLabel(tr("Continuity"), continuityGroup), 0, 0);
+    continuityLayout->addWidget(continuityCombo, 0, 1);
+    continuityLayout->addWidget(supportFaceCountLabel, 1, 0);
+    continuityLayout->addWidget(addSupportButton, 1, 1);
+    continuityLayout->addWidget(supportFaceList, 2, 0, 1, 2);
+    continuityLayout->addLayout(supportButtons, 2, 2);
+
+    connect(addSupportButton, &QPushButton::clicked, this, &ThroughCurveMeshPanel::addSelectedSupportFaces);
+    connect(removeSupportButton, &QToolButton::clicked, this, &ThroughCurveMeshPanel::removeSelectedSupportFaces);
+    connect(clearSupportButton, &QToolButton::clicked, this, &ThroughCurveMeshPanel::clearSupportFaces);
+    mainLayout->addWidget(continuityGroup);
 
     auto* settingsGroup = new QGroupBox(tr("Settings"), this);
     auto* settingsLayout = new QGridLayout(settingsGroup);
 
-    toleranceSpin = new QDoubleSpinBox(settingsGroup);
-    toleranceSpin->setDecimals(4);
-    toleranceSpin->setRange(0.0, 100.0);
-    toleranceSpin->setSingleStep(0.01);
-    toleranceSpin->setSuffix(tr(" mm"));
+    intersectionToleranceSpin = new QDoubleSpinBox(settingsGroup);
+    intersectionToleranceSpin->setDecimals(4);
+    intersectionToleranceSpin->setRange(0.0, 100.0);
+    intersectionToleranceSpin->setSingleStep(0.01);
+    intersectionToleranceSpin->setSuffix(tr(" mm"));
+    intersectionToleranceSpin->setToolTip(tr("Maximum gap allowed when accepting a primary/cross curve crossing."));
 
-    samplesSpin = new QSpinBox(settingsGroup);
-    samplesSpin->setRange(4, 200);
-    samplesSpin->setSingleStep(1);
+    fitToleranceSpin = new QDoubleSpinBox(settingsGroup);
+    fitToleranceSpin->setDecimals(4);
+    fitToleranceSpin->setRange(0.0, 100.0);
+    fitToleranceSpin->setSingleStep(0.01);
+    fitToleranceSpin->setSuffix(tr(" mm"));
+    fitToleranceSpin->setToolTip(tr("Tolerance used by the B-spline surface approximation after the curve mesh has been sampled."));
 
-    settingsLayout->addWidget(new QLabel(tr("Tolerance"), settingsGroup), 0, 0);
-    settingsLayout->addWidget(toleranceSpin, 0, 1);
-    settingsLayout->addWidget(new QLabel(tr("Samples"), settingsGroup), 1, 0);
-    settingsLayout->addWidget(samplesSpin, 1, 1);
+    samplesUSpin = new QSpinBox(settingsGroup);
+    samplesUSpin->setRange(4, 200);
+    samplesUSpin->setSingleStep(1);
+    samplesUSpin->setToolTip(tr("Sampling density in the primary-family direction."));
 
-    connect(toleranceSpin, qOverload<double>(&QDoubleSpinBox::valueChanged), this, [this]() {
+    samplesVSpin = new QSpinBox(settingsGroup);
+    samplesVSpin->setRange(4, 200);
+    samplesVSpin->setSingleStep(1);
+    samplesVSpin->setToolTip(tr("Sampling density in the cross-family direction."));
+
+    parameterizationCombo = new QComboBox(settingsGroup);
+    parameterizationCombo->addItem(tr("Chord length"));
+    parameterizationCombo->addItem(tr("Centripetal"));
+    parameterizationCombo->addItem(tr("Uniform"));
+    parameterizationCombo->setToolTip(tr("Controls how curve-network intersections are mapped to surface parameters before fitting."));
+
+    autoSortCheck = new QCheckBox(tr("Auto sort and orient curve families"), settingsGroup);
+    autoSortCheck->setToolTip(tr("Sorts rows using the curve-network intersections before building the surface."));
+
+    settingsLayout->addWidget(new QLabel(tr("Intersection tolerance"), settingsGroup), 0, 0);
+    settingsLayout->addWidget(intersectionToleranceSpin, 0, 1);
+    settingsLayout->addWidget(new QLabel(tr("G0 / fit tolerance"), settingsGroup), 1, 0);
+    settingsLayout->addWidget(fitToleranceSpin, 1, 1);
+    settingsLayout->addWidget(new QLabel(tr("Primary samples"), settingsGroup), 2, 0);
+    settingsLayout->addWidget(samplesUSpin, 2, 1);
+    settingsLayout->addWidget(new QLabel(tr("Cross samples"), settingsGroup), 3, 0);
+    settingsLayout->addWidget(samplesVSpin, 3, 1);
+    settingsLayout->addWidget(new QLabel(tr("Parameterization"), settingsGroup), 4, 0);
+    settingsLayout->addWidget(parameterizationCombo, 4, 1);
+    settingsLayout->addWidget(autoSortCheck, 5, 0, 1, 2);
+
+    auto optionChanged = [this]() {
         openTransactionIfNeeded();
         applyOptionsToObject();
-    });
-    connect(samplesSpin, qOverload<int>(&QSpinBox::valueChanged), this, [this]() {
-        openTransactionIfNeeded();
-        applyOptionsToObject();
-    });
+    };
+    connect(intersectionToleranceSpin, qOverload<double>(&QDoubleSpinBox::valueChanged), this, optionChanged);
+    connect(fitToleranceSpin, qOverload<double>(&QDoubleSpinBox::valueChanged), this, optionChanged);
+    connect(samplesUSpin, qOverload<int>(&QSpinBox::valueChanged), this, optionChanged);
+    connect(samplesVSpin, qOverload<int>(&QSpinBox::valueChanged), this, optionChanged);
+    connect(autoSortCheck, &QCheckBox::toggled, this, optionChanged);
+    connect(emphasisCombo, qOverload<int>(&QComboBox::currentIndexChanged), this, optionChanged);
+    connect(parameterizationCombo, qOverload<int>(&QComboBox::currentIndexChanged), this, optionChanged);
+    connect(continuityCombo, qOverload<int>(&QComboBox::currentIndexChanged), this, optionChanged);
 
     mainLayout->addWidget(settingsGroup);
 
@@ -611,12 +804,14 @@ void ThroughCurveMeshPanel::populateLists()
 {
     primaryList->clear();
     crossList->clear();
+    supportFaceList->clear();
     if (!editedObject) {
         return;
     }
 
     appendPropertyRefs(primaryList, editedObject->PrimaryCurves, editedObject->PrimaryCurveGroupSizes);
     appendPropertyRefs(crossList, editedObject->CrossCurves, editedObject->CrossCurveGroupSizes);
+    appendFaceRefs(supportFaceList, editedObject->SupportFaces);
 }
 
 void ThroughCurveMeshPanel::loadOptionsFromObject()
@@ -625,12 +820,32 @@ void ThroughCurveMeshPanel::loadOptionsFromObject()
         return;
     }
 
-    toleranceSpin->blockSignals(true);
-    samplesSpin->blockSignals(true);
-    toleranceSpin->setValue(editedObject->Tolerance.getValue());
-    samplesSpin->setValue(editedObject->Samples.getValue());
-    toleranceSpin->blockSignals(false);
-    samplesSpin->blockSignals(false);
+    intersectionToleranceSpin->blockSignals(true);
+    fitToleranceSpin->blockSignals(true);
+    samplesUSpin->blockSignals(true);
+    samplesVSpin->blockSignals(true);
+    autoSortCheck->blockSignals(true);
+    emphasisCombo->blockSignals(true);
+    parameterizationCombo->blockSignals(true);
+    continuityCombo->blockSignals(true);
+
+    intersectionToleranceSpin->setValue(editedObject->Tolerance.getValue());
+    fitToleranceSpin->setValue(editedObject->PositionTolerance.getValue());
+    samplesUSpin->setValue(editedObject->SamplesU.getValue());
+    samplesVSpin->setValue(editedObject->SamplesV.getValue());
+    autoSortCheck->setChecked(editedObject->AutoSort.getValue());
+    emphasisCombo->setCurrentIndex(static_cast<int>(editedObject->Emphasis.getValue()));
+    parameterizationCombo->setCurrentIndex(static_cast<int>(editedObject->Parameterization.getValue()));
+    continuityCombo->setCurrentIndex(static_cast<int>(editedObject->BoundaryContinuity.getValue()));
+
+    intersectionToleranceSpin->blockSignals(false);
+    fitToleranceSpin->blockSignals(false);
+    samplesUSpin->blockSignals(false);
+    samplesVSpin->blockSignals(false);
+    autoSortCheck->blockSignals(false);
+    emphasisCombo->blockSignals(false);
+    parameterizationCombo->blockSignals(false);
+    continuityCombo->blockSignals(false);
 }
 
 QListWidget* ThroughCurveMeshPanel::listForFamily(Family family) const
@@ -677,6 +892,40 @@ void ThroughCurveMeshPanel::addSelected(Family family)
     }
     applyListsToObject();
     updateCounts();
+}
+
+void ThroughCurveMeshPanel::addSelectedSupportFaces()
+{
+    openTransactionIfNeeded();
+    const int added = addSelectedFaces(supportFaceList, editedObject);
+    if (added == 0) {
+        updateStatusText(tr("Select adjacent face items, then press Add selected faces."), true);
+    }
+    else {
+        updateStatusText(QString());
+    }
+    applySupportFacesToObject();
+    updateCounts();
+}
+
+void ThroughCurveMeshPanel::removeSelectedSupportFaces()
+{
+    openTransactionIfNeeded();
+    const QList<QListWidgetItem*> selectedItems = supportFaceList->selectedItems();
+    for (QListWidgetItem* item : selectedItems) {
+        delete supportFaceList->takeItem(supportFaceList->row(item));
+    }
+    applySupportFacesToObject();
+    updateCounts();
+}
+
+void ThroughCurveMeshPanel::clearSupportFaces()
+{
+    openTransactionIfNeeded();
+    supportFaceList->clear();
+    applySupportFacesToObject();
+    updateCounts();
+    updateStatusText(QString());
 }
 
 void ThroughCurveMeshPanel::removeSelected(Family family)
@@ -741,6 +990,15 @@ void ThroughCurveMeshPanel::applyListsToObject()
 
     propertyFromList(primaryList, editedObject->PrimaryCurves, editedObject->PrimaryCurveGroupSizes);
     propertyFromList(crossList, editedObject->CrossCurves, editedObject->CrossCurveGroupSizes);
+    applySupportFacesToObject();
+}
+
+void ThroughCurveMeshPanel::applySupportFacesToObject()
+{
+    if (!editedObject) {
+        return;
+    }
+    propertyFacesFromList(supportFaceList, editedObject->SupportFaces);
 }
 
 void ThroughCurveMeshPanel::applyOptionsToObject()
@@ -749,9 +1007,15 @@ void ThroughCurveMeshPanel::applyOptionsToObject()
         return;
     }
 
-    editedObject->Tolerance.setValue(toleranceSpin->value());
-    editedObject->PositionTolerance.setValue(toleranceSpin->value());
-    editedObject->Samples.setValue(samplesSpin->value());
+    editedObject->Tolerance.setValue(intersectionToleranceSpin->value());
+    editedObject->PositionTolerance.setValue(fitToleranceSpin->value());
+    editedObject->SamplesU.setValue(samplesUSpin->value());
+    editedObject->SamplesV.setValue(samplesVSpin->value());
+    editedObject->Samples.setValue(std::max(samplesUSpin->value(), samplesVSpin->value()));
+    editedObject->AutoSort.setValue(autoSortCheck->isChecked());
+    editedObject->Emphasis.setValue(emphasisCombo->currentIndex());
+    editedObject->Parameterization.setValue(parameterizationCombo->currentIndex());
+    editedObject->BoundaryContinuity.setValue(continuityCombo->currentIndex());
 }
 
 void ThroughCurveMeshPanel::validateObject()
@@ -768,11 +1032,13 @@ void ThroughCurveMeshPanel::validateObject()
     }
     catch (const std::exception& e) {
         deviationLabel->setText(tr("Deviation: not computed"));
+        gapLabel->setText(tr("Max gap: not computed"));
         updateStatusText(QString::fromUtf8(e.what()), true);
         return;
     }
     catch (...) {
         deviationLabel->setText(tr("Deviation: not computed"));
+        gapLabel->setText(tr("Max gap: not computed"));
         updateStatusText(tr("Preview failed. Check the selected curve network."), true);
         return;
     }
@@ -781,10 +1047,14 @@ void ThroughCurveMeshPanel::validateObject()
         deviationLabel->setText(
             tr("Deviation: %1 mm").arg(editedObject->MaxDeviation.getValue(), 0, 'g', 6)
         );
+        gapLabel->setText(
+            tr("Max gap: %1 mm").arg(editedObject->MaxIntersectionGap.getValue(), 0, 'g', 6)
+        );
         updateStatusText(tr("Preview updated. Press OK to keep the surface, or Cancel to discard it."));
     }
     else {
         deviationLabel->setText(tr("Deviation: not computed"));
+        gapLabel->setText(tr("Max gap: not computed"));
         updateStatusText(QString::fromLatin1(editedObject->getStatusString()), true);
     }
     Gui::Command::updateActive();
@@ -799,6 +1069,9 @@ void ThroughCurveMeshPanel::updateCounts()
     }
     if (crossCountLabel) {
         crossCountLabel->setText(tr("Cross rows (%1)").arg(crossList ? crossList->count() : 0));
+    }
+    if (supportFaceCountLabel) {
+        supportFaceCountLabel->setText(tr("Support faces (%1)").arg(supportFaceList ? supportFaceList->count() : 0));
     }
 }
 

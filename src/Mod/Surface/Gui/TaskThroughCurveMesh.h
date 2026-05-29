@@ -19,6 +19,8 @@
 #include <Mod/Part/Gui/ViewProviderSpline.h>
 #include <Mod/Surface/App/FeatureThroughCurveMesh.h>
 
+class QCheckBox;
+class QComboBox;
 class QDoubleSpinBox;
 class QLabel;
 class QListWidget;
@@ -61,7 +63,11 @@ private:
     void loadOptionsFromObject();
     void applyListsToObject();
     void applyOptionsToObject();
+    void applySupportFacesToObject();
     void addSelected(Family family);
+    void addSelectedSupportFaces();
+    void removeSelectedSupportFaces();
+    void clearSupportFaces();
     void removeSelected(Family family);
     void moveSelected(Family family, int direction);
     void clearFamily(Family family);
@@ -77,12 +83,21 @@ private:
     Surface::ThroughCurveMesh* editedObject;
     QListWidget* primaryList;
     QListWidget* crossList;
+    QListWidget* supportFaceList;
     QLabel* primaryCountLabel;
     QLabel* crossCountLabel;
+    QLabel* supportFaceCountLabel;
     QLabel* statusLabel;
     QLabel* deviationLabel;
-    QDoubleSpinBox* toleranceSpin;
-    QSpinBox* samplesSpin;
+    QLabel* gapLabel;
+    QDoubleSpinBox* intersectionToleranceSpin;
+    QDoubleSpinBox* fitToleranceSpin;
+    QSpinBox* samplesUSpin;
+    QSpinBox* samplesVSpin;
+    QCheckBox* autoSortCheck;
+    QComboBox* emphasisCombo;
+    QComboBox* parameterizationCombo;
+    QComboBox* continuityCombo;
     bool checkCommand {true};
 };
 
