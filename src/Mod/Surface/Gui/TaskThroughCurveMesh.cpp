@@ -114,10 +114,6 @@ QString subNamesText(const std::vector<RowMember>& members)
 
 QString itemTypeText(RowKind kind)
 {
-    if (kind == RowKind::SupportFace) {
-        return QObject::tr("%1  %2").arg(type, memberText(members.front()));
-    }
-
     if (kind == RowKind::Family) {
         return QObject::tr("Family");
     }
