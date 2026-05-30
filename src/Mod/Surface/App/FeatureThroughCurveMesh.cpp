@@ -436,32 +436,66 @@ double shapeGap(const TopoDS_Shape& first, const TopoDS_Shape& second)
     return bestGap;
 }
 
-TopoDS_Face nearestSupportFace(
-    const TopoDS_Edge& edge,
+gp_Pnt edgeEndPoint(const TopoDS_Edge& edge, bool atEnd)
+{
+    BRepAdaptor_Curve curve(edge);
+    return curve.Value(atEnd ? curve.LastParameter() : curve.FirstParameter());
+}
+
+TopoDS_Edge orientedLikeBoundary(const TopoDS_Edge& supportEdge, const TopoDS_Edge& boundaryEdge)
+{
+    TopoDS_Edge oriented = supportEdge;
+    const gp_Pnt boundaryFirst = edgeEndPoint(boundaryEdge, false);
+    const gp_Pnt boundaryLast = edgeEndPoint(boundaryEdge, true);
+    const gp_Pnt supportFirst = edgeEndPoint(supportEdge, false);
+    const gp_Pnt supportLast = edgeEndPoint(supportEdge, true);
+
+    const double sameDirection = boundaryFirst.SquareDistance(supportFirst)
+        + boundaryLast.SquareDistance(supportLast);
+    const double oppositeDirection = boundaryFirst.SquareDistance(supportLast)
+        + boundaryLast.SquareDistance(supportFirst);
+    if (oppositeDirection < sameDirection) {
+        oriented.Reverse();
+    }
+    return oriented;
+}
+
+struct SupportBoundaryMatch
+{
+    TopoDS_Face face;
+    TopoDS_Edge edge;
+    double gap {std::numeric_limits<double>::max()};
+};
+
+SupportBoundaryMatch nearestSupportBoundaryEdge(
+    const TopoDS_Edge& boundaryEdge,
     const std::vector<TopoDS_Face>& supportFaces,
     double tolerance,
     const char* boundaryName
 )
 {
-    double bestGap = std::numeric_limits<double>::max();
-    TopoDS_Face bestFace;
+    SupportBoundaryMatch best;
     for (const TopoDS_Face& face : supportFaces) {
-        const double gap = shapeGap(edge, face);
-        if (gap < bestGap) {
-            bestGap = gap;
-            bestFace = face;
+        for (TopExp_Explorer xp(face, TopAbs_EDGE); xp.More(); xp.Next()) {
+            const TopoDS_Edge supportEdge = TopoDS::Edge(xp.Current());
+            const double gap = shapeGap(boundaryEdge, supportEdge);
+            if (gap < best.gap) {
+                best.face = face;
+                best.edge = orientedLikeBoundary(supportEdge, boundaryEdge);
+                best.gap = gap;
+            }
         }
     }
 
-    if (bestFace.IsNull() || bestGap > tolerance) {
+    if (best.face.IsNull() || best.edge.IsNull() || best.gap > tolerance) {
         std::ostringstream str;
-        str << "Boundary continuity requires a support face for " << boundaryName
-            << ". Select adjacent faces whose edges match the outer curve mesh boundary. Gap: "
-            << bestGap;
+        str << "Boundary continuity requires a support face edge for " << boundaryName
+            << ". Select an adjacent face whose boundary edge matches the outer curve mesh boundary. Gap: "
+            << best.gap;
         raiseFailure(str.str());
     }
 
-    return bestFace;
+    return best;
 }
 
 std::vector<TopoDS_Edge> collectEdgesFromCurveShape(const TopoDS_Shape& shape)
@@ -1552,13 +1586,23 @@ ContinuityBuildResult buildContinuityFace(
             raiseFailure(str.str());
         }
 
-        const TopoDS_Face support = nearestSupportFace(
+        const SupportBoundaryMatch support = nearestSupportBoundaryEdge(
             constraint.edge,
             sideFaces,
             intersectionTolerance,
             constraint.name
         );
-        filling.Add(constraint.edge, support, boundaryContinuityShape(sideMode), true);
+        try {
+            filling.Add(support.edge, support.face, boundaryContinuityShape(sideMode), true);
+        }
+        catch (const Standard_Failure& e) {
+            std::ostringstream str;
+            str << "OCCT failed to add G" << (sideMode == BoundaryContinuityMode::G2 ? 2 : 1)
+                << " continuity for " << constraint.name
+                << ". The selected support face must share a matching boundary edge with the curve mesh. Details: "
+                << e.GetMessageString();
+            raiseFailure(str.str());
+        }
     }
 
     for (const auto& row : grid) {
