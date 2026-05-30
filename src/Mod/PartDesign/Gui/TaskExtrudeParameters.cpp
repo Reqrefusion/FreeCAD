@@ -27,6 +27,7 @@
 #include <QGridLayout>
 
 #include <algorithm>
+#include <cmath>
 
 #include <App/Document.h>
 #include <Base/Tools.h>
@@ -53,6 +54,7 @@ using namespace Gui;
 
 namespace
 {
+constexpr double minimumLinearStartEndGap = 1.0e-7;
 constexpr float startGizmoPointRadius = 1.15F;
 
 void makeStartGizmoPointLike(Gui::LinearGizmo* gizmo)
@@ -680,6 +682,19 @@ void TaskExtrudeParameters::onLengthChanged(double len, Side side)
             sideController.offsetEdit->setValue(start);
             sideController.Offset->setValue(start);
         }
+
+        if (std::fabs(len - start) < minimumLinearStartEndGap) {
+            const double lengthMax = sideController.Length->getMaximum();
+            const double lengthMin = sideController.Length->getMinimum();
+            double adjustedEnd = start + minimumLinearStartEndGap;
+            if (adjustedEnd > lengthMax) {
+                adjustedEnd = start - minimumLinearStartEndGap;
+            }
+            adjustedEnd = std::clamp(adjustedEnd, lengthMin, lengthMax);
+            len = adjustedEnd;
+            QSignalBlocker lengthBlock(sideController.lengthEdit);
+            sideController.lengthEdit->setValue(len);
+        }
     }
 
     sideController.Length->setValue(len);
@@ -701,6 +716,20 @@ void TaskExtrudeParameters::onOffsetChanged(double len, Side side)
             len = minStart;
             QSignalBlocker offsetBlock(sideController.offsetEdit);
             sideController.offsetEdit->setValue(len);
+        }
+
+        const double end = sideController.lengthEdit->value().getValue();
+        if (std::fabs(end - len) < minimumLinearStartEndGap) {
+            const double lengthMax = sideController.Length->getMaximum();
+            const double lengthMin = sideController.Length->getMinimum();
+            double adjustedEnd = len + minimumLinearStartEndGap;
+            if (adjustedEnd > lengthMax) {
+                adjustedEnd = len - minimumLinearStartEndGap;
+            }
+            adjustedEnd = std::clamp(adjustedEnd, lengthMin, lengthMax);
+            QSignalBlocker lengthBlock(sideController.lengthEdit);
+            sideController.lengthEdit->setValue(adjustedEnd);
+            sideController.Length->setValue(adjustedEnd);
         }
     }
 
@@ -885,10 +914,24 @@ void TaskExtrudeParameters::syncStartEndLimits()
             return;
         }
 
-        const double start = side.offsetEdit->value().getValue();
+        double start = side.offsetEdit->value().getValue();
         if (start < offsetMin) {
-            side.offsetEdit->setValue(offsetMin);
-            side.Offset->setValue(offsetMin);
+            start = offsetMin;
+            side.offsetEdit->setValue(start);
+            side.Offset->setValue(start);
+        }
+
+        const double end = side.lengthEdit->value().getValue();
+        if (std::fabs(end - start) < minimumLinearStartEndGap) {
+            const double lengthMin = side.Length->getMinimum();
+            const double lengthMax = side.Length->getMaximum();
+            double adjustedEnd = start + minimumLinearStartEndGap;
+            if (adjustedEnd > lengthMax) {
+                adjustedEnd = start - minimumLinearStartEndGap;
+            }
+            adjustedEnd = std::clamp(adjustedEnd, lengthMin, lengthMax);
+            side.lengthEdit->setValue(adjustedEnd);
+            side.Length->setValue(adjustedEnd);
         }
     };
 
