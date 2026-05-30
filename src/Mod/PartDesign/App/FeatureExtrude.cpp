@@ -696,39 +696,43 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
                 }
             }
             else {
-                TopoShape prism1 = generateSingleExtrusionSide(
-                    movedSketchForLengthStart(sketchshape, method, extrusionStart1, dir),
-                    method,
-                    method == "Length" ? effectiveL : L,
-                    taper1,
-                    UpToFace,
-                    UpToShape,
-                    dir,
-                    offset1,
-                    makeface,
-                    base,
-                    invObjLoc
-                );
-                if (!prism1.isNull() && !prism1.getShape().IsNull()) {
-                    prisms.push_back(prism1);
+                if (method != "Length" || std::abs(effectiveL) >= Precision::Confusion()) {
+                    TopoShape prism1 = generateSingleExtrusionSide(
+                        movedSketchForLengthStart(sketchshape, method, extrusionStart1, dir),
+                        method,
+                        method == "Length" ? effectiveL : L,
+                        taper1,
+                        UpToFace,
+                        UpToShape,
+                        dir,
+                        offset1,
+                        makeface,
+                        base,
+                        invObjLoc
+                    );
+                    if (!prism1.isNull() && !prism1.getShape().IsNull()) {
+                        prisms.push_back(prism1);
+                    }
                 }
 
                 // Side 2
-                TopoShape prism2 = generateSingleExtrusionSide(
-                    movedSketchForLengthStart(sketchshape, method2, extrusionStart2, dir2),
-                    method2,
-                    method2 == "Length" ? effectiveL2 : L2,
-                    taper2,
-                    UpToFace2,
-                    UpToShape2,
-                    dir2,
-                    offset2,
-                    makeface,
-                    base,
-                    invObjLoc
-                );
-                if (!prism2.isNull() && !prism2.getShape().IsNull()) {
-                    prisms.push_back(prism2);
+                if (method2 != "Length" || std::abs(effectiveL2) >= Precision::Confusion()) {
+                    TopoShape prism2 = generateSingleExtrusionSide(
+                        movedSketchForLengthStart(sketchshape, method2, extrusionStart2, dir2),
+                        method2,
+                        method2 == "Length" ? effectiveL2 : L2,
+                        taper2,
+                        UpToFace2,
+                        UpToShape2,
+                        dir2,
+                        offset2,
+                        makeface,
+                        base,
+                        invObjLoc
+                    );
+                    if (!prism2.isNull() && !prism2.getShape().IsNull()) {
+                        prisms.push_back(prism2);
+                    }
                 }
             }
         }
