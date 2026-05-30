@@ -364,22 +364,31 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
         );
     };
 
-    auto nonNegativeRangeError = [&]() {
+    auto symmetricNonNegativeRangeError = [&]() {
+        return new App::DocumentObjectExecReturn(
+            QT_TRANSLATE_NOOP("Exception", "Start and end must not be negative in symmetric mode.")
+        );
+    };
+
+    auto twoSidedRangeCrossingError = [&]() {
         return new App::DocumentObjectExecReturn(
             QT_TRANSLATE_NOOP(
                 "Exception",
-                "Start and end must not be negative in symmetric or two-sided mode."
+                "Start and end must not cross beyond the nearest value on the opposite side."
             )
         );
     };
 
-    if ((Sidemethod == "Symmetric" || Sidemethod == "Two sides") && method == "Length"
+    if (Sidemethod == "Symmetric" && method == "Length"
         && (start1 < -Precision::Confusion() || L < -Precision::Confusion())) {
-        return nonNegativeRangeError();
+        return symmetricNonNegativeRangeError();
     }
-    if (Sidemethod == "Two sides" && method2 == "Length"
-        && (start2 < -Precision::Confusion() || L2 < -Precision::Confusion())) {
-        return nonNegativeRangeError();
+    if (Sidemethod == "Two sides" && method == "Length" && method2 == "Length") {
+        const double minSide1 = std::min(start1, L);
+        const double minSide2 = std::min(start2, L2);
+        if (minSide1 + minSide2 < -Precision::Confusion()) {
+            return twoSidedRangeCrossingError();
+        }
     }
     if ((Sidemethod == "One side" || Sidemethod == "Symmetric") && method == "Length") {
         if (std::abs(effectiveL) < Precision::Confusion()) {

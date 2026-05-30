@@ -671,11 +671,19 @@ void TaskExtrudeParameters::onLengthChanged(double len, Side side)
     auto& sideController = getSideController(side);
     if (showOffsetInDimension() && isLengthMode(side)) {
         const auto sidesMode = static_cast<SidesMode>(ui->sidesMode->currentIndex());
-        const bool enforceNonNegativeRange = sidesMode == SidesMode::Symmetric
-            || sidesMode == SidesMode::TwoSides;
-        const double rangeMin = enforceNonNegativeRange
-            ? std::max(0.0, sideController.Offset->getMinimum())
-            : sideController.Offset->getMinimum();
+        double rangeMin = sideController.Offset->getMinimum();
+        if (sidesMode == SidesMode::Symmetric) {
+            rangeMin = std::max(0.0, rangeMin);
+        }
+        else if (sidesMode == SidesMode::TwoSides) {
+            const Side otherSide = side == Side::First ? Side::Second : Side::First;
+            if (isLengthMode(otherSide)) {
+                auto& otherController = getSideController(otherSide);
+                const double otherStart = otherController.offsetEdit->value().getValue();
+                const double otherEnd = otherController.lengthEdit->value().getValue();
+                rangeMin = std::max(rangeMin, -std::min(otherStart, otherEnd));
+            }
+        }
 
         if (len < rangeMin) {
             len = rangeMin;
@@ -716,11 +724,19 @@ void TaskExtrudeParameters::onOffsetChanged(double len, Side side)
     auto& sideController = getSideController(side);
     if (showOffsetInDimension() && isLengthMode(side)) {
         const auto sidesMode = static_cast<SidesMode>(ui->sidesMode->currentIndex());
-        const bool enforceNonNegativeRange = sidesMode == SidesMode::Symmetric
-            || sidesMode == SidesMode::TwoSides;
-        const double rangeMin = enforceNonNegativeRange
-            ? std::max(0.0, sideController.Offset->getMinimum())
-            : sideController.Offset->getMinimum();
+        double rangeMin = sideController.Offset->getMinimum();
+        if (sidesMode == SidesMode::Symmetric) {
+            rangeMin = std::max(0.0, rangeMin);
+        }
+        else if (sidesMode == SidesMode::TwoSides) {
+            const Side otherSide = side == Side::First ? Side::Second : Side::First;
+            if (isLengthMode(otherSide)) {
+                auto& otherController = getSideController(otherSide);
+                const double otherStart = otherController.offsetEdit->value().getValue();
+                const double otherEnd = otherController.lengthEdit->value().getValue();
+                rangeMin = std::max(rangeMin, -std::min(otherStart, otherEnd));
+            }
+        }
         if (len < rangeMin) {
             len = rangeMin;
             QSignalBlocker offsetBlock(sideController.offsetEdit);
@@ -912,15 +928,13 @@ void TaskExtrudeParameters::syncStartEndLimits()
         return;
     }
 
-    auto syncSide = [](SideController& side, bool lengthMode, bool enforceNonNegativeRange) {
+    auto syncSide = [](SideController& side, bool lengthMode, double rangeMin) {
         QSignalBlocker offsetBlock(side.offsetEdit);
         QSignalBlocker lengthBlock(side.lengthEdit);
 
         const double offsetPropMin = side.Offset->getMinimum();
         const double offsetPropMax = side.Offset->getMaximum();
-        const double rangeMin = lengthMode && enforceNonNegativeRange
-            ? std::max(0.0, offsetPropMin)
-            : offsetPropMin;
+        rangeMin = std::max(rangeMin, offsetPropMin);
         const double lengthMin = lengthMode ? rangeMin : side.Length->getMinimum();
         const double lengthMax = lengthMode ? offsetPropMax : side.Length->getMaximum();
 
@@ -959,14 +973,34 @@ void TaskExtrudeParameters::syncStartEndLimits()
     };
 
     const auto sidesMode = static_cast<SidesMode>(ui->sidesMode->currentIndex());
-    const bool enforceNonNegativeRange = sidesMode == SidesMode::Symmetric
-        || sidesMode == SidesMode::TwoSides;
-    syncSide(m_side1, isLengthMode(Side::First), enforceNonNegativeRange);
-    syncSide(
-        m_side2,
-        sidesMode == SidesMode::TwoSides && isLengthMode(Side::Second),
-        enforceNonNegativeRange
-    );
+    const bool side1LengthMode = isLengthMode(Side::First);
+    const bool side2LengthMode = sidesMode == SidesMode::TwoSides && isLengthMode(Side::Second);
+
+    double side1RangeMin = m_side1.Offset->getMinimum();
+    double side2RangeMin = m_side2.Offset->getMinimum();
+
+    if (sidesMode == SidesMode::Symmetric) {
+        side1RangeMin = std::max(0.0, side1RangeMin);
+    }
+    else if (sidesMode == SidesMode::TwoSides) {
+        if (side2LengthMode) {
+            const double side2Start = m_side2.offsetEdit->value().getValue();
+            const double side2End = m_side2.lengthEdit->value().getValue();
+            side1RangeMin = std::max(side1RangeMin, -std::min(side2Start, side2End));
+        }
+        syncSide(m_side1, side1LengthMode, side1RangeMin);
+
+        if (side1LengthMode) {
+            const double side1Start = m_side1.offsetEdit->value().getValue();
+            const double side1End = m_side1.lengthEdit->value().getValue();
+            side2RangeMin = std::max(side2RangeMin, -std::min(side1Start, side1End));
+        }
+        syncSide(m_side2, side2LengthMode, side2RangeMin);
+        return;
+    }
+
+    syncSide(m_side1, side1LengthMode, side1RangeMin);
+    syncSide(m_side2, false, side2RangeMin);
 }
 
 void TaskExtrudeParameters::updateWholeUI(Type type, Side side)
