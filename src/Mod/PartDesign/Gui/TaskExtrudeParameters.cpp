@@ -24,6 +24,7 @@
 
 #include <QSignalBlocker>
 #include <QAction>
+#include <QCoreApplication>
 #include <QGridLayout>
 
 #include <algorithm>
@@ -76,6 +77,17 @@ static void makeStartGizmoPointLike(Gui::LinearGizmo* gizmo)
     auto* base = SO_GET_PART(dragger, "baseGeom", SoArrowBase);
     base->cylinderHeight = 0.0F;
     base->cylinderRadius = 0.0F;
+}
+
+static void setupRangeModeCombo(QComboBox* combo)
+{
+    combo->addItem(QCoreApplication::translate("PartDesignGui::TaskExtrudeParameters", "Start-End"));
+    combo->addItem(QCoreApplication::translate("PartDesignGui::TaskExtrudeParameters", "Start-Length"));
+    combo->setToolTip(QCoreApplication::translate(
+        "PartDesignGui::TaskExtrudeParameters",
+        "Choose whether End or Length stays fixed when Start changes."
+    ));
+    combo->setCurrentIndex(0);
 }
 }  // namespace PartDesignGui
 
@@ -176,6 +188,12 @@ void TaskExtrudeParameters::setupSideDialog(SideController& side)
     side.taperEdit->setMaximum(side.TaperAngle->getMaximum());
     side.taperEdit->setSingleStep(side.TaperAngle->getStepSize());
     side.taperEdit->setValue(taper);
+    if (side.rangeLengthEdit) {
+        side.rangeLengthEdit->setMinimum(side.Length->getMinimum());
+        side.rangeLengthEdit->setMaximum(side.Length->getMaximum());
+        side.rangeLengthEdit->setSingleStep(side.Length->getStepSize());
+        updateRangeLength(side);
+    }
 
     // --- Bind UI widgets to the correct properties ---
     side.lengthEdit->bind(*side.Length);
@@ -296,6 +314,8 @@ void TaskExtrudeParameters::readValuesFromHistory()
     ui->taperEdit2->setToLastUsedValue();
     ui->taperEdit2->selectNumber();
     syncStartEndLimits();
+    updateRangeLength(m_side1);
+    updateRangeLength(m_side2);
 }
 
 void TaskExtrudeParameters::connectSlots()
@@ -315,6 +335,19 @@ void TaskExtrudeParameters::connectSlots()
             this,
             [this, sideEnum](double val) { onOffsetChanged(val, sideEnum); }
         );
+        if (side.rangeLengthEdit) {
+            connect(
+                side.rangeLengthEdit,
+                qOverload<double>(&Gui::PrefQuantitySpinBox::valueChanged),
+                this,
+                [this, sideEnum](double val) { onRangeLengthChanged(val, sideEnum); }
+            );
+        }
+        if (side.rangeMode) {
+            connect(side.rangeMode, qOverload<int>(&QComboBox::currentIndexChanged), this, [this, sideEnum](int) {
+                onRangeModeChanged(sideEnum);
+            });
+        }
         connect(
             side.taperEdit,
             qOverload<double>(&Gui::PrefQuantitySpinBox::valueChanged),
@@ -717,6 +750,7 @@ void TaskExtrudeParameters::onLengthChanged(double len, Side side)
 
     sideController.Length->setValue(len);
     syncStartEndLimits();
+    updateRangeLength(sideController);
     tryRecomputeFeature();
     setGizmoPositions();
 }
@@ -747,6 +781,14 @@ void TaskExtrudeParameters::onOffsetChanged(double len, Side side)
             sideController.offsetEdit->setValue(len);
         }
 
+        if (isStartLengthMode(sideController)) {
+            const double rangeLength = sideController.rangeLengthEdit->value().getValue();
+            const double newEnd = len + rangeLength;
+            QSignalBlocker lengthBlock(sideController.lengthEdit);
+            sideController.lengthEdit->setValue(newEnd);
+            sideController.Length->setValue(newEnd);
+        }
+
         double end = sideController.lengthEdit->value().getValue();
         if (end < rangeMin) {
             end = rangeMin;
@@ -771,8 +813,34 @@ void TaskExtrudeParameters::onOffsetChanged(double len, Side side)
 
     sideController.Offset->setValue(len);
     syncStartEndLimits();
+    updateRangeLength(sideController);
     tryRecomputeFeature();
     setGizmoPositions();
+}
+
+void TaskExtrudeParameters::onRangeLengthChanged(double len, Side side)
+{
+    auto& sideController = getSideController(side);
+    if (!showOffsetInDimension() || !isLengthMode(side)) {
+        return;
+    }
+
+    const double start = sideController.offsetEdit->value().getValue();
+    const double end = start + len;
+    {
+        QSignalBlocker lengthBlock(sideController.lengthEdit);
+        sideController.lengthEdit->setValue(end);
+    }
+    sideController.Length->setValue(end);
+    syncStartEndLimits();
+    updateRangeLength(sideController);
+    tryRecomputeFeature();
+    setGizmoPositions();
+}
+
+void TaskExtrudeParameters::onRangeModeChanged(Side side)
+{
+    updateRangeLength(getSideController(side));
 }
 
 void TaskExtrudeParameters::onTaperChanged(double angle, Side side)
@@ -900,14 +968,36 @@ void TaskExtrudeParameters::placeOffsetBeforeLength()
 {
     auto* grid = ui->gridLayout;
 
+    if (!m_side1.labelRangeMode) {
+        m_side1.labelRangeMode = new QLabel(tr("Input"), proxy);
+        m_side1.labelRangeLength = new QLabel(tr("Length"), proxy);
+        m_side1.rangeLengthEdit = new Gui::PrefQuantitySpinBox(proxy);
+        m_side1.rangeLengthEdit->setUnitText(QStringLiteral("mm"));
+        m_side1.rangeLengthEdit->setToolTip(tr("Length between Start and End"));
+        m_side1.rangeMode = new QComboBox(proxy);
+        setupRangeModeCombo(m_side1.rangeMode);
+
+        m_side2.labelRangeMode = new QLabel(tr("Input"), proxy);
+        m_side2.labelRangeLength = new QLabel(tr("Length"), proxy);
+        m_side2.rangeLengthEdit = new Gui::PrefQuantitySpinBox(proxy);
+        m_side2.rangeLengthEdit->setUnitText(QStringLiteral("mm"));
+        m_side2.rangeLengthEdit->setToolTip(tr("Length between Start and End"));
+        m_side2.rangeMode = new QComboBox(proxy);
+        setupRangeModeCombo(m_side2.rangeMode);
+    }
+
     grid->removeWidget(ui->labelLength);
     grid->removeWidget(ui->lengthEdit);
     grid->removeWidget(ui->labelOffset);
     grid->removeWidget(ui->offsetEdit);
     grid->addWidget(ui->labelOffset, 3, 0);
     grid->addWidget(ui->offsetEdit, 3, 1);
+    grid->addWidget(m_side1.labelRangeMode, 3, 2);
+    grid->addWidget(m_side1.rangeMode, 3, 3);
     grid->addWidget(ui->labelLength, 4, 0);
     grid->addWidget(ui->lengthEdit, 4, 1);
+    grid->addWidget(m_side1.labelRangeLength, 4, 2);
+    grid->addWidget(m_side1.rangeLengthEdit, 4, 3);
 
     grid->removeWidget(ui->labelLength2);
     grid->removeWidget(ui->lengthEdit2);
@@ -915,8 +1005,12 @@ void TaskExtrudeParameters::placeOffsetBeforeLength()
     grid->removeWidget(ui->offsetEdit2);
     grid->addWidget(ui->labelOffset2, 10, 0);
     grid->addWidget(ui->offsetEdit2, 10, 1);
+    grid->addWidget(m_side2.labelRangeMode, 10, 2);
+    grid->addWidget(m_side2.rangeMode, 10, 3);
     grid->addWidget(ui->labelLength2, 11, 0);
     grid->addWidget(ui->lengthEdit2, 11, 1);
+    grid->addWidget(m_side2.labelRangeLength, 11, 2);
+    grid->addWidget(m_side2.rangeLengthEdit, 11, 3);
 }
 
 bool TaskExtrudeParameters::isLengthMode(Side side) const
@@ -926,13 +1020,30 @@ bool TaskExtrudeParameters::isLengthMode(Side side) const
     return static_cast<Mode>(index) == Mode::Dimension;
 }
 
+bool TaskExtrudeParameters::isStartLengthMode(const SideController& side) const
+{
+    return side.rangeMode && side.rangeMode->currentIndex() == 1;
+}
+
+void TaskExtrudeParameters::updateRangeLength(const SideController& side)
+{
+    if (!side.rangeLengthEdit) {
+        return;
+    }
+
+    QSignalBlocker block(side.rangeLengthEdit);
+    const double start = side.offsetEdit->value().getValue();
+    const double end = side.lengthEdit->value().getValue();
+    side.rangeLengthEdit->setValue(end - start);
+}
+
 void TaskExtrudeParameters::syncStartEndLimits()
 {
     if (!showOffsetInDimension()) {
         return;
     }
 
-    auto syncSide = [](SideController& side, bool lengthMode, double rangeMin, bool forceNonZeroRange) {
+    auto syncSide = [this](SideController& side, bool lengthMode, double rangeMin, bool forceNonZeroRange) {
         QSignalBlocker offsetBlock(side.offsetEdit);
         QSignalBlocker lengthBlock(side.lengthEdit);
 
@@ -974,6 +1085,7 @@ void TaskExtrudeParameters::syncStartEndLimits()
             side.lengthEdit->setValue(adjustedEnd);
             side.Length->setValue(adjustedEnd);
         }
+        updateRangeLength(side);
     };
 
     const auto sidesMode = static_cast<SidesMode>(ui->sidesMode->currentIndex());
@@ -1106,6 +1218,16 @@ void TaskExtrudeParameters::updateSideUI(
     s.labelOffset->setVisible(finalOffsetVisible);
     s.offsetEdit->setVisible(finalOffsetVisible);
     s.offsetEdit->setEnabled(finalOffsetVisible);
+
+    const bool finalRangeVisible = finalLengthVisible && finalOffsetVisible;
+    if (s.labelRangeMode) {
+        s.labelRangeMode->setVisible(finalRangeVisible);
+        s.rangeMode->setVisible(finalRangeVisible);
+        s.rangeMode->setEnabled(finalRangeVisible);
+        s.labelRangeLength->setVisible(finalRangeVisible);
+        s.rangeLengthEdit->setVisible(finalRangeVisible);
+        s.rangeLengthEdit->setEnabled(finalRangeVisible);
+    }
 
     const bool finalTaperVisible = isParentVisible && isTaperVisible;
     s.labelTaperAngle->setVisible(finalTaperVisible);

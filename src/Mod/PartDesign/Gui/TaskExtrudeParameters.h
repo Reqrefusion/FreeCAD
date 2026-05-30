@@ -143,10 +143,14 @@ protected:
         QComboBox* changeMode = nullptr;
         QLabel* labelLength = nullptr;
         QLabel* labelOffset = nullptr;
+        QLabel* labelRangeMode = nullptr;
+        QLabel* labelRangeLength = nullptr;
         QLabel* labelTaperAngle = nullptr;
         Gui::PrefQuantitySpinBox* lengthEdit = nullptr;
         Gui::PrefQuantitySpinBox* offsetEdit = nullptr;
+        Gui::PrefQuantitySpinBox* rangeLengthEdit = nullptr;
         Gui::PrefQuantitySpinBox* taperEdit = nullptr;
+        QComboBox* rangeMode = nullptr;
         QLineEdit* lineFaceName = nullptr;
         QToolButton* buttonFace = nullptr;
         QLineEdit* lineShapeName = nullptr;
@@ -192,6 +196,8 @@ private:
     void onModeChanged_Side2(int index);
     void onLengthChanged(double len, Side side);
     void onOffsetChanged(double len, Side side);
+    void onRangeLengthChanged(double len, Side side);
+    void onRangeModeChanged(Side side);
     void onTaperChanged(double angle, Side side);
     void onSelectFaceToggle(bool checked, Side side);
 
@@ -264,6 +270,8 @@ private:
 
     void createSideControllers();
     bool isLengthMode(Side side) const;
+    bool isStartLengthMode(const SideController& side) const;
+    void updateRangeLength(const SideController& side);
 
     std::unique_ptr<Gui::GizmoContainer> gizmoContainer;
     Gui::LinearGizmo* startGizmo1 = nullptr;
