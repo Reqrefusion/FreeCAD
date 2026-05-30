@@ -364,11 +364,22 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
         );
     };
 
-    if (Sidemethod == "Symmetric" && method == "Length"
-        && start1 < -Precision::Confusion()) {
+    auto nonNegativeRangeError = [&]() {
         return new App::DocumentObjectExecReturn(
-            QT_TRANSLATE_NOOP("Exception", "Start must not be negative in symmetric mode.")
+            QT_TRANSLATE_NOOP(
+                "Exception",
+                "Start and end must not be negative in symmetric or two-sided mode."
+            )
         );
+    };
+
+    if ((Sidemethod == "Symmetric" || Sidemethod == "Two sides") && method == "Length"
+        && (start1 < -Precision::Confusion() || L < -Precision::Confusion())) {
+        return nonNegativeRangeError();
+    }
+    if (Sidemethod == "Two sides" && method2 == "Length"
+        && (start2 < -Precision::Confusion() || L2 < -Precision::Confusion())) {
+        return nonNegativeRangeError();
     }
     if ((Sidemethod == "One side" || Sidemethod == "Symmetric") && method == "Length") {
         if (std::abs(effectiveL) < Precision::Confusion()) {
