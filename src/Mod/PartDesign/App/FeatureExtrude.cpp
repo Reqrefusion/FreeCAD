@@ -22,6 +22,7 @@
  *                                                                         *
  ***************************************************************************/
 
+#include <algorithm>
 #include <limits>
 #include <Mod/Part/App/FCBRepAlgoAPI_Fuse.h>
 #include <BRep_Builder.hxx>
@@ -347,8 +348,10 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
 
     double start1 = method == "Length" ? Offset.getValue() : 0.0;
     double start2 = Sidemethod == "Two sides" && method2 == "Length" ? Offset2.getValue() : 0.0;
-    double effectiveL = method == "Length" ? L - start1 : L;
-    double effectiveL2 = Sidemethod == "Two sides" && method2 == "Length" ? L2 - start2 : L2;
+    double effectiveL = method == "Length" ? std::abs(L - start1) : L;
+    double effectiveL2 = Sidemethod == "Two sides" && method2 == "Length"
+        ? std::abs(L2 - start2)
+        : L2;
 
     auto totalLengthZeroError = [&]() {
         if (addSubType == Type::Additive) {
@@ -361,22 +364,12 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
         );
     };
 
-    if (Sidemethod == "Symmetric" && method == "Length" && start1 < -Precision::Confusion()) {
+    if (Sidemethod == "Symmetric" && method == "Length"
+        && start1 < -Precision::Confusion()) {
         return new App::DocumentObjectExecReturn(
             QT_TRANSLATE_NOOP("Exception", "Start must not be negative in symmetric mode.")
         );
     }
-    if (method == "Length" && effectiveL < -Precision::Confusion()) {
-        return new App::DocumentObjectExecReturn(
-            QT_TRANSLATE_NOOP("Exception", "End must not be smaller than start on side 1.")
-        );
-    }
-    if (Sidemethod == "Two sides" && method2 == "Length" && effectiveL2 < -Precision::Confusion()) {
-        return new App::DocumentObjectExecReturn(
-            QT_TRANSLATE_NOOP("Exception", "End must not be smaller than start on side 2.")
-        );
-    }
-
     if ((Sidemethod == "One side" || Sidemethod == "Symmetric") && method == "Length") {
         if (std::abs(effectiveL) < Precision::Confusion()) {
             return totalLengthZeroError();
@@ -512,6 +505,9 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
         }
         sketchshape.move(invObjLoc);
 
+        const double extrusionStart1 = method == "Length" ? std::min(start1, L) : start1;
+        const double extrusionStart2 = method2 == "Length" ? std::min(start2, L2) : start2;
+
         std::vector<TopoShape> prisms;  // Stores prisms, all in global CS
         double taper1 = TaperAngle.getValue();
         double offset1 = Offset.getValue();
@@ -531,7 +527,7 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
 
         if (Sidemethod == "One side") {
             TopoShape prism1 = generateSingleExtrusionSide(
-                movedSketchForLengthStart(sketchshape, method, start1, dir),
+                movedSketchForLengthStart(sketchshape, method, extrusionStart1, dir),
                 method,
                 method == "Length" ? effectiveL : L,
                 taper1,
@@ -553,7 +549,7 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
                 gp_Dir dir2 = dir;
                 dir2.Reverse();
 
-                const double symmetricStart = start1 / 2.0;
+                const double symmetricStart = extrusionStart1 / 2.0;
                 const double symmetricLength = effectiveL / 2.0;
 
                 TopoShape prism1 = generateSingleExtrusionSide(
@@ -681,7 +677,7 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
             }
             else {
                 TopoShape prism1 = generateSingleExtrusionSide(
-                    movedSketchForLengthStart(sketchshape, method, start1, dir),
+                    movedSketchForLengthStart(sketchshape, method, extrusionStart1, dir),
                     method,
                     method == "Length" ? effectiveL : L,
                     taper1,
@@ -699,7 +695,7 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
 
                 // Side 2
                 TopoShape prism2 = generateSingleExtrusionSide(
-                    movedSketchForLengthStart(sketchshape, method2, start2, dir2),
+                    movedSketchForLengthStart(sketchshape, method2, extrusionStart2, dir2),
                     method2,
                     method2 == "Length" ? effectiveL2 : L2,
                     taper2,

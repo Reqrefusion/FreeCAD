@@ -58,8 +58,8 @@ Revolved::Revolved()
 short Revolved::mustExecute() const
 {
     if (Placement.isTouched() || ReferenceAxis.isTouched() || Axis.isTouched() || Base.isTouched()
-        || UpToFace.isTouched() || Angle.isTouched() || Angle2.isTouched() || StartAngle.isTouched()
-        || StartAngle2.isTouched()) {
+        || UpToFace.isTouched() || Angle.isTouched() || Angle2.isTouched()
+        || StartAngle.isTouched() || StartAngle2.isTouched()) {
         return 1;
     }
     return ProfileBased::mustExecute();
@@ -121,16 +121,19 @@ App::DocumentObjectExecReturn* Revolved::tryExecuteRevolved(Part::RevolMode revo
     }
     else if (method == RevolMethod::TwoAngles) {
         if (angle - startAngle < -Precision::Angular()) {
-            return new App::DocumentObjectExecReturn(
-                QT_TRANSLATE_NOOP("Exception", "End angle must not be smaller than start angle on side 1")
-            );
+            return new App::DocumentObjectExecReturn(QT_TRANSLATE_NOOP(
+                "Exception",
+                "End angle must not be smaller than start angle on side 1"
+            ));
         }
         if (angle2 - startAngle2 < -Precision::Angular()) {
-            return new App::DocumentObjectExecReturn(
-                QT_TRANSLATE_NOOP("Exception", "End angle must not be smaller than start angle on side 2")
-            );
+            return new App::DocumentObjectExecReturn(QT_TRANSLATE_NOOP(
+                "Exception",
+                "End angle must not be smaller than start angle on side 2"
+            ));
         }
-        if (std::fabs(angle - startAngle) + std::fabs(angle2 - startAngle2) < Precision::Angular()) {
+        if (std::fabs(angle - startAngle) + std::fabs(angle2 - startAngle2)
+            < Precision::Angular()) {
             return new App::DocumentObjectExecReturn(
                 QT_TRANSLATE_NOOP("Exception", "Cannot create a revolution with zero angle")
             );
@@ -423,7 +426,9 @@ void Revolved::generateRevolution(
             std::remove_if(
                 revolutions.begin(),
                 revolutions.end(),
-                [](const TopoShape& shape) { return shape.isNull() || shape.getShape().IsNull(); }
+                [](const TopoShape& shape) {
+                    return shape.isNull() || shape.getShape().IsNull();
+                }
             ),
             revolutions.end()
         );

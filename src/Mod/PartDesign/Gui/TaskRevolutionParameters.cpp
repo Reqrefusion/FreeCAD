@@ -773,11 +773,11 @@ void TaskRevolutionParameters::onReversed(bool on)
 void TaskRevolutionParameters::syncStartEndAngleLimits()
 {
     auto syncAngleRange = [](auto* startEdit,
-                             auto* endEdit,
-                             auto* startProp,
-                             auto* endProp,
-                             bool active,
-                             double requiredGap) {
+                              auto* endEdit,
+                              auto* startProp,
+                              auto* endProp,
+                              bool active,
+                              double requiredGap) {
         QSignalBlocker startBlock(startEdit);
         QSignalBlocker endBlock(endEdit);
 
@@ -812,8 +812,14 @@ void TaskRevolutionParameters::syncStartEndAngleLimits()
             }
         }
 
-        const double maxStart = std::max(startMin, std::min(startMax, end - requiredGap));
-        const double minEnd = std::min(endMax, std::max(endMin, start + requiredGap));
+        const double maxStart = std::max(
+            startMin,
+            std::min(startMax, end - requiredGap)
+        );
+        const double minEnd = std::min(
+            endMax,
+            std::max(endMin, start + requiredGap)
+        );
         startEdit->setMaximum(maxStart);
         endEdit->setMinimum(minEnd);
     };
@@ -1033,8 +1039,9 @@ void TaskRevolutionParameters::setGizmoPositions()
         axisDir = -axisDir;
     }
 
-    const double firstSideMultFactor = sideType == "Angle" && symmetric ? defaultGizmoMultFactor / 2.0
-                                                                        : defaultGizmoMultFactor;
+    const double firstSideMultFactor = sideType == "Angle" && symmetric
+        ? defaultGizmoMultFactor / 2.0
+        : defaultGizmoMultFactor;
     startRotationGizmo->setMultFactor(firstSideMultFactor);
     rotationGizmo->setMultFactor(firstSideMultFactor);
     startRotationGizmo2->setMultFactor(defaultGizmoMultFactor);
@@ -1046,7 +1053,9 @@ void TaskRevolutionParameters::setGizmoPositions()
     const double endAngle2Rad = ui->revolveAngle2->rawValue() * defaultGizmoMultFactor;
 
     startRotationGizmo->Gizmo::setDraggerPlacement(basePos + axisComp, normalComp);
-    startRotationGizmo->getDraggerContainer()->setArcNormalDirection(Base::convertTo<SbVec3f>(axisDir));
+    startRotationGizmo->getDraggerContainer()->setArcNormalDirection(
+        Base::convertTo<SbVec3f>(axisDir)
+    );
     startRotationGizmo->setVisibility(sideType == "Angle" || sideType == "TwoAngles");
 
     rotationGizmo->Gizmo::setDraggerPlacement(basePos + axisComp, normalComp);
@@ -1061,7 +1070,9 @@ void TaskRevolutionParameters::setGizmoPositions()
     startRotationGizmo2->setVisibility(sideType == "TwoAngles");
 
     rotationGizmo2->Gizmo::setDraggerPlacement(basePos + axisComp, normalComp);
-    rotationGizmo2->getDraggerContainer()->setArcNormalDirection(Base::convertTo<SbVec3f>(-axisDir));
+    rotationGizmo2->getDraggerContainer()->setArcNormalDirection(
+        Base::convertTo<SbVec3f>(-axisDir)
+    );
     rotationGizmo2->setBaseAngleRange(startAngle2Rad, endAngle2Rad);
     rotationGizmo2->setVisibility(sideType == "TwoAngles");
 }

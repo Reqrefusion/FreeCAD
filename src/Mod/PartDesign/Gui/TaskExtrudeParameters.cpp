@@ -53,7 +53,6 @@ using namespace Gui;
 
 namespace
 {
-constexpr double minimumLinearStartEndGap = 1.0e-7;
 constexpr float startGizmoPointRadius = 1.15F;
 
 void makeStartGizmoPointLike(Gui::LinearGizmo* gizmo)
@@ -681,23 +680,6 @@ void TaskExtrudeParameters::onLengthChanged(double len, Side side)
             sideController.offsetEdit->setValue(start);
             sideController.Offset->setValue(start);
         }
-
-        const double minEnd = start + minimumLinearStartEndGap;
-        if (len < minEnd) {
-            if (minEnd <= sideController.Length->getMaximum()) {
-                len = minEnd;
-            }
-            else {
-                len = sideController.Length->getMaximum();
-                start = std::max(minStart, len - minimumLinearStartEndGap);
-                QSignalBlocker offsetBlock(sideController.offsetEdit);
-                sideController.offsetEdit->setValue(start);
-                sideController.Offset->setValue(start);
-            }
-
-            QSignalBlocker lengthBlock(sideController.lengthEdit);
-            sideController.lengthEdit->setValue(len);
-        }
     }
 
     sideController.Length->setValue(len);
@@ -715,26 +697,8 @@ void TaskExtrudeParameters::onOffsetChanged(double len, Side side)
         const double minStart = enforceNonNegativeStart
             ? std::max(0.0, sideController.Offset->getMinimum())
             : sideController.Offset->getMinimum();
-        double end = sideController.lengthEdit->value().getValue();
         if (len < minStart) {
             len = minStart;
-            QSignalBlocker offsetBlock(sideController.offsetEdit);
-            sideController.offsetEdit->setValue(len);
-        }
-
-        const double maxStart = end - minimumLinearStartEndGap;
-        if (len > maxStart) {
-            if (maxStart >= minStart) {
-                len = maxStart;
-            }
-            else {
-                len = minStart;
-                end = len + minimumLinearStartEndGap;
-                QSignalBlocker lengthBlock(sideController.lengthEdit);
-                sideController.lengthEdit->setValue(end);
-                sideController.Length->setValue(end);
-            }
-
             QSignalBlocker offsetBlock(sideController.offsetEdit);
             sideController.offsetEdit->setValue(len);
         }
@@ -908,49 +872,24 @@ void TaskExtrudeParameters::syncStartEndLimits()
         QSignalBlocker lengthBlock(side.lengthEdit);
 
         const double offsetPropMin = side.Offset->getMinimum();
-        const double offsetMin = lengthMode && enforceNonNegativeStart ? std::max(0.0, offsetPropMin)
-                                                                       : offsetPropMin;
-        const double offsetMax = side.Offset->getMaximum();
-        const double lengthMin = side.Length->getMinimum();
-        const double lengthMax = side.Length->getMaximum();
+        const double offsetMin = lengthMode && enforceNonNegativeStart
+            ? std::max(0.0, offsetPropMin)
+            : offsetPropMin;
 
         side.offsetEdit->setMinimum(offsetMin);
-        side.offsetEdit->setMaximum(offsetMax);
-        side.lengthEdit->setMinimum(lengthMin);
-        side.lengthEdit->setMaximum(lengthMax);
+        side.offsetEdit->setMaximum(side.Offset->getMaximum());
+        side.lengthEdit->setMinimum(side.Length->getMinimum());
+        side.lengthEdit->setMaximum(side.Length->getMaximum());
 
         if (!lengthMode) {
             return;
         }
 
-        double start = side.offsetEdit->value().getValue();
-        double end = side.lengthEdit->value().getValue();
+        const double start = side.offsetEdit->value().getValue();
         if (start < offsetMin) {
-            start = offsetMin;
-            side.offsetEdit->setValue(start);
-            side.Offset->setValue(start);
+            side.offsetEdit->setValue(offsetMin);
+            side.Offset->setValue(offsetMin);
         }
-
-        if (end - start < minimumLinearStartEndGap) {
-            const double adjustedEnd = start + minimumLinearStartEndGap;
-            if (adjustedEnd <= lengthMax) {
-                end = adjustedEnd;
-                side.lengthEdit->setValue(end);
-                side.Length->setValue(end);
-            }
-            else {
-                start = std::max(offsetMin, end - minimumLinearStartEndGap);
-                side.offsetEdit->setValue(start);
-                side.Offset->setValue(start);
-            }
-        }
-
-        const double maxStart
-            = std::max(offsetMin, std::min(offsetMax, end - minimumLinearStartEndGap));
-        const double minEnd
-            = std::min(lengthMax, std::max(lengthMin, start + minimumLinearStartEndGap));
-        side.offsetEdit->setMaximum(maxStart);
-        side.lengthEdit->setMinimum(minEnd);
     };
 
     const auto sidesMode = static_cast<SidesMode>(ui->sidesMode->currentIndex());
