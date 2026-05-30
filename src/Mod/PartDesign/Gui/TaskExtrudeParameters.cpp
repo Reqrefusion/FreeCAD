@@ -684,8 +684,8 @@ void TaskExtrudeParameters::onLengthChanged(double len, Side side)
         }
 
         if (std::fabs(len - start) < minimumLinearStartEndGap) {
-            const double lengthMax = sideController.Length->getMaximum();
-            const double lengthMin = sideController.Length->getMinimum();
+            const double lengthMax = sideController.lengthEdit->maximum();
+            const double lengthMin = sideController.lengthEdit->minimum();
             double adjustedEnd = start + minimumLinearStartEndGap;
             if (adjustedEnd > lengthMax) {
                 adjustedEnd = start - minimumLinearStartEndGap;
@@ -720,8 +720,8 @@ void TaskExtrudeParameters::onOffsetChanged(double len, Side side)
 
         const double end = sideController.lengthEdit->value().getValue();
         if (std::fabs(end - len) < minimumLinearStartEndGap) {
-            const double lengthMax = sideController.Length->getMaximum();
-            const double lengthMin = sideController.Length->getMinimum();
+            const double lengthMax = sideController.lengthEdit->maximum();
+            const double lengthMin = sideController.lengthEdit->minimum();
             double adjustedEnd = len + minimumLinearStartEndGap;
             if (adjustedEnd > lengthMax) {
                 adjustedEnd = len - minimumLinearStartEndGap;
@@ -901,14 +901,17 @@ void TaskExtrudeParameters::syncStartEndLimits()
         QSignalBlocker lengthBlock(side.lengthEdit);
 
         const double offsetPropMin = side.Offset->getMinimum();
+        const double offsetPropMax = side.Offset->getMaximum();
         const double offsetMin = lengthMode && enforceNonNegativeStart
             ? std::max(0.0, offsetPropMin)
             : offsetPropMin;
+        const double lengthMin = lengthMode ? offsetPropMin : side.Length->getMinimum();
+        const double lengthMax = lengthMode ? offsetPropMax : side.Length->getMaximum();
 
         side.offsetEdit->setMinimum(offsetMin);
-        side.offsetEdit->setMaximum(side.Offset->getMaximum());
-        side.lengthEdit->setMinimum(side.Length->getMinimum());
-        side.lengthEdit->setMaximum(side.Length->getMaximum());
+        side.offsetEdit->setMaximum(offsetPropMax);
+        side.lengthEdit->setMinimum(lengthMin);
+        side.lengthEdit->setMaximum(lengthMax);
 
         if (!lengthMode) {
             return;
@@ -923,8 +926,6 @@ void TaskExtrudeParameters::syncStartEndLimits()
 
         const double end = side.lengthEdit->value().getValue();
         if (std::fabs(end - start) < minimumLinearStartEndGap) {
-            const double lengthMin = side.Length->getMinimum();
-            const double lengthMax = side.Length->getMaximum();
             double adjustedEnd = start + minimumLinearStartEndGap;
             if (adjustedEnd > lengthMax) {
                 adjustedEnd = start - minimumLinearStartEndGap;
@@ -1621,48 +1622,21 @@ void TaskExtrudeParameters::setGizmoPositions()
         multFactor /= lengthFactor;
     }
 
-    const auto endGizmoAddFactor = [](const SideController& side, double factor) {
-        const double minTranslation = std::min(
-            side.lengthEdit->minimum() * factor,
-            side.lengthEdit->maximum() * factor
-        );
-        return minTranslation < 0.0 ? -minTranslation : 0.0;
-    };
-
-    const double endAddFactor1 = endGizmoAddFactor(m_side1, multFactor);
-    const double endAddFactor2 = endGizmoAddFactor(m_side2, multFactor);
-
     startGizmo1->setMultFactor(multFactor);
     lengthGizmo1->setMultFactor(multFactor);
     startGizmo2->setMultFactor(multFactor);
     lengthGizmo2->setMultFactor(multFactor);
-
-    startGizmo1->setAddFactor(0.0);
-    lengthGizmo1->setAddFactor(endAddFactor1);
-    startGizmo2->setAddFactor(0.0);
-    lengthGizmo2->setAddFactor(endAddFactor2);
 
     auto setLinearGizmoRange = [](Gui::LinearGizmo* startGizmo,
                                   Gui::LinearGizmo* endGizmo,
                                   const Base::Vector3d& center,
                                   const Base::Vector3d& direction,
                                   double start,
-                                  double factor,
-                                  double endAddFactor) {
+                                  double factor) {
         startGizmo->Gizmo::setDraggerPlacement(center, direction);
 
-        if (endAddFactor > 0.0) {
-            const Base::Vector3d unitDirection = direction.Normalized();
-            endGizmo->Gizmo::setDraggerPlacement(
-                center - unitDirection * endAddFactor,
-                unitDirection
-            );
-            endGizmo->setBaseStart(start * factor + endAddFactor);
-        }
-        else {
-            endGizmo->Gizmo::setDraggerPlacement(center, direction);
-            endGizmo->setBaseStart(start * factor);
-        }
+        endGizmo->Gizmo::setDraggerPlacement(center, direction);
+        endGizmo->setBaseStart(start * factor);
     };
 
     setLinearGizmoRange(
@@ -1671,8 +1645,7 @@ void TaskExtrudeParameters::setGizmoPositions()
         center,
         extrude->Direction.getValue() * dir,
         ui->offsetEdit->value().getValue(),
-        multFactor,
-        endAddFactor1
+        multFactor
     );
     startGizmo1->setVisibility(showStartGizmo1);
     lengthGizmo1->setVisibility(extrudeType == "Length");
@@ -1685,8 +1658,7 @@ void TaskExtrudeParameters::setGizmoPositions()
         center,
         -extrude->Direction.getValue() * dir,
         ui->offsetEdit2->value().getValue(),
-        multFactor,
-        endAddFactor2
+        multFactor
     );
     startGizmo2->setVisibility(showStartGizmo2);
     lengthGizmo2->setVisibility(sideType == "Two sides" && extrudeType2 == "Length");
