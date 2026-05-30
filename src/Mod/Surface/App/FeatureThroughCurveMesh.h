@@ -33,7 +33,10 @@ public:
     App::PropertyIntegerList PrimaryCurveGroupSizes;
     App::PropertyLinkSubList CrossCurves;
     App::PropertyIntegerList CrossCurveGroupSizes;
-    App::PropertyLinkSubList SupportFaces;
+    App::PropertyLinkSubList FirstPrimarySupportFaces;
+    App::PropertyLinkSubList LastPrimarySupportFaces;
+    App::PropertyLinkSubList FirstCrossSupportFaces;
+    App::PropertyLinkSubList LastCrossSupportFaces;
     App::PropertyFloatConstraint Tolerance;
     App::PropertyFloatConstraint PositionTolerance;
     App::PropertyIntegerConstraint Samples;
@@ -44,7 +47,10 @@ public:
     App::PropertyEnumeration Construction;
     App::PropertyEnumeration Parameterization;
     App::PropertyEnumeration SurfaceContinuity;
-    App::PropertyEnumeration BoundaryContinuity;
+    App::PropertyEnumeration FirstPrimaryContinuity;
+    App::PropertyEnumeration LastPrimaryContinuity;
+    App::PropertyEnumeration FirstCrossContinuity;
+    App::PropertyEnumeration LastCrossContinuity;
     App::PropertyIntegerConstraint MinDegree;
     App::PropertyIntegerConstraint MaxDegree;
     App::PropertyFloatConstraint SmoothLengthWeight;

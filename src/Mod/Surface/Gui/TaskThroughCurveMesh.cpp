@@ -583,10 +583,16 @@ ThroughCurveMeshPanel::ThroughCurveMeshPanel(
     , editedObject(obj)
     , primaryList(nullptr)
     , crossList(nullptr)
-    , supportFaceList(nullptr)
+    , firstPrimarySupportFaceList(nullptr)
+    , lastPrimarySupportFaceList(nullptr)
+    , firstCrossSupportFaceList(nullptr)
+    , lastCrossSupportFaceList(nullptr)
     , primaryCountLabel(nullptr)
     , crossCountLabel(nullptr)
-    , supportFaceCountLabel(nullptr)
+    , firstPrimarySupportFaceCountLabel(nullptr)
+    , lastPrimarySupportFaceCountLabel(nullptr)
+    , firstCrossSupportFaceCountLabel(nullptr)
+    , lastCrossSupportFaceCountLabel(nullptr)
     , statusLabel(nullptr)
     , deviationLabel(nullptr)
     , gapLabel(nullptr)
@@ -597,7 +603,10 @@ ThroughCurveMeshPanel::ThroughCurveMeshPanel(
     , autoSortCheck(nullptr)
     , emphasisCombo(nullptr)
     , parameterizationCombo(nullptr)
-    , continuityCombo(nullptr)
+    , firstPrimaryContinuityCombo(nullptr)
+    , lastPrimaryContinuityCombo(nullptr)
+    , firstCrossContinuityCombo(nullptr)
+    , lastCrossContinuityCombo(nullptr)
 {
     setupUi();
     populateLists();
@@ -643,37 +652,65 @@ void ThroughCurveMeshPanel::setupUi()
 
     auto* continuityGroup = new QGroupBox(tr("Boundary continuity"), this);
     auto* continuityLayout = new QGridLayout(continuityGroup);
+    continuityLayout->addWidget(new QLabel(tr("Boundary"), continuityGroup), 0, 0);
+    continuityLayout->addWidget(new QLabel(tr("Continuity"), continuityGroup), 0, 1);
+    continuityLayout->addWidget(new QLabel(tr("Support faces"), continuityGroup), 0, 2);
 
-    continuityCombo = new QComboBox(continuityGroup);
-    continuityCombo->addItem(tr("G0 (Position)"));
-    continuityCombo->addItem(tr("G1 tangent"));
-    continuityCombo->addItem(tr("G2 curvature"));
-    continuityCombo->setToolTip(tr("G0 constrains position along the selected boundary curves and does not require adjacent support faces. G1/G2 requires adjacent support faces."));
+    auto makeContinuityCombo = [this, continuityGroup]() {
+        auto* combo = new QComboBox(continuityGroup);
+        combo->addItem(tr("G0 (Position)"));
+        combo->addItem(tr("G1 tangent"));
+        combo->addItem(tr("G2 curvature"));
+        combo->setToolTip(tr("G0 does not require a support face. G1/G2 uses the selected adjacent support face for that boundary."));
+        return combo;
+    };
 
-    supportFaceCountLabel = new QLabel(continuityGroup);
-    auto* addSupportButton = new QPushButton(tr("Add selected faces"), continuityGroup);
-    addSupportButton->setToolTip(tr("Adds selected adjacent faces used by OCCT for G1/G2 boundary continuity."));
-    auto* removeSupportButton = makeToolButton(continuityGroup, tr("Remove"), tr("Remove selected support faces"));
-    auto* clearSupportButton = makeToolButton(continuityGroup, tr("Clear"), tr("Clear support faces"));
-    supportFaceList = new QListWidget(continuityGroup);
-    supportFaceList->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    supportFaceList->setAlternatingRowColors(true);
+    auto addBoundaryRow = [this, continuityGroup, continuityLayout, makeContinuityCombo](
+                              int row,
+                              Boundary boundary,
+                              const QString& label,
+                              QComboBox*& combo,
+                              QListWidget*& list,
+                              QLabel*& countLabel) {
+        combo = makeContinuityCombo();
+        countLabel = new QLabel(continuityGroup);
+        auto* addButton = makeToolButton(continuityGroup, tr("Add"), tr("Add selected adjacent faces for this boundary"));
+        auto* removeButton = makeToolButton(continuityGroup, tr("Remove"), tr("Remove selected support faces for this boundary"));
+        auto* clearButton = makeToolButton(continuityGroup, tr("Clear"), tr("Clear support faces for this boundary"));
+        list = new QListWidget(continuityGroup);
+        list->setSelectionMode(QAbstractItemView::ExtendedSelection);
+        list->setAlternatingRowColors(true);
+        list->setMaximumHeight(58);
 
-    auto* supportButtons = new QVBoxLayout();
-    supportButtons->addWidget(removeSupportButton);
-    supportButtons->addWidget(clearSupportButton);
-    supportButtons->addStretch(1);
+        auto* buttons = new QHBoxLayout();
+        buttons->setContentsMargins(0, 0, 0, 0);
+        buttons->addWidget(addButton);
+        buttons->addWidget(removeButton);
+        buttons->addWidget(clearButton);
+        buttons->addStretch(1);
 
-    continuityLayout->addWidget(new QLabel(tr("Continuity"), continuityGroup), 0, 0);
-    continuityLayout->addWidget(continuityCombo, 0, 1);
-    continuityLayout->addWidget(supportFaceCountLabel, 1, 0);
-    continuityLayout->addWidget(addSupportButton, 1, 1);
-    continuityLayout->addWidget(supportFaceList, 2, 0, 1, 2);
-    continuityLayout->addLayout(supportButtons, 2, 2);
+        auto* faceCell = new QWidget(continuityGroup);
+        auto* faceLayout = new QVBoxLayout(faceCell);
+        faceLayout->setContentsMargins(0, 0, 0, 0);
+        faceLayout->setSpacing(2);
+        faceLayout->addWidget(countLabel);
+        faceLayout->addWidget(list);
+        faceLayout->addLayout(buttons);
 
-    connect(addSupportButton, &QPushButton::clicked, this, &ThroughCurveMeshPanel::addSelectedSupportFaces);
-    connect(removeSupportButton, &QToolButton::clicked, this, &ThroughCurveMeshPanel::removeSelectedSupportFaces);
-    connect(clearSupportButton, &QToolButton::clicked, this, &ThroughCurveMeshPanel::clearSupportFaces);
+        continuityLayout->addWidget(new QLabel(label, continuityGroup), row, 0);
+        continuityLayout->addWidget(combo, row, 1);
+        continuityLayout->addWidget(faceCell, row, 2);
+
+        connect(addButton, &QToolButton::clicked, this, [this, boundary]() { addSelectedSupportFaces(boundary); });
+        connect(removeButton, &QToolButton::clicked, this, [this, boundary]() { removeSelectedSupportFaces(boundary); });
+        connect(clearButton, &QToolButton::clicked, this, [this, boundary]() { clearSupportFaces(boundary); });
+    };
+
+    addBoundaryRow(1, Boundary::FirstPrimary, tr("First primary"), firstPrimaryContinuityCombo, firstPrimarySupportFaceList, firstPrimarySupportFaceCountLabel);
+    addBoundaryRow(2, Boundary::LastPrimary, tr("Last primary"), lastPrimaryContinuityCombo, lastPrimarySupportFaceList, lastPrimarySupportFaceCountLabel);
+    addBoundaryRow(3, Boundary::FirstCross, tr("First cross"), firstCrossContinuityCombo, firstCrossSupportFaceList, firstCrossSupportFaceCountLabel);
+    addBoundaryRow(4, Boundary::LastCross, tr("Last cross"), lastCrossContinuityCombo, lastCrossSupportFaceList, lastCrossSupportFaceCountLabel);
+
     mainLayout->addWidget(continuityGroup);
 
     auto* settingsGroup = new QGroupBox(tr("Settings"), this);
@@ -735,7 +772,10 @@ void ThroughCurveMeshPanel::setupUi()
     connect(autoSortCheck, &QCheckBox::toggled, this, optionChanged);
     connect(emphasisCombo, qOverload<int>(&QComboBox::currentIndexChanged), this, optionChanged);
     connect(parameterizationCombo, qOverload<int>(&QComboBox::currentIndexChanged), this, optionChanged);
-    connect(continuityCombo, qOverload<int>(&QComboBox::currentIndexChanged), this, optionChanged);
+    connect(firstPrimaryContinuityCombo, qOverload<int>(&QComboBox::currentIndexChanged), this, optionChanged);
+    connect(lastPrimaryContinuityCombo, qOverload<int>(&QComboBox::currentIndexChanged), this, optionChanged);
+    connect(firstCrossContinuityCombo, qOverload<int>(&QComboBox::currentIndexChanged), this, optionChanged);
+    connect(lastCrossContinuityCombo, qOverload<int>(&QComboBox::currentIndexChanged), this, optionChanged);
 
     mainLayout->addWidget(settingsGroup);
 
@@ -800,14 +840,20 @@ void ThroughCurveMeshPanel::populateLists()
 {
     primaryList->clear();
     crossList->clear();
-    supportFaceList->clear();
+    firstPrimarySupportFaceList->clear();
+    lastPrimarySupportFaceList->clear();
+    firstCrossSupportFaceList->clear();
+    lastCrossSupportFaceList->clear();
     if (!editedObject) {
         return;
     }
 
     appendPropertyRefs(primaryList, editedObject->PrimaryCurves, editedObject->PrimaryCurveGroupSizes);
     appendPropertyRefs(crossList, editedObject->CrossCurves, editedObject->CrossCurveGroupSizes);
-    appendFaceRefs(supportFaceList, editedObject->SupportFaces);
+    appendFaceRefs(firstPrimarySupportFaceList, editedObject->FirstPrimarySupportFaces);
+    appendFaceRefs(lastPrimarySupportFaceList, editedObject->LastPrimarySupportFaces);
+    appendFaceRefs(firstCrossSupportFaceList, editedObject->FirstCrossSupportFaces);
+    appendFaceRefs(lastCrossSupportFaceList, editedObject->LastCrossSupportFaces);
 }
 
 void ThroughCurveMeshPanel::loadOptionsFromObject()
@@ -823,7 +869,10 @@ void ThroughCurveMeshPanel::loadOptionsFromObject()
     autoSortCheck->blockSignals(true);
     emphasisCombo->blockSignals(true);
     parameterizationCombo->blockSignals(true);
-    continuityCombo->blockSignals(true);
+    firstPrimaryContinuityCombo->blockSignals(true);
+    lastPrimaryContinuityCombo->blockSignals(true);
+    firstCrossContinuityCombo->blockSignals(true);
+    lastCrossContinuityCombo->blockSignals(true);
 
     intersectionToleranceSpin->setValue(editedObject->Tolerance.getValue());
     fitToleranceSpin->setValue(editedObject->PositionTolerance.getValue());
@@ -832,7 +881,10 @@ void ThroughCurveMeshPanel::loadOptionsFromObject()
     autoSortCheck->setChecked(editedObject->AutoSort.getValue());
     emphasisCombo->setCurrentIndex(static_cast<int>(editedObject->Emphasis.getValue()));
     parameterizationCombo->setCurrentIndex(static_cast<int>(editedObject->Parameterization.getValue()));
-    continuityCombo->setCurrentIndex(static_cast<int>(editedObject->BoundaryContinuity.getValue()));
+    firstPrimaryContinuityCombo->setCurrentIndex(static_cast<int>(editedObject->FirstPrimaryContinuity.getValue()));
+    lastPrimaryContinuityCombo->setCurrentIndex(static_cast<int>(editedObject->LastPrimaryContinuity.getValue()));
+    firstCrossContinuityCombo->setCurrentIndex(static_cast<int>(editedObject->FirstCrossContinuity.getValue()));
+    lastCrossContinuityCombo->setCurrentIndex(static_cast<int>(editedObject->LastCrossContinuity.getValue()));
 
     intersectionToleranceSpin->blockSignals(false);
     fitToleranceSpin->blockSignals(false);
@@ -841,7 +893,10 @@ void ThroughCurveMeshPanel::loadOptionsFromObject()
     autoSortCheck->blockSignals(false);
     emphasisCombo->blockSignals(false);
     parameterizationCombo->blockSignals(false);
-    continuityCombo->blockSignals(false);
+    firstPrimaryContinuityCombo->blockSignals(false);
+    lastPrimaryContinuityCombo->blockSignals(false);
+    firstCrossContinuityCombo->blockSignals(false);
+    lastCrossContinuityCombo->blockSignals(false);
 }
 
 QListWidget* ThroughCurveMeshPanel::listForFamily(Family family) const
@@ -852,6 +907,51 @@ QListWidget* ThroughCurveMeshPanel::listForFamily(Family family) const
 QLabel* ThroughCurveMeshPanel::countLabelForFamily(Family family) const
 {
     return family == Family::Primary ? primaryCountLabel : crossCountLabel;
+}
+
+QListWidget* ThroughCurveMeshPanel::supportFaceListForBoundary(Boundary boundary) const
+{
+    switch (boundary) {
+        case Boundary::LastPrimary:
+            return lastPrimarySupportFaceList;
+        case Boundary::FirstCross:
+            return firstCrossSupportFaceList;
+        case Boundary::LastCross:
+            return lastCrossSupportFaceList;
+        case Boundary::FirstPrimary:
+        default:
+            return firstPrimarySupportFaceList;
+    }
+}
+
+QLabel* ThroughCurveMeshPanel::supportFaceCountLabelForBoundary(Boundary boundary) const
+{
+    switch (boundary) {
+        case Boundary::LastPrimary:
+            return lastPrimarySupportFaceCountLabel;
+        case Boundary::FirstCross:
+            return firstCrossSupportFaceCountLabel;
+        case Boundary::LastCross:
+            return lastCrossSupportFaceCountLabel;
+        case Boundary::FirstPrimary:
+        default:
+            return firstPrimarySupportFaceCountLabel;
+    }
+}
+
+QComboBox* ThroughCurveMeshPanel::continuityComboForBoundary(Boundary boundary) const
+{
+    switch (boundary) {
+        case Boundary::LastPrimary:
+            return lastPrimaryContinuityCombo;
+        case Boundary::FirstCross:
+            return firstCrossContinuityCombo;
+        case Boundary::LastCross:
+            return lastCrossContinuityCombo;
+        case Boundary::FirstPrimary:
+        default:
+            return firstPrimaryContinuityCombo;
+    }
 }
 
 void ThroughCurveMeshPanel::openTransactionIfNeeded()
@@ -890,12 +990,12 @@ void ThroughCurveMeshPanel::addSelected(Family family)
     updateCounts();
 }
 
-void ThroughCurveMeshPanel::addSelectedSupportFaces()
+void ThroughCurveMeshPanel::addSelectedSupportFaces(Boundary boundary)
 {
     openTransactionIfNeeded();
-    const int added = addSelectedFaces(supportFaceList, editedObject);
+    const int added = addSelectedFaces(supportFaceListForBoundary(boundary), editedObject);
     if (added == 0) {
-        updateStatusText(tr("Select adjacent face items, then press Add selected faces."), true);
+        updateStatusText(tr("Select adjacent face items, then press Add."), true);
     }
     else {
         updateStatusText(QString());
@@ -904,21 +1004,22 @@ void ThroughCurveMeshPanel::addSelectedSupportFaces()
     updateCounts();
 }
 
-void ThroughCurveMeshPanel::removeSelectedSupportFaces()
+void ThroughCurveMeshPanel::removeSelectedSupportFaces(Boundary boundary)
 {
     openTransactionIfNeeded();
-    const QList<QListWidgetItem*> selectedItems = supportFaceList->selectedItems();
+    QListWidget* list = supportFaceListForBoundary(boundary);
+    const QList<QListWidgetItem*> selectedItems = list->selectedItems();
     for (QListWidgetItem* item : selectedItems) {
-        delete supportFaceList->takeItem(supportFaceList->row(item));
+        delete list->takeItem(list->row(item));
     }
     applySupportFacesToObject();
     updateCounts();
 }
 
-void ThroughCurveMeshPanel::clearSupportFaces()
+void ThroughCurveMeshPanel::clearSupportFaces(Boundary boundary)
 {
     openTransactionIfNeeded();
-    supportFaceList->clear();
+    supportFaceListForBoundary(boundary)->clear();
     applySupportFacesToObject();
     updateCounts();
     updateStatusText(QString());
@@ -994,7 +1095,10 @@ void ThroughCurveMeshPanel::applySupportFacesToObject()
     if (!editedObject) {
         return;
     }
-    propertyFacesFromList(supportFaceList, editedObject->SupportFaces);
+    propertyFacesFromList(firstPrimarySupportFaceList, editedObject->FirstPrimarySupportFaces);
+    propertyFacesFromList(lastPrimarySupportFaceList, editedObject->LastPrimarySupportFaces);
+    propertyFacesFromList(firstCrossSupportFaceList, editedObject->FirstCrossSupportFaces);
+    propertyFacesFromList(lastCrossSupportFaceList, editedObject->LastCrossSupportFaces);
 }
 
 void ThroughCurveMeshPanel::applyOptionsToObject()
@@ -1011,7 +1115,10 @@ void ThroughCurveMeshPanel::applyOptionsToObject()
     editedObject->AutoSort.setValue(autoSortCheck->isChecked());
     editedObject->Emphasis.setValue(emphasisCombo->currentIndex());
     editedObject->Parameterization.setValue(parameterizationCombo->currentIndex());
-    editedObject->BoundaryContinuity.setValue(continuityCombo->currentIndex());
+    editedObject->FirstPrimaryContinuity.setValue(firstPrimaryContinuityCombo->currentIndex());
+    editedObject->LastPrimaryContinuity.setValue(lastPrimaryContinuityCombo->currentIndex());
+    editedObject->FirstCrossContinuity.setValue(firstCrossContinuityCombo->currentIndex());
+    editedObject->LastCrossContinuity.setValue(lastCrossContinuityCombo->currentIndex());
 }
 
 void ThroughCurveMeshPanel::validateObject()
@@ -1066,9 +1173,18 @@ void ThroughCurveMeshPanel::updateCounts()
     if (crossCountLabel) {
         crossCountLabel->setText(tr("Cross rows (%1)").arg(crossList ? crossList->count() : 0));
     }
-    if (supportFaceCountLabel) {
-        supportFaceCountLabel->setText(tr("Support faces (%1)").arg(supportFaceList ? supportFaceList->count() : 0));
-    }
+    auto updateSupportCount = [this](Boundary boundary, const QString& label) {
+        QLabel* countLabel = supportFaceCountLabelForBoundary(boundary);
+        QListWidget* list = supportFaceListForBoundary(boundary);
+        if (countLabel) {
+            countLabel->setText(tr("%1 support faces (%2)").arg(label).arg(list ? list->count() : 0));
+        }
+        updateFamilyListDecorations(list);
+    };
+    updateSupportCount(Boundary::FirstPrimary, tr("First primary"));
+    updateSupportCount(Boundary::LastPrimary, tr("Last primary"));
+    updateSupportCount(Boundary::FirstCross, tr("First cross"));
+    updateSupportCount(Boundary::LastCross, tr("Last cross"));
 }
 
 void ThroughCurveMeshPanel::updateStatusText(const QString& text, bool error)

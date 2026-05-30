@@ -381,26 +381,27 @@ std::vector<TopoDS_Face> collectFacesFromSupportShape(const TopoDS_Shape& shape)
 
 std::vector<TopoDS_Face> collectSupportFaces(
     const App::PropertyLinkSubList& links,
-    App::DocumentObject* owner
+    App::DocumentObject* owner,
+    const char* boundaryName
 )
 {
     std::vector<TopoDS_Face> faces;
     std::vector<App::DocumentObject*> objects = links.getValues();
     std::vector<std::string> subNames = links.getSubValues();
     if (objects.size() != subNames.size()) {
-        raiseFailure("Through Curve Mesh has inconsistent support-surface references.");
+        raiseFailure(std::string("Through Curve Mesh has inconsistent support-surface references for ") + boundaryName + ".");
     }
 
     for (std::size_t index = 0; index < objects.size(); ++index) {
         App::DocumentObject* object = objects[index];
         if (!object) {
-            raiseFailure("Through Curve Mesh contains an empty support-surface reference.");
+            raiseFailure(std::string("Through Curve Mesh contains an empty support-surface reference for ") + boundaryName + ".");
         }
         if (object == owner) {
             raiseFailure("Through Curve Mesh cannot use itself as a continuity support surface.");
         }
         if (!object->isDerivedFrom<Part::Feature>()) {
-            raiseFailure("Through Curve Mesh support surfaces must be Part::Feature objects.");
+            raiseFailure(std::string("Through Curve Mesh support surfaces must be Part::Feature objects for ") + boundaryName + ".");
         }
 
         const Part::TopoShape& topo = static_cast<Part::Feature*>(object)->Shape.getShape();
@@ -409,7 +410,7 @@ std::vector<TopoDS_Face> collectSupportFaces(
             : topo.getSubShape(subNames[index].c_str());
         std::vector<TopoDS_Face> found = collectFacesFromSupportShape(shape);
         if (found.empty()) {
-            raiseFailure("Through Curve Mesh continuity supports must be faces or objects containing faces.");
+            raiseFailure(std::string("Through Curve Mesh continuity supports must be faces or objects containing faces for ") + boundaryName + ".");
         }
         faces.insert(faces.end(), found.begin(), found.end());
     }
@@ -1377,11 +1378,92 @@ std::vector<TopoDS_Edge> orderedEdgesForCurve(const CurveShape& curve, bool reve
     return edges;
 }
 
+enum class BoundarySide
+{
+    FirstPrimary = 0,
+    LastPrimary = 1,
+    FirstCross = 2,
+    LastCross = 3
+};
+
+struct BoundaryContinuitySettings
+{
+    BoundaryContinuityMode firstPrimary {BoundaryContinuityMode::G0};
+    BoundaryContinuityMode lastPrimary {BoundaryContinuityMode::G0};
+    BoundaryContinuityMode firstCross {BoundaryContinuityMode::G0};
+    BoundaryContinuityMode lastCross {BoundaryContinuityMode::G0};
+};
+
+struct BoundarySupportFaces
+{
+    std::vector<TopoDS_Face> firstPrimary;
+    std::vector<TopoDS_Face> lastPrimary;
+    std::vector<TopoDS_Face> firstCross;
+    std::vector<TopoDS_Face> lastCross;
+};
+
 struct BoundaryConstraint
 {
     TopoDS_Edge edge;
+    BoundarySide side {BoundarySide::FirstPrimary};
     const char* name {nullptr};
 };
+
+BoundaryContinuityMode modeForSide(const BoundaryContinuitySettings& settings, BoundarySide side)
+{
+    switch (side) {
+        case BoundarySide::LastPrimary:
+            return settings.lastPrimary;
+        case BoundarySide::FirstCross:
+            return settings.firstCross;
+        case BoundarySide::LastCross:
+            return settings.lastCross;
+        case BoundarySide::FirstPrimary:
+        default:
+            return settings.firstPrimary;
+    }
+}
+
+const std::vector<TopoDS_Face>& supportFacesForSide(const BoundarySupportFaces& supports, BoundarySide side)
+{
+    switch (side) {
+        case BoundarySide::LastPrimary:
+            return supports.lastPrimary;
+        case BoundarySide::FirstCross:
+            return supports.firstCross;
+        case BoundarySide::LastCross:
+            return supports.lastCross;
+        case BoundarySide::FirstPrimary:
+        default:
+            return supports.firstPrimary;
+    }
+}
+
+bool hasG1OrG2Boundary(const BoundaryContinuitySettings& settings)
+{
+    return settings.firstPrimary != BoundaryContinuityMode::G0
+        || settings.lastPrimary != BoundaryContinuityMode::G0
+        || settings.firstCross != BoundaryContinuityMode::G0
+        || settings.lastCross != BoundaryContinuityMode::G0;
+}
+
+int maxBoundaryContinuityOrder(const BoundaryContinuitySettings& settings)
+{
+    auto orderForMode = [](BoundaryContinuityMode mode) {
+        if (mode == BoundaryContinuityMode::G2) {
+            return 2;
+        }
+        if (mode == BoundaryContinuityMode::G1) {
+            return 1;
+        }
+        return 0;
+    };
+
+    return std::max(
+        std::max(orderForMode(settings.firstPrimary), orderForMode(settings.lastPrimary)),
+        std::max(orderForMode(settings.firstCross), orderForMode(settings.lastCross))
+    );
+}
 
 std::vector<BoundaryConstraint> orderedBoundaryConstraints(
     const std::vector<CurveShape>& primaryCurves,
@@ -1389,16 +1471,16 @@ std::vector<BoundaryConstraint> orderedBoundaryConstraints(
 )
 {
     std::vector<BoundaryConstraint> edges;
-    auto append = [&edges](const std::vector<TopoDS_Edge>& input, const char* name) {
+    auto append = [&edges](const std::vector<TopoDS_Edge>& input, BoundarySide side, const char* name) {
         for (const TopoDS_Edge& edge : input) {
-            edges.push_back({edge, name});
+            edges.push_back({edge, side, name});
         }
     };
 
-    append(orderedEdgesForCurve(primaryCurves.front(), false), "first primary boundary");
-    append(orderedEdgesForCurve(crossCurves.back(), false), "last cross boundary");
-    append(orderedEdgesForCurve(primaryCurves.back(), true), "last primary boundary");
-    append(orderedEdgesForCurve(crossCurves.front(), true), "first cross boundary");
+    append(orderedEdgesForCurve(primaryCurves.front(), false), BoundarySide::FirstPrimary, "first primary boundary");
+    append(orderedEdgesForCurve(crossCurves.back(), false), BoundarySide::LastCross, "last cross boundary");
+    append(orderedEdgesForCurve(primaryCurves.back(), true), BoundarySide::LastPrimary, "last primary boundary");
+    append(orderedEdgesForCurve(crossCurves.front(), true), BoundarySide::FirstCross, "first cross boundary");
     return edges;
 }
 
@@ -1422,19 +1504,18 @@ ContinuityBuildResult buildContinuityFace(
     const std::vector<CurveShape>& crossCurves,
     const std::vector<std::vector<IntersectionInfo>>& grid,
     const TColgp_Array2OfPnt& points,
-    const std::vector<TopoDS_Face>& supportFaces,
-    BoundaryContinuityMode continuityMode,
+    const BoundaryContinuitySettings& continuitySettings,
+    const BoundarySupportFaces& supportFaces,
     Standard_Integer maxDegree,
     double intersectionTolerance,
     double positionTolerance
 )
 {
-    if (supportFaces.empty()) {
-        raiseFailure("G1/G2 boundary continuity requires adjacent support faces. Select support faces or set continuity to G0.");
+    const int continuityOrder = maxBoundaryContinuityOrder(continuitySettings);
+    if (continuityOrder == 0) {
+        raiseFailure("G1/G2 boundary continuity was requested but no boundary side is set to G1 or G2.");
     }
 
-    const GeomAbs_Shape order = boundaryContinuityShape(continuityMode);
-    const int continuityOrder = continuityMode == BoundaryContinuityMode::G2 ? 2 : 1;
     const int pointsOnCurve = std::max(
         static_cast<int>(points.UpperRow() - points.LowerRow() + 1),
         static_cast<int>(points.UpperCol() - points.LowerCol() + 1)
@@ -1456,13 +1537,28 @@ ContinuityBuildResult buildContinuityFace(
     filling.SetApproxParam(static_cast<int>(maxDegree), 9);
 
     for (const BoundaryConstraint& constraint : orderedBoundaryConstraints(primaryCurves, crossCurves)) {
+        const BoundaryContinuityMode sideMode = modeForSide(continuitySettings, constraint.side);
+        if (sideMode == BoundaryContinuityMode::G0) {
+            filling.Add(constraint.edge, GeomAbs_C0, true);
+            continue;
+        }
+
+        const std::vector<TopoDS_Face>& sideFaces = supportFacesForSide(supportFaces, constraint.side);
+        if (sideFaces.empty()) {
+            std::ostringstream str;
+            str << "G" << (sideMode == BoundaryContinuityMode::G2 ? 2 : 1)
+                << " boundary continuity requires adjacent support faces for "
+                << constraint.name << ". Select that boundary's support face or set it to G0.";
+            raiseFailure(str.str());
+        }
+
         const TopoDS_Face support = nearestSupportFace(
             constraint.edge,
-            supportFaces,
+            sideFaces,
             intersectionTolerance,
             constraint.name
         );
-        filling.Add(constraint.edge, support, order, true);
+        filling.Add(constraint.edge, support, boundaryContinuityShape(sideMode), true);
     }
 
     for (const auto& row : grid) {
@@ -1479,7 +1575,7 @@ ContinuityBuildResult buildContinuityFace(
 
     filling.Build();
     if (!filling.IsDone()) {
-        raiseFailure("OCCT failed to build the G1/G2 constrained through-curve mesh face.");
+        raiseFailure("OCCT failed to build the constrained through-curve mesh face.");
     }
 
     ContinuityBuildResult result;
@@ -1510,7 +1606,10 @@ ThroughCurveMesh::ThroughCurveMesh()
     ADD_PROPERTY_TYPE(PrimaryCurveGroupSizes, (-1), "Through Curve Mesh", App::Prop_Hidden, "Internal primary curve-row grouping");
     ADD_PROPERTY_TYPE(CrossCurves, (nullptr), "Through Curve Mesh", App::Prop_None, "Cross curve rows");
     ADD_PROPERTY_TYPE(CrossCurveGroupSizes, (-1), "Through Curve Mesh", App::Prop_Hidden, "Internal cross curve-row grouping");
-    ADD_PROPERTY_TYPE(SupportFaces, (nullptr), "Through Curve Mesh", App::Prop_None, "Adjacent support faces used only when boundary continuity is G1 or G2");
+    ADD_PROPERTY_TYPE(FirstPrimarySupportFaces, (nullptr), "Through Curve Mesh", App::Prop_None, "Adjacent support faces used when the first primary boundary is G1 or G2");
+    ADD_PROPERTY_TYPE(LastPrimarySupportFaces, (nullptr), "Through Curve Mesh", App::Prop_None, "Adjacent support faces used when the last primary boundary is G1 or G2");
+    ADD_PROPERTY_TYPE(FirstCrossSupportFaces, (nullptr), "Through Curve Mesh", App::Prop_None, "Adjacent support faces used when the first cross boundary is G1 or G2");
+    ADD_PROPERTY_TYPE(LastCrossSupportFaces, (nullptr), "Through Curve Mesh", App::Prop_None, "Adjacent support faces used when the last cross boundary is G1 or G2");
     ADD_PROPERTY_TYPE(Tolerance, (0.1), "Through Curve Mesh", App::Prop_None, "Intersection tolerance used to accept curve crossings");
     ADD_PROPERTY_TYPE(PositionTolerance, (0.1), "Through Curve Mesh", App::Prop_None, "Surface fitting tolerance used after the curve network is sampled");
     ADD_PROPERTY_TYPE(Samples, (DefaultSampleCount), "Through Curve Mesh", App::Prop_Hidden, "Legacy number of samples in each surface direction");
@@ -1525,8 +1624,14 @@ ThroughCurveMesh::ThroughCurveMesh()
     Parameterization.setEnums(ParameterizationEnums);
     ADD_PROPERTY(SurfaceContinuity, ((long)2));
     SurfaceContinuity.setEnums(SurfaceContinuityEnums);
-    ADD_PROPERTY(BoundaryContinuity, ((long)0));
-    BoundaryContinuity.setEnums(BoundaryContinuityEnums);
+    ADD_PROPERTY(FirstPrimaryContinuity, ((long)0));
+    FirstPrimaryContinuity.setEnums(BoundaryContinuityEnums);
+    ADD_PROPERTY(LastPrimaryContinuity, ((long)0));
+    LastPrimaryContinuity.setEnums(BoundaryContinuityEnums);
+    ADD_PROPERTY(FirstCrossContinuity, ((long)0));
+    FirstCrossContinuity.setEnums(BoundaryContinuityEnums);
+    ADD_PROPERTY(LastCrossContinuity, ((long)0));
+    LastCrossContinuity.setEnums(BoundaryContinuityEnums);
     ADD_PROPERTY_TYPE(MinDegree, (3), "Through Curve Mesh", App::Prop_None, "Minimum degree for the fitted B-spline surface");
     ADD_PROPERTY_TYPE(MaxDegree, (5), "Through Curve Mesh", App::Prop_None, "Maximum degree for the fitted B-spline surface");
     ADD_PROPERTY_TYPE(SmoothLengthWeight, (0.0), "Through Curve Mesh", App::Prop_None, "Variational construction weight for surface length/fairness");
@@ -1540,7 +1645,10 @@ ThroughCurveMesh::ThroughCurveMesh()
 
     PrimaryCurves.setScope(App::LinkScope::Global);
     CrossCurves.setScope(App::LinkScope::Global);
-    SupportFaces.setScope(App::LinkScope::Global);
+    FirstPrimarySupportFaces.setScope(App::LinkScope::Global);
+    LastPrimarySupportFaces.setScope(App::LinkScope::Global);
+    FirstCrossSupportFaces.setScope(App::LinkScope::Global);
+    LastCrossSupportFaces.setScope(App::LinkScope::Global);
     PrimaryCurveGroupSizes.setSize(0);
     CrossCurveGroupSizes.setSize(0);
     Tolerance.setConstraints(&ToleranceRange);
@@ -1559,12 +1667,14 @@ short ThroughCurveMesh::mustExecute() const
 {
     if (PrimaryCurves.isTouched() || PrimaryCurveGroupSizes.isTouched()
         || CrossCurves.isTouched() || CrossCurveGroupSizes.isTouched()
-        || SupportFaces.isTouched()
+        || FirstPrimarySupportFaces.isTouched() || LastPrimarySupportFaces.isTouched()
+        || FirstCrossSupportFaces.isTouched() || LastCrossSupportFaces.isTouched()
         || Tolerance.isTouched() || PositionTolerance.isTouched()
         || Samples.isTouched() || SamplesU.isTouched() || SamplesV.isTouched()
         || AutoSort.isTouched() || Emphasis.isTouched() || Construction.isTouched()
         || Parameterization.isTouched() || SurfaceContinuity.isTouched()
-        || BoundaryContinuity.isTouched()
+        || FirstPrimaryContinuity.isTouched() || LastPrimaryContinuity.isTouched()
+        || FirstCrossContinuity.isTouched() || LastCrossContinuity.isTouched()
         || MinDegree.isTouched() || MaxDegree.isTouched()
         || SmoothLengthWeight.isTouched() || SmoothCurvatureWeight.isTouched()
         || SmoothTorsionWeight.isTouched()) {
@@ -1611,11 +1721,27 @@ App::DocumentObjectExecReturn* ThroughCurveMesh::execute()
 
         const MeshParameterization parameterization = meshParameterizationFromValue(Parameterization.getValue());
         const ConstructionMode construction = constructionModeFromValue(Construction.getValue());
-        const BoundaryContinuityMode boundaryContinuity = boundaryContinuityModeFromValue(BoundaryContinuity.getValue());
-        const bool useBoundaryContinuity = boundaryContinuity != BoundaryContinuityMode::G0;
-        std::vector<TopoDS_Face> supportFaces;
+        const BoundaryContinuitySettings boundaryContinuity = {
+            boundaryContinuityModeFromValue(FirstPrimaryContinuity.getValue()),
+            boundaryContinuityModeFromValue(LastPrimaryContinuity.getValue()),
+            boundaryContinuityModeFromValue(FirstCrossContinuity.getValue()),
+            boundaryContinuityModeFromValue(LastCrossContinuity.getValue())
+        };
+        const bool useBoundaryContinuity = hasG1OrG2Boundary(boundaryContinuity);
+        BoundarySupportFaces supportFaces;
         if (useBoundaryContinuity) {
-            supportFaces = collectSupportFaces(SupportFaces, this);
+            if (boundaryContinuity.firstPrimary != BoundaryContinuityMode::G0) {
+                supportFaces.firstPrimary = collectSupportFaces(FirstPrimarySupportFaces, this, "first primary boundary");
+            }
+            if (boundaryContinuity.lastPrimary != BoundaryContinuityMode::G0) {
+                supportFaces.lastPrimary = collectSupportFaces(LastPrimarySupportFaces, this, "last primary boundary");
+            }
+            if (boundaryContinuity.firstCross != BoundaryContinuityMode::G0) {
+                supportFaces.firstCross = collectSupportFaces(FirstCrossSupportFaces, this, "first cross boundary");
+            }
+            if (boundaryContinuity.lastCross != BoundaryContinuityMode::G0) {
+                supportFaces.lastCross = collectSupportFaces(LastCrossSupportFaces, this, "last cross boundary");
+            }
         }
         double primaryWeight = 1.0;
         double crossWeight = 1.0;
@@ -1732,8 +1858,8 @@ App::DocumentObjectExecReturn* ThroughCurveMesh::execute()
                 crossCurves,
                 grid,
                 points,
-                supportFaces,
                 boundaryContinuity,
+                supportFaces,
                 maxDegree,
                 intersectionTolerance,
                 positionTolerance

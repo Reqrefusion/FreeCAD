@@ -57,6 +57,14 @@ private:
         Cross
     };
 
+    enum class Boundary
+    {
+        FirstPrimary,
+        LastPrimary,
+        FirstCross,
+        LastCross
+    };
+
     void setupUi();
     QListWidget* createCurveCollector(const QString& title, Family family);
     void populateLists();
@@ -65,9 +73,9 @@ private:
     void applyOptionsToObject();
     void applySupportFacesToObject();
     void addSelected(Family family);
-    void addSelectedSupportFaces();
-    void removeSelectedSupportFaces();
-    void clearSupportFaces();
+    void addSelectedSupportFaces(Boundary boundary);
+    void removeSelectedSupportFaces(Boundary boundary);
+    void clearSupportFaces(Boundary boundary);
     void removeSelected(Family family);
     void moveSelected(Family family, int direction);
     void clearFamily(Family family);
@@ -77,16 +85,25 @@ private:
     void openTransactionIfNeeded();
     QListWidget* listForFamily(Family family) const;
     QLabel* countLabelForFamily(Family family) const;
+    QListWidget* supportFaceListForBoundary(Boundary boundary) const;
+    QLabel* supportFaceCountLabelForBoundary(Boundary boundary) const;
+    QComboBox* continuityComboForBoundary(Boundary boundary) const;
 
 private:
     ViewProviderThroughCurveMesh* viewProvider;
     Surface::ThroughCurveMesh* editedObject;
     QListWidget* primaryList;
     QListWidget* crossList;
-    QListWidget* supportFaceList;
+    QListWidget* firstPrimarySupportFaceList;
+    QListWidget* lastPrimarySupportFaceList;
+    QListWidget* firstCrossSupportFaceList;
+    QListWidget* lastCrossSupportFaceList;
     QLabel* primaryCountLabel;
     QLabel* crossCountLabel;
-    QLabel* supportFaceCountLabel;
+    QLabel* firstPrimarySupportFaceCountLabel;
+    QLabel* lastPrimarySupportFaceCountLabel;
+    QLabel* firstCrossSupportFaceCountLabel;
+    QLabel* lastCrossSupportFaceCountLabel;
     QLabel* statusLabel;
     QLabel* deviationLabel;
     QLabel* gapLabel;
@@ -97,7 +114,10 @@ private:
     QCheckBox* autoSortCheck;
     QComboBox* emphasisCombo;
     QComboBox* parameterizationCombo;
-    QComboBox* continuityCombo;
+    QComboBox* firstPrimaryContinuityCombo;
+    QComboBox* lastPrimaryContinuityCombo;
+    QComboBox* firstCrossContinuityCombo;
+    QComboBox* lastCrossContinuityCombo;
     bool checkCommand {true};
 };
 

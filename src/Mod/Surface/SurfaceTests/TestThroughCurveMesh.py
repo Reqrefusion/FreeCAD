@@ -43,7 +43,10 @@ class TestThroughCurveMesh(unittest.TestCase):
         mesh.Parameterization = parameterization
         mesh.Construction = construction
         mesh.SurfaceContinuity = "C2"
-        mesh.BoundaryContinuity = "G0"
+        mesh.FirstPrimaryContinuity = "G0"
+        mesh.LastPrimaryContinuity = "G0"
+        mesh.FirstCrossContinuity = "G0"
+        mesh.LastCrossContinuity = "G0"
         mesh.MinDegree = 3
         mesh.MaxDegree = 5
         self.doc.recompute()
@@ -411,7 +414,7 @@ class TestThroughCurveMesh(unittest.TestCase):
         self.assertGreaterEqual(mesh.MaxIntersectionGap, 0.0)
 
 
-    def test_g1_g2_boundary_continuity_requires_support_faces(self):
+    def test_boundary_continuity_is_per_side_and_requires_support_faces(self):
         primary = [
             self._edge_object("ContinuityP0", [FreeCAD.Vector(0, 0, 0), FreeCAD.Vector(0, 2, 0)]),
             self._edge_object("ContinuityP1", [FreeCAD.Vector(2, 0, 0), FreeCAD.Vector(2, 2, 0)]),
@@ -424,17 +427,20 @@ class TestThroughCurveMesh(unittest.TestCase):
         mesh = self._build_mesh(primary, cross, tolerance=0.01, position_tolerance=0.05, samples=10)
         self.assertFalse(mesh.Shape.isNull())
 
-        mesh.BoundaryContinuity = "G1"
+        mesh.FirstPrimaryContinuity = "G1"
         self.doc.recompute()
 
         self.assertTrue(mesh.Shape.isNull())
-        self.assertEqual(mesh.BoundaryContinuity, "G1")
+        self.assertEqual(mesh.FirstPrimaryContinuity, "G1")
+        self.assertEqual(mesh.LastPrimaryContinuity, "G0")
+        self.assertEqual(mesh.FirstCrossContinuity, "G0")
+        self.assertEqual(mesh.LastCrossContinuity, "G0")
 
-        mesh.BoundaryContinuity = "G0"
+        mesh.FirstPrimaryContinuity = "G0"
         self.doc.recompute()
 
         self.assertFalse(mesh.Shape.isNull())
-        self.assertEqual(mesh.BoundaryContinuity, "G0")
+        self.assertEqual(mesh.FirstPrimaryContinuity, "G0")
 
 
     def test_rejects_multiple_intersections(self):
