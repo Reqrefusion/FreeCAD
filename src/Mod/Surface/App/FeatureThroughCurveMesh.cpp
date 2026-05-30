@@ -115,20 +115,12 @@ gp_Pnt addSubtract(const gp_Pnt& p1, const gp_Pnt& p2, const gp_Pnt& p3)
     );
 }
 
-gp_Pnt blendGordonContributions(
-    const gp_Pnt& primary,
-    const gp_Pnt& cross,
-    const gp_Pnt& net,
-    double primaryWeight,
-    double crossWeight
-)
+gp_Pnt gordonPoint(const gp_Pnt& primary, const gp_Pnt& cross, const gp_Pnt& net)
 {
-    const double netWeight = 1.0 - primaryWeight - crossWeight;
-    return gp_Pnt(
-        primaryWeight * primary.X() + crossWeight * cross.X() + netWeight * net.X(),
-        primaryWeight * primary.Y() + crossWeight * cross.Y() + netWeight * net.Y(),
-        primaryWeight * primary.Z() + crossWeight * cross.Z() + netWeight * net.Z()
-    );
+    // Gordon blending must keep the algebraic form S = S_primary + S_cross - S_net.
+    // Changing these weights breaks the through-curve interpolation property for
+    // one curve family, so family "emphasis" is handled by sample density instead.
+    return addSubtract(primary, cross, net);
 }
 
 gp_Pnt midpoint(const gp_Pnt& p1, const gp_Pnt& p2)
@@ -1499,6 +1491,23 @@ int maxBoundaryContinuityOrder(const BoundaryContinuitySettings& settings)
     );
 }
 
+void applyFamilyEmphasisToSampling(long emphasis, int& sampleCountU, int& sampleCountV)
+{
+    auto increased = [](int value) {
+        return std::min(200, value + std::max(2, value / 4));
+    };
+
+    if (emphasis == 1) {
+        // Primary curves run in the V direction; more V samples improves fitting
+        // along that family without changing the Gordon interpolation formula.
+        sampleCountV = increased(sampleCountV);
+    }
+    else if (emphasis == 2) {
+        // Cross curves run in the U direction.
+        sampleCountU = increased(sampleCountU);
+    }
+}
+
 std::vector<BoundaryConstraint> orderedBoundaryConstraints(
     const std::vector<CurveShape>& primaryCurves,
     const std::vector<CurveShape>& crossCurves
@@ -1521,7 +1530,11 @@ std::vector<BoundaryConstraint> orderedBoundaryConstraints(
 Handle(Geom_Surface) surfaceFromFace(const TopoDS_Face& face)
 {
     TopLoc_Location location;
-    return BRep_Tool::Surface(face, location);
+    Handle(Geom_Surface) surface = BRep_Tool::Surface(face, location);
+    if (!surface.IsNull() && !location.IsIdentity()) {
+        surface = Handle(Geom_Surface)::DownCast(surface->Transformed(location.Transformation()));
+    }
+    return surface;
 }
 
 struct ContinuityBuildResult
@@ -1549,6 +1562,17 @@ ContinuityBuildResult buildContinuityFace(
     if (continuityOrder == 0) {
         raiseFailure("G1/G2 boundary continuity was requested but no boundary side is set to G1 or G2.");
     }
+    if (continuityOrder == 1 && maxDegree < 2) {
+        raiseFailure("G1 boundary continuity requires a maximum surface degree of at least 2.");
+    }
+    if (continuityOrder == 2 && maxDegree < 3) {
+        raiseFailure("G2 boundary continuity requires a maximum surface degree of at least 3.");
+    }
+
+    const double supportMatchTolerance = std::max(
+        Precision::Confusion(),
+        std::min(intersectionTolerance, positionTolerance)
+    );
 
     const int pointsOnCurve = std::max(
         static_cast<int>(points.UpperRow() - points.LowerRow() + 1),
@@ -1589,7 +1613,7 @@ ContinuityBuildResult buildContinuityFace(
         const SupportBoundaryMatch support = nearestSupportBoundaryEdge(
             constraint.edge,
             sideFaces,
-            intersectionTolerance,
+            supportMatchTolerance,
             constraint.name
         );
         try {
@@ -1787,18 +1811,7 @@ App::DocumentObjectExecReturn* ThroughCurveMesh::execute()
                 supportFaces.lastCross = collectSupportFaces(LastCrossSupportFaces, this, "last cross boundary");
             }
         }
-        double primaryWeight = 1.0;
-        double crossWeight = 1.0;
-        switch (Emphasis.getValue()) {
-            case 1:  // Primary
-                crossWeight = 0.35;
-                break;
-            case 2:  // Cross
-                primaryWeight = 0.35;
-                break;
-            default:
-                break;
-        }
+        applyFamilyEmphasisToSampling(Emphasis.getValue(), sampleCountU, sampleCountV);
 
         if (AutoSort.getValue()) {
             sortCurveFamilies(primaryCurves, crossCurves, intersectionTolerance);
@@ -1843,13 +1856,7 @@ App::DocumentObjectExecReturn* ThroughCurveMesh::execute()
                     v
                 );
                 const gp_Pnt net = evaluateGridContribution(grid, uNodes, vNodes, u, v);
-                points(uIndex + 1, vIndex + 1) = blendGordonContributions(
-                    primary,
-                    cross,
-                    net,
-                    primaryWeight,
-                    crossWeight
-                );
+                points(uIndex + 1, vIndex + 1) = gordonPoint(primary, cross, net);
             }
         }
 

@@ -644,7 +644,7 @@ void ThroughCurveMeshPanel::setupUi()
     emphasisCombo->addItem(tr("Both"));
     emphasisCombo->addItem(tr("Primary"));
     emphasisCombo->addItem(tr("Cross"));
-    emphasisCombo->setToolTip(tr("Biases the blended Gordon contribution toward one curve family."));
+    emphasisCombo->setToolTip(tr("Adds extra fitting samples along the selected curve family without changing the through-curve Gordon formula."));
 
     outputLayout->addWidget(new QLabel(tr("Emphasis"), outputGroup), 0, 0);
     outputLayout->addWidget(emphasisCombo, 0, 1);
