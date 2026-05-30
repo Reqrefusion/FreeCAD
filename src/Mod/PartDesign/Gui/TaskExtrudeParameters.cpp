@@ -52,19 +52,19 @@ using namespace Gui;
 
 /* TRANSLATOR PartDesignGui::TaskExtrudeParameters */
 
-namespace
+namespace PartDesignGui
 {
-constexpr double minimumLinearStartEndGap = 1.0e-6;
-constexpr float startGizmoPointRadius = 1.15F;
+static constexpr double minimumLinearStartEndGap = 1.0e-6;
+static constexpr float startGizmoPointRadius = 1.15F;
 
-void makeStartGizmoPointLike(Gui::LinearGizmo* gizmo)
+static void makeStartGizmoPointLike(Gui::LinearGizmo* gizmo)
 {
     if (!gizmo) {
         return;
     }
 
-    auto dragger = gizmo->getDraggerContainer()->getDragger();
-    auto arrow = SO_GET_PART(dragger, "arrow", SoArrowGeometry);
+    auto* dragger = gizmo->getDraggerContainer()->getDragger();
+    auto* arrow = SO_GET_PART(dragger, "arrow", SoArrowGeometry);
     arrow->cylinderHeight = 0.0F;
     arrow->cylinderRadius = 0.0F;
     arrow->coneHeight = 0.0F;
@@ -73,11 +73,11 @@ void makeStartGizmoPointLike(Gui::LinearGizmo* gizmo)
     dragger->labelVisible = false;
     dragger->baseGeomVisible = false;
 
-    auto base = SO_GET_PART(dragger, "baseGeom", SoArrowBase);
+    auto* base = SO_GET_PART(dragger, "baseGeom", SoArrowBase);
     base->cylinderHeight = 0.0F;
     base->cylinderRadius = 0.0F;
 }
-}  // namespace
+}  // namespace PartDesignGui
 
 TaskExtrudeParameters::TaskExtrudeParameters(
     ViewProviderExtrude* SketchBasedView,
