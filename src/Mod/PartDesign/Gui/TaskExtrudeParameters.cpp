@@ -1621,28 +1621,26 @@ void TaskExtrudeParameters::setGizmoPositions()
         multFactor /= lengthFactor;
     }
 
-    auto linearGizmoAddFactor = [](const SideController& side, double factor) {
-        const double minTranslation = std::min({
-            side.offsetEdit->minimum() * factor,
-            side.offsetEdit->maximum() * factor,
+    const auto endGizmoAddFactor = [](const SideController& side, double factor) {
+        const double minTranslation = std::min(
             side.lengthEdit->minimum() * factor,
             side.lengthEdit->maximum() * factor
-        });
+        );
         return minTranslation < 0.0 ? -minTranslation : 0.0;
     };
 
-    const double addFactor1 = linearGizmoAddFactor(m_side1, multFactor);
-    const double addFactor2 = linearGizmoAddFactor(m_side2, multFactor);
+    const double endAddFactor1 = endGizmoAddFactor(m_side1, multFactor);
+    const double endAddFactor2 = endGizmoAddFactor(m_side2, multFactor);
 
     startGizmo1->setMultFactor(multFactor);
     lengthGizmo1->setMultFactor(multFactor);
     startGizmo2->setMultFactor(multFactor);
     lengthGizmo2->setMultFactor(multFactor);
 
-    startGizmo1->setAddFactor(addFactor1);
-    lengthGizmo1->setAddFactor(addFactor1);
-    startGizmo2->setAddFactor(addFactor2);
-    lengthGizmo2->setAddFactor(addFactor2);
+    startGizmo1->setAddFactor(0.0);
+    lengthGizmo1->setAddFactor(endAddFactor1);
+    startGizmo2->setAddFactor(0.0);
+    lengthGizmo2->setAddFactor(endAddFactor2);
 
     auto setLinearGizmoRange = [](Gui::LinearGizmo* startGizmo,
                                   Gui::LinearGizmo* endGizmo,
@@ -1650,13 +1648,21 @@ void TaskExtrudeParameters::setGizmoPositions()
                                   const Base::Vector3d& direction,
                                   double start,
                                   double factor,
-                                  double addFactor) {
-        const Base::Vector3d unitDirection = direction.Normalized();
-        const Base::Vector3d shiftedCenter = center - unitDirection * addFactor;
-        startGizmo->Gizmo::setDraggerPlacement(shiftedCenter, unitDirection);
+                                  double endAddFactor) {
+        startGizmo->Gizmo::setDraggerPlacement(center, direction);
 
-        endGizmo->Gizmo::setDraggerPlacement(shiftedCenter, unitDirection);
-        endGizmo->setBaseStart(start * factor + addFactor);
+        if (endAddFactor > 0.0) {
+            const Base::Vector3d unitDirection = direction.Normalized();
+            endGizmo->Gizmo::setDraggerPlacement(
+                center - unitDirection * endAddFactor,
+                unitDirection
+            );
+            endGizmo->setBaseStart(start * factor + endAddFactor);
+        }
+        else {
+            endGizmo->Gizmo::setDraggerPlacement(center, direction);
+            endGizmo->setBaseStart(start * factor);
+        }
     };
 
     setLinearGizmoRange(
@@ -1666,7 +1672,7 @@ void TaskExtrudeParameters::setGizmoPositions()
         extrude->Direction.getValue() * dir,
         ui->offsetEdit->value().getValue(),
         multFactor,
-        addFactor1
+        endAddFactor1
     );
     startGizmo1->setVisibility(showStartGizmo1);
     lengthGizmo1->setVisibility(extrudeType == "Length");
@@ -1680,7 +1686,7 @@ void TaskExtrudeParameters::setGizmoPositions()
         -extrude->Direction.getValue() * dir,
         ui->offsetEdit2->value().getValue(),
         multFactor,
-        addFactor2
+        endAddFactor2
     );
     startGizmo2->setVisibility(showStartGizmo2);
     lengthGizmo2->setVisibility(sideType == "Two sides" && extrudeType2 == "Length");
