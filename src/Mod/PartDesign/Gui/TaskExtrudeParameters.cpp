@@ -54,7 +54,7 @@ using namespace Gui;
 
 namespace
 {
-constexpr double minimumLinearStartEndGap = 1.0e-7;
+constexpr double minimumLinearStartEndGap = 1.0e-6;
 constexpr float startGizmoPointRadius = 1.15F;
 
 void makeStartGizmoPointLike(Gui::LinearGizmo* gizmo)
@@ -671,13 +671,21 @@ void TaskExtrudeParameters::onLengthChanged(double len, Side side)
     auto& sideController = getSideController(side);
     if (showOffsetInDimension() && isLengthMode(side)) {
         const auto sidesMode = static_cast<SidesMode>(ui->sidesMode->currentIndex());
-        const bool enforceNonNegativeStart = sidesMode == SidesMode::Symmetric && side == Side::First;
-        const double minStart = enforceNonNegativeStart
+        const bool enforceNonNegativeRange = sidesMode == SidesMode::Symmetric
+            || sidesMode == SidesMode::TwoSides;
+        const double rangeMin = enforceNonNegativeRange
             ? std::max(0.0, sideController.Offset->getMinimum())
             : sideController.Offset->getMinimum();
+
+        if (len < rangeMin) {
+            len = rangeMin;
+            QSignalBlocker lengthBlock(sideController.lengthEdit);
+            sideController.lengthEdit->setValue(len);
+        }
+
         double start = sideController.offsetEdit->value().getValue();
-        if (start < minStart) {
-            start = minStart;
+        if (start < rangeMin) {
+            start = rangeMin;
             QSignalBlocker offsetBlock(sideController.offsetEdit);
             sideController.offsetEdit->setValue(start);
             sideController.Offset->setValue(start);
@@ -708,17 +716,25 @@ void TaskExtrudeParameters::onOffsetChanged(double len, Side side)
     auto& sideController = getSideController(side);
     if (showOffsetInDimension() && isLengthMode(side)) {
         const auto sidesMode = static_cast<SidesMode>(ui->sidesMode->currentIndex());
-        const bool enforceNonNegativeStart = sidesMode == SidesMode::Symmetric && side == Side::First;
-        const double minStart = enforceNonNegativeStart
+        const bool enforceNonNegativeRange = sidesMode == SidesMode::Symmetric
+            || sidesMode == SidesMode::TwoSides;
+        const double rangeMin = enforceNonNegativeRange
             ? std::max(0.0, sideController.Offset->getMinimum())
             : sideController.Offset->getMinimum();
-        if (len < minStart) {
-            len = minStart;
+        if (len < rangeMin) {
+            len = rangeMin;
             QSignalBlocker offsetBlock(sideController.offsetEdit);
             sideController.offsetEdit->setValue(len);
         }
 
-        const double end = sideController.lengthEdit->value().getValue();
+        double end = sideController.lengthEdit->value().getValue();
+        if (end < rangeMin) {
+            end = rangeMin;
+            QSignalBlocker lengthBlock(sideController.lengthEdit);
+            sideController.lengthEdit->setValue(end);
+            sideController.Length->setValue(end);
+        }
+
         if (std::fabs(end - len) < minimumLinearStartEndGap) {
             const double lengthMax = sideController.lengthEdit->maximum();
             const double lengthMin = sideController.lengthEdit->minimum();
@@ -896,19 +912,19 @@ void TaskExtrudeParameters::syncStartEndLimits()
         return;
     }
 
-    auto syncSide = [](SideController& side, bool lengthMode, bool enforceNonNegativeStart) {
+    auto syncSide = [](SideController& side, bool lengthMode, bool enforceNonNegativeRange) {
         QSignalBlocker offsetBlock(side.offsetEdit);
         QSignalBlocker lengthBlock(side.lengthEdit);
 
         const double offsetPropMin = side.Offset->getMinimum();
         const double offsetPropMax = side.Offset->getMaximum();
-        const double offsetMin = lengthMode && enforceNonNegativeStart
+        const double rangeMin = lengthMode && enforceNonNegativeRange
             ? std::max(0.0, offsetPropMin)
             : offsetPropMin;
-        const double lengthMin = lengthMode ? offsetPropMin : side.Length->getMinimum();
+        const double lengthMin = lengthMode ? rangeMin : side.Length->getMinimum();
         const double lengthMax = lengthMode ? offsetPropMax : side.Length->getMaximum();
 
-        side.offsetEdit->setMinimum(offsetMin);
+        side.offsetEdit->setMinimum(rangeMin);
         side.offsetEdit->setMaximum(offsetPropMax);
         side.lengthEdit->setMinimum(lengthMin);
         side.lengthEdit->setMaximum(lengthMax);
@@ -918,13 +934,19 @@ void TaskExtrudeParameters::syncStartEndLimits()
         }
 
         double start = side.offsetEdit->value().getValue();
-        if (start < offsetMin) {
-            start = offsetMin;
+        if (start < rangeMin) {
+            start = rangeMin;
             side.offsetEdit->setValue(start);
             side.Offset->setValue(start);
         }
 
-        const double end = side.lengthEdit->value().getValue();
+        double end = side.lengthEdit->value().getValue();
+        if (end < lengthMin) {
+            end = lengthMin;
+            side.lengthEdit->setValue(end);
+            side.Length->setValue(end);
+        }
+
         if (std::fabs(end - start) < minimumLinearStartEndGap) {
             double adjustedEnd = start + minimumLinearStartEndGap;
             if (adjustedEnd > lengthMax) {
@@ -937,9 +959,14 @@ void TaskExtrudeParameters::syncStartEndLimits()
     };
 
     const auto sidesMode = static_cast<SidesMode>(ui->sidesMode->currentIndex());
-    const bool isSymmetric = sidesMode == SidesMode::Symmetric;
-    syncSide(m_side1, isLengthMode(Side::First), isSymmetric);
-    syncSide(m_side2, sidesMode == SidesMode::TwoSides && isLengthMode(Side::Second), false);
+    const bool enforceNonNegativeRange = sidesMode == SidesMode::Symmetric
+        || sidesMode == SidesMode::TwoSides;
+    syncSide(m_side1, isLengthMode(Side::First), enforceNonNegativeRange);
+    syncSide(
+        m_side2,
+        sidesMode == SidesMode::TwoSides && isLengthMode(Side::Second),
+        enforceNonNegativeRange
+    );
 }
 
 void TaskExtrudeParameters::updateWholeUI(Type type, Side side)
