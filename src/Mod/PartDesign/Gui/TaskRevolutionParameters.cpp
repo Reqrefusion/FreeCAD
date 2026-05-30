@@ -55,19 +55,19 @@ using namespace Gui;
 
 /* TRANSLATOR PartDesignGui::TaskRevolutionParameters */
 
-namespace
+namespace PartDesignGui
 {
-constexpr double minimumRevolveStartEndGap = 1.0e-7;
-constexpr float startGizmoPointRadius = 1.15F;
+static constexpr double minimumRevolveStartEndGap = 1.0e-7;
+static constexpr float startGizmoPointRadius = 1.15F;
 
-void makeStartRadialGizmoPointLike(Gui::RadialGizmo* gizmo)
+static void makeStartRadialGizmoPointLike(Gui::RadialGizmo* gizmo)
 {
     if (!gizmo) {
         return;
     }
 
-    auto dragger = gizmo->getDraggerContainer()->getDragger();
-    auto arrow = SO_GET_PART(dragger, "rotator", SoRotatorArrow);
+    auto* dragger = gizmo->getDraggerContainer()->getDragger();
+    auto* arrow = SO_GET_PART(dragger, "rotator", SoRotatorArrow);
     arrow->cylinderHeight = 0.0F;
     arrow->cylinderRadius = 0.0F;
     arrow->coneHeight = 0.0F;
@@ -75,7 +75,7 @@ void makeStartRadialGizmoPointLike(Gui::RadialGizmo* gizmo)
     arrow->pointRadius = startGizmoPointRadius;
     dragger->baseGeomVisible = false;
 }
-}  // namespace
+}  // namespace PartDesignGui
 
 TaskRevolutionParameters::TaskRevolutionParameters(
     PartDesignGui::ViewProvider* RevolutionView,

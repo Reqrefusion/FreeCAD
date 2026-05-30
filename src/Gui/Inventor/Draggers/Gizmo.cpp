@@ -267,7 +267,7 @@ void LinearGizmo::setAddFactor(const double val)
 
 void LinearGizmo::setBaseStart(const double val)
 {
-    auto base = SO_GET_PART(dragger, "baseGeom", SoArrowBase);
+    auto* base = SO_GET_PART(dragger, "baseGeom", SoArrowBase);
     base->startOffset = static_cast<float>(val);
 }
 
@@ -583,7 +583,7 @@ void RotationGizmo::setAddFactor(const double val)
 
 void RotationGizmo::setBaseAngleRange(const double start, const double end)
 {
-    auto base = SO_GET_PART(dragger, "baseGeom", SoRotatorBase);
+    auto* base = SO_GET_PART(dragger, "baseGeom", SoRotatorBase);
     base->startAngle = static_cast<float>(start);
     base->endAngle = static_cast<float>(end);
     base->useAngleRange = true;

@@ -115,7 +115,7 @@ SoRotationDragger::SoRotationDragger()
 
     this->setUpConnections(TRUE, TRUE);
 
-    auto sw = SO_GET_ANY_PART(this, "baseGeomSwitch", SoToggleSwitch);
+    auto* sw = SO_GET_ANY_PART(this, "baseGeomSwitch", SoToggleSwitch);
     sw->on.connectFrom(&baseGeomVisible);
 
     FC_SET_TOGGLE_SWITCH("activeSwitch", false);

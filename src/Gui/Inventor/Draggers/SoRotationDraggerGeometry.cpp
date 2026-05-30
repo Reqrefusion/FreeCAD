@@ -252,7 +252,7 @@ SoRotatorArrow::SoRotatorArrow()
     arrowTip->height.connectFrom(&coneHeight);
     arrowTip->bottomRadius.connectFrom(&coneBottomRadius);
 
-    auto point = SO_GET_ANY_PART(this, "point", SoSphere);
+    auto* point = SO_GET_ANY_PART(this, "point", SoSphere);
     point->radius.connectFrom(&pointRadius);
 
     auto transform = SO_GET_ANY_PART(this, "_arrowTransform", SoTransform);
@@ -289,7 +289,7 @@ void SoRotatorArrow::notify(SoNotList* notList)
             0
         );
 
-        auto pointTransform = SO_GET_ANY_PART(this, "pointTransform", SoTransform);
+        auto* pointTransform = SO_GET_ANY_PART(this, "pointTransform", SoTransform);
         pointTransform->translation = pivotPosition;
     }
 

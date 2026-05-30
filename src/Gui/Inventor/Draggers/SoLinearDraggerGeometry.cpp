@@ -87,7 +87,7 @@ SoArrowGeometry::SoArrowGeometry()
     arrowTip->height.connectFrom(&coneHeight);
     arrowTip->bottomRadius.connectFrom(&coneBottomRadius);
 
-    auto point = SO_GET_ANY_PART(this, "point", SoSphere);
+    auto* point = SO_GET_ANY_PART(this, "point", SoSphere);
     point->radius.connectFrom(&pointRadius);
 
     auto lightModel = SO_GET_ANY_PART(this, "lightModel", SoLightModel);
