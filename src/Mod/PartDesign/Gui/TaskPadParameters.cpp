@@ -43,11 +43,15 @@ TaskPadParameters::TaskPadParameters(ViewProviderPad* PadView, QWidget* parent, 
     ui->labelLength2->setText(tr("End"));
     ui->labelOffset2->setText(tr("Start"));
 
-    ui->lengthEdit->setToolTip(tr("End position of the pad measured from the sketch plane on side 1"));
+    ui->lengthEdit->setToolTip(
+        tr("End position of the pad measured from the sketch plane on side 1")
+    );
     ui->offsetEdit->setToolTip(
         tr("Start position of the pad measured from the sketch plane on side 1")
     );
-    ui->lengthEdit2->setToolTip(tr("End position of the pad measured from the sketch plane on side 2"));
+    ui->lengthEdit2->setToolTip(
+        tr("End position of the pad measured from the sketch plane on side 2")
+    );
     ui->offsetEdit2->setToolTip(
         tr("Start position of the pad measured from the sketch plane on side 2")
     );

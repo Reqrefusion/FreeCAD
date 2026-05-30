@@ -71,7 +71,13 @@ Revolution::Revolution()
         App::Prop_None,
         "Start angle in 2nd direction"
     );
-    ADD_PROPERTY_TYPE(Angle2, (emptyAngle), "Revolution", App::Prop_None, "End angle in 2nd direction");
+    ADD_PROPERTY_TYPE(
+        Angle2,
+        (emptyAngle),
+        "Revolution",
+        App::Prop_None,
+        "End angle in 2nd direction"
+    );
     ADD_PROPERTY_TYPE(UpToFace, (nullptr), "Revolution", App::Prop_None, "Face where revolution will end");
     ADD_PROPERTY_TYPE(
         ReferenceAxis,
