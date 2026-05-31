@@ -56,6 +56,10 @@ DlgSettingsGeneral::DlgSettingsGeneral(QWidget* parent)
     //: Part/PartDesign settings: drag behavior mode when not holding the snap modifier key
     ui->defaultCoarseDragBehavior->addItem(tr("Coarse"), 0);
     ui->defaultCoarseDragBehavior->addItem(tr("Fine"), 1);
+
+    //: PartDesign settings: task panel input mode for pad, pocket, revolution, and groove
+    ui->startEndInputMode->addItem(tr("Start-End"), 0);
+    ui->startEndInputMode->addItem(tr("Offset-Length"), 1);
 }
 
 /**
@@ -78,6 +82,7 @@ void DlgSettingsGeneral::saveSettings()
     ui->coarseLinearSnapMultiplier->onSave();
     ui->coarseRotationSnapMultiplier->onSave();
     ui->comboDefaultProfileTypeForHole->onSave();
+    ui->startEndInputMode->onSave();
     ui->checkShowFinalPreview->onSave();
     ui->checkShowTransparentPreview->onSave();
     ui->checkShowProfilePreview->onSave();
@@ -100,6 +105,7 @@ void DlgSettingsGeneral::loadSettings()
     ui->coarseLinearSnapMultiplier->onRestore();
     ui->coarseRotationSnapMultiplier->onRestore();
     ui->comboDefaultProfileTypeForHole->onRestore();
+    ui->startEndInputMode->onRestore();
     ui->checkShowFinalPreview->onRestore();
     ui->checkShowTransparentPreview->onRestore();
     ui->checkShowProfilePreview->onRestore();
