@@ -25,6 +25,7 @@
 #pragma once
 
 #include <App/PropertyUnits.h>
+#include <Base/Bitmask.h>
 
 #include <string>
 
@@ -91,7 +92,7 @@ protected:
         LegacyPocket = 4,
         InverseDirection = 8,
     };
-    using ExtrudeOptions = Base::Flags;
+    using ExtrudeOptions = Base::Flags<ExtrudeOption>;
 
     App::DocumentObjectExecReturn* buildExtrusion(ExtrudeOptions options);
 
