@@ -58,7 +58,9 @@ Pad::Pad()
     Type.setEnums(TypeEnums);
     Type2.setEnums(TypeEnums);
     ADD_PROPERTY_TYPE(Length, (10.0), "Side1", App::Prop_None, "Pad end position");
+    ADD_PROPERTY_TYPE(RangeLength, (10.0), "Side1", App::Prop_None, "Pad length");
     ADD_PROPERTY_TYPE(Length2, (10.0), "Side2", App::Prop_None, "Pad end position in 2nd direction");
+    ADD_PROPERTY_TYPE(RangeLength2, (10.0), "Side2", App::Prop_None, "Pad length in 2nd direction");
     ADD_PROPERTY_TYPE(UseCustomVector, (false), "Pad", App::Prop_None, "Use custom vector for pad direction");
     ADD_PROPERTY_TYPE(
         Direction,
@@ -108,6 +110,8 @@ Pad::Pad()
 
     Length.setConstraints(&signedLengthConstraint);
     Length2.setConstraints(&signedLengthConstraint);
+    RangeLength.setConstraints(&signedLengthConstraint);
+    RangeLength2.setConstraints(&signedLengthConstraint);
 }
 
 

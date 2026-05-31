@@ -49,6 +49,8 @@ public:
     App::PropertyAngle Angle2;
     App::PropertyAngle StartAngle;
     App::PropertyAngle StartAngle2;
+    App::PropertyAngle RangeAngle;
+    App::PropertyAngle RangeAngle2;
 
     /** if this property is set to a valid link, both Axis and Base properties
      *  are calculated according to the linked line

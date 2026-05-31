@@ -65,6 +65,10 @@ TaskPocketParameters::TaskPocketParameters(ViewProviderPocket* PocketView, QWidg
     ui->lengthEdit->setParamGrpPath(QByteArray("User parameter:BaseApp/History/PocketLength"));
     ui->lengthEdit2->setEntryName(QByteArray("Length2"));
     ui->lengthEdit2->setParamGrpPath(QByteArray("User parameter:BaseApp/History/PocketLength2"));
+    m_side1.rangeLengthEdit->setEntryName(QByteArray("RangeLength"));
+    m_side1.rangeLengthEdit->setParamGrpPath(QByteArray("User parameter:BaseApp/History/PocketRangeLength"));
+    m_side2.rangeLengthEdit->setEntryName(QByteArray("RangeLength2"));
+    m_side2.rangeLengthEdit->setParamGrpPath(QByteArray("User parameter:BaseApp/History/PocketRangeLength2"));
     ui->offsetEdit->setEntryName(QByteArray("Offset"));
     ui->offsetEdit->setParamGrpPath(QByteArray("User parameter:BaseApp/History/PocketOffset"));
     ui->offsetEdit2->setEntryName(QByteArray("Offset2"));

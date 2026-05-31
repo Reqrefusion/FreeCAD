@@ -59,7 +59,9 @@ Pocket::Pocket()
     Type.setEnums(TypeEnums);
     Type2.setEnums(TypeEnums);
     ADD_PROPERTY_TYPE(Length, (5.0), "Side1", App::Prop_None, "Pocket end position");
+    ADD_PROPERTY_TYPE(RangeLength, (5.0), "Side1", App::Prop_None, "Pocket length");
     ADD_PROPERTY_TYPE(Length2, (5.0), "Side2", App::Prop_None, "Pocket end position in 2nd direction");
+    ADD_PROPERTY_TYPE(RangeLength2, (5.0), "Side2", App::Prop_None, "Pocket length in 2nd direction");
     ADD_PROPERTY_TYPE(
         UseCustomVector,
         (false),
@@ -121,6 +123,8 @@ Pocket::Pocket()
 
     Length.setConstraints(&signedLengthConstraint);
     Length2.setConstraints(&signedLengthConstraint);
+    RangeLength.setConstraints(&signedLengthConstraint);
+    RangeLength2.setConstraints(&signedLengthConstraint);
 }
 
 App::DocumentObjectExecReturn* Pocket::execute()

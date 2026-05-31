@@ -53,13 +53,16 @@ Revolved::Revolved()
     Angle2.setConstraints(&floatAngle);
     StartAngle.setConstraints(&floatAngle);
     StartAngle2.setConstraints(&floatAngle);
+    RangeAngle.setConstraints(&floatAngle);
+    RangeAngle2.setConstraints(&floatAngle);
 }
 
 short Revolved::mustExecute() const
 {
     if (Placement.isTouched() || ReferenceAxis.isTouched() || Axis.isTouched() || Base.isTouched()
         || UpToFace.isTouched() || Angle.isTouched() || Angle2.isTouched()
-        || StartAngle.isTouched() || StartAngle2.isTouched()) {
+        || StartAngle.isTouched() || StartAngle2.isTouched()
+        || RangeAngle.isTouched() || RangeAngle2.isTouched()) {
         return 1;
     }
     return ProfileBased::mustExecute();
@@ -486,8 +489,10 @@ void Revolved::updateProperties(RevolMethod method)
     // disable everything unless we are sure we need it
     bool isStartAngleEnabled = false;
     bool isAngleEnabled = false;
+    bool isRangeAngleEnabled = false;
     bool isStartAngle2Enabled = false;
     bool isAngle2Enabled = false;
+    bool isRangeAngle2Enabled = false;
     bool isMidplaneEnabled = false;
     bool isReversedEnabled = false;
     bool isUpToFaceEnabled = false;
@@ -495,6 +500,7 @@ void Revolved::updateProperties(RevolMethod method)
         case RevolMethod::Angle:
             isStartAngleEnabled = true;
             isAngleEnabled = true;
+            isRangeAngleEnabled = true;
             isMidplaneEnabled = true;
             isReversedEnabled = !Midplane.getValue();
             break;
@@ -514,14 +520,18 @@ void Revolved::updateProperties(RevolMethod method)
             isAngleEnabled = true;
             isStartAngle2Enabled = true;
             isAngle2Enabled = true;
+            isRangeAngleEnabled = true;
+            isRangeAngle2Enabled = true;
             isReversedEnabled = true;
             break;
     }
 
     StartAngle.setReadOnly(!isStartAngleEnabled);
     Angle.setReadOnly(!isAngleEnabled);
+    RangeAngle.setReadOnly(!isRangeAngleEnabled);
     StartAngle2.setReadOnly(!isStartAngle2Enabled);
     Angle2.setReadOnly(!isAngle2Enabled);
+    RangeAngle2.setReadOnly(!isRangeAngle2Enabled);
     Midplane.setReadOnly(!isMidplaneEnabled);
     Reversed.setReadOnly(!isReversedEnabled);
     UpToFace.setReadOnly(!isUpToFaceEnabled);

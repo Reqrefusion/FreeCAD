@@ -63,9 +63,10 @@ FeatureExtrude::FeatureExtrude() = default;
 short FeatureExtrude::mustExecute() const
 {
     if (Placement.isTouched() || SideType.isTouched() || Type.isTouched() || Type2.isTouched()
-        || Length.isTouched() || Length2.isTouched() || TaperAngle.isTouched()
-        || TaperAngle2.isTouched() || UseCustomVector.isTouched() || Direction.isTouched()
-        || ReferenceAxis.isTouched() || AlongSketchNormal.isTouched() || Offset.isTouched()
+        || Length.isTouched() || Length2.isTouched() || RangeLength.isTouched()
+        || RangeLength2.isTouched() || TaperAngle.isTouched() || TaperAngle2.isTouched()
+        || UseCustomVector.isTouched() || Direction.isTouched() || ReferenceAxis.isTouched()
+        || AlongSketchNormal.isTouched() || Offset.isTouched()
         || Offset2.isTouched() || UpToFace.isTouched() || UpToFace2.isTouched()
         || UpToShape.isTouched() || UpToShape2.isTouched()) {
         return 1;
@@ -302,6 +303,7 @@ void FeatureExtrude::updateProperties()
     }
 
     Length.setReadOnly(!isLength1Enabled);
+    RangeLength.setReadOnly(!isLength1Enabled);
     TaperAngle.setReadOnly(!isTaper1Visible);
     UpToFace.setReadOnly(!isUpToFace1Enabled);
     UpToShape.setReadOnly(!isUpToShape1Enabled);
@@ -309,6 +311,7 @@ void FeatureExtrude::updateProperties()
 
     Type2.setReadOnly(!isType2Enabled);
     Length2.setReadOnly(!isLength2Enabled);
+    RangeLength2.setReadOnly(!isLength2Enabled);
     TaperAngle2.setReadOnly(!isTaper2Visible);
     UpToFace2.setReadOnly(!isUpToFace2Enabled);
     UpToShape2.setReadOnly(!isUpToShape2Enabled);

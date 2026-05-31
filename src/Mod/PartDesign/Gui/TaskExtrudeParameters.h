@@ -164,6 +164,7 @@ protected:
         App::PropertyEnumeration* Type = nullptr;
         App::PropertyLength* Length = nullptr;
         App::PropertyLength* Offset = nullptr;
+        App::PropertyLength* RangeLength = nullptr;
         App::PropertyAngle* TaperAngle = nullptr;
         App::PropertyLinkSub* UpToFace = nullptr;
         App::PropertyLinkSubList* UpToShape = nullptr;

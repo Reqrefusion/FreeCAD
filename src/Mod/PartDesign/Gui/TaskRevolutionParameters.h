@@ -107,6 +107,8 @@ private:
     App::PropertyAngle* propAngle;
     App::PropertyAngle* propStartAngle2;
     App::PropertyAngle* propAngle2;
+    App::PropertyAngle* propRangeAngle;
+    App::PropertyAngle* propRangeAngle2;
     App::PropertyBool* propReversed;
     App::PropertyBool* propMidPlane;
     App::PropertyLinkSub* propReferenceAxis;

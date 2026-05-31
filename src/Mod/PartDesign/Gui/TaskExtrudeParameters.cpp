@@ -185,17 +185,24 @@ void TaskExtrudeParameters::setupSideDialog(SideController& side)
     side.taperEdit->setMaximum(side.TaperAngle->getMaximum());
     side.taperEdit->setSingleStep(side.TaperAngle->getStepSize());
     side.taperEdit->setValue(taper);
-    if (side.rangeLengthEdit) {
-        side.rangeLengthEdit->setMinimum(side.Length->getMinimum());
-        side.rangeLengthEdit->setMaximum(side.Length->getMaximum());
-        side.rangeLengthEdit->setSingleStep(side.Length->getStepSize());
-        updateRangeLength(side);
+    if (side.rangeLengthEdit && side.RangeLength) {
+        side.rangeLengthEdit->setMinimum(side.RangeLength->getMinimum());
+        side.rangeLengthEdit->setMaximum(side.RangeLength->getMaximum());
+        side.rangeLengthEdit->setSingleStep(side.RangeLength->getStepSize());
+        side.rangeLengthEdit->setValue(side.RangeLength->getQuantityValue());
     }
 
     // --- Bind UI widgets to the correct properties ---
     side.lengthEdit->bind(*side.Length);
     side.offsetEdit->bind(*side.Offset);
+    if (side.rangeLengthEdit && side.RangeLength) {
+        side.rangeLengthEdit->bind(*side.RangeLength);
+    }
     side.taperEdit->bind(*side.TaperAngle);
+
+    if (!isOffsetLengthMode()) {
+        updateRangeLength(side);
+    }
 
     // --- Handle "Up to face" label logic ---
     App::DocumentObject* faceObj = side.UpToFace->getValue();
@@ -265,6 +272,7 @@ void TaskExtrudeParameters::createSideControllers()
     m_side1.Type = &extrude->Type;
     m_side1.Length = &extrude->Length;
     m_side1.Offset = &extrude->Offset;
+    m_side1.RangeLength = &extrude->RangeLength;
     m_side1.TaperAngle = &extrude->TaperAngle;
     m_side1.UpToFace = &extrude->UpToFace;
     m_side1.UpToShape = &extrude->UpToShape;
@@ -291,6 +299,7 @@ void TaskExtrudeParameters::createSideControllers()
     m_side2.Type = &extrude->Type2;
     m_side2.Length = &extrude->Length2;
     m_side2.Offset = &extrude->Offset2;
+    m_side2.RangeLength = &extrude->RangeLength2;
     m_side2.TaperAngle = &extrude->TaperAngle2;
     m_side2.UpToFace = &extrude->UpToFace2;
     m_side2.UpToShape = &extrude->UpToShape2;
@@ -306,6 +315,14 @@ void TaskExtrudeParameters::readValuesFromHistory()
     ui->offsetEdit->selectNumber();
     ui->offsetEdit2->setToLastUsedValue();
     ui->offsetEdit2->selectNumber();
+    if (m_side1.rangeLengthEdit) {
+        m_side1.rangeLengthEdit->setToLastUsedValue();
+        m_side1.rangeLengthEdit->selectNumber();
+    }
+    if (m_side2.rangeLengthEdit) {
+        m_side2.rangeLengthEdit->setToLastUsedValue();
+        m_side2.rangeLengthEdit->selectNumber();
+    }
     ui->taperEdit->setToLastUsedValue();
     ui->taperEdit->selectNumber();
     ui->taperEdit2->setToLastUsedValue();
@@ -817,6 +834,7 @@ void TaskExtrudeParameters::onRangeLengthChanged(double len, Side side)
         return;
     }
 
+    sideController.RangeLength->setValue(len);
     const double start = sideController.offsetEdit->value().getValue();
     const double end = start + len;
     {
@@ -1010,10 +1028,18 @@ void TaskExtrudeParameters::updateRangeLength(const SideController& side)
         return;
     }
 
+    if (!side.RangeLength) {
+        return;
+    }
+
     QSignalBlocker block(side.rangeLengthEdit);
     const double start = side.offsetEdit->value().getValue();
     const double end = side.lengthEdit->value().getValue();
-    side.rangeLengthEdit->setValue(end - start);
+    const double rangeLength = end - start;
+    side.rangeLengthEdit->setValue(rangeLength);
+    if (!isOffsetLengthMode()) {
+        side.RangeLength->setValue(rangeLength);
+    }
 }
 
 void TaskExtrudeParameters::syncStartEndLimits()
@@ -1036,6 +1062,10 @@ void TaskExtrudeParameters::syncStartEndLimits()
         side.offsetEdit->setMaximum(offsetPropMax);
         side.lengthEdit->setMinimum(lengthMin);
         side.lengthEdit->setMaximum(lengthMax);
+        if (side.rangeLengthEdit && side.RangeLength) {
+            side.rangeLengthEdit->setMinimum(side.RangeLength->getMinimum());
+            side.rangeLengthEdit->setMaximum(side.RangeLength->getMaximum());
+        }
 
         if (!lengthMode) {
             return;
@@ -1638,6 +1668,12 @@ void TaskExtrudeParameters::saveHistory()
     // save the user values to history
     ui->lengthEdit->pushToHistory();
     ui->lengthEdit2->pushToHistory();
+    if (m_side1.rangeLengthEdit) {
+        m_side1.rangeLengthEdit->pushToHistory();
+    }
+    if (m_side2.rangeLengthEdit) {
+        m_side2.rangeLengthEdit->pushToHistory();
+    }
     ui->offsetEdit->pushToHistory();
     ui->offsetEdit2->pushToHistory();
     ui->taperEdit->pushToHistory();
@@ -1671,6 +1707,12 @@ void TaskExtrudeParameters::applyParameters()
 
     ui->lengthEdit->apply();
     ui->lengthEdit2->apply();
+    if (m_side1.rangeLengthEdit) {
+        m_side1.rangeLengthEdit->apply();
+    }
+    if (m_side2.rangeLengthEdit) {
+        m_side2.rangeLengthEdit->apply();
+    }
     ui->taperEdit->apply();
     ui->taperEdit2->apply();
     FCMD_OBJ_CMD(obj, "UseCustomVector = " << (getCustom() ? 1 : 0));
