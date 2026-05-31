@@ -222,6 +222,36 @@
        </layout>
       </item>
       <item>
+       <layout class="QHBoxLayout" name="horizontalLayoutStartEndInputMode">
+        <item>
+         <widget class="QLabel" name="labelStartEndInputMode">
+          <property name="toolTip">
+           <string>Controls whether pad, pocket, revolution and groove task panels use start/end values or offset/length values</string>
+          </property>
+          <property name="text">
+           <string>Feature input mode</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="Gui::PrefComboBox" name="startEndInputMode">
+          <property name="toolTip">
+           <string>Controls whether pad, pocket, revolution and groove task panels use start/end values or offset/length values</string>
+          </property>
+          <property name="prefEntry" stdset="0">
+           <cstring>StartEndInputMode</cstring>
+          </property>
+          <property name="prefPath" stdset="0">
+           <cstring>Mod/PartDesign</cstring>
+          </property>
+          <property name="prefType" stdset="0">
+           <number>0</number>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
        <widget class="Gui::PrefCheckBox" name="checkSwitchToTask">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
