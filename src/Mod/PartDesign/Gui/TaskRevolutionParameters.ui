@@ -146,34 +146,6 @@
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayoutAngleRangeMode">
-     <item>
-      <widget class="QLabel" name="labelAngleRangeMode">
-       <property name="text">
-        <string>Input</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="angleRangeMode">
-       <property name="toolTip">
-        <string>Choose whether End or Length stays fixed when Start changes.</string>
-       </property>
-       <item>
-        <property name="text">
-         <string>Start-End</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Start-Length</string>
-        </property>
-       </item>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item>
     <layout class="QHBoxLayout" name="horizontalLayoutAngleLength">
      <item>
       <widget class="QLabel" name="labelAngleLength">
@@ -271,34 +243,6 @@
        <property name="value">
         <double>0.000000000000000</double>
        </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="horizontalLayoutAngleRangeMode2">
-     <item>
-      <widget class="QLabel" name="labelAngleRangeMode2">
-       <property name="text">
-        <string>2nd input</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="angleRangeMode2">
-       <property name="toolTip">
-        <string>Choose whether 2nd end or 2nd length stays fixed when 2nd start changes.</string>
-       </property>
-       <item>
-        <property name="text">
-         <string>Start-End</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Start-Length</string>
-        </property>
-       </item>
       </widget>
      </item>
     </layout>
@@ -403,11 +347,9 @@
   <tabstop>axis</tabstop>
   <tabstop>revolveStartAngle</tabstop>
   <tabstop>revolveAngle</tabstop>
-  <tabstop>angleRangeMode</tabstop>
   <tabstop>revolveAngleLength</tabstop>
   <tabstop>revolveStartAngle2</tabstop>
   <tabstop>revolveAngle2</tabstop>
-  <tabstop>angleRangeMode2</tabstop>
   <tabstop>revolveAngleLength2</tabstop>
   <tabstop>checkBoxMidplane</tabstop>
   <tabstop>checkBoxReversed</tabstop>

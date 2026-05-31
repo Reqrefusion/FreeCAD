@@ -26,6 +26,7 @@
 
 #include <algorithm>
 
+#include <App/Application.h>
 #include <App/Document.h>
 #include <App/DocumentObject.h>
 #include <App/Origin.h>
@@ -74,6 +75,14 @@ static void makeStartRadialGizmoPointLike(Gui::RadialGizmo* gizmo)
     arrow->coneBottomRadius = 0.0F;
     arrow->pointRadius = startGizmoPointRadius;
     dragger->baseGeomVisible = false;
+}
+
+static bool useOffsetLengthInputMode()
+{
+    auto hGrp = App::GetApplication().GetParameterGroupByPath(
+        "User parameter:BaseApp/Preferences/Mod/PartDesign"
+    );
+    return hGrp->GetInt("StartEndInputMode", 0) == 1;
 }
 }  // namespace PartDesignGui
 
@@ -337,8 +346,14 @@ void TaskRevolutionParameters::setCheckboxes(PartDesign::Revolution::RevolMethod
         isRevolveStartAngleVisible = true;
         isRevolveAngleVisible = true;
         isRevolveAngleRangeVisible = true;
-        ui->revolveAngle->selectNumber();
-        QMetaObject::invokeMethod(ui->revolveAngle, "setFocus", Qt::QueuedConnection);
+        if (useOffsetLengthInputMode()) {
+            ui->revolveAngleLength->selectNumber();
+            QMetaObject::invokeMethod(ui->revolveAngleLength, "setFocus", Qt::QueuedConnection);
+        }
+        else {
+            ui->revolveAngle->selectNumber();
+            QMetaObject::invokeMethod(ui->revolveAngle, "setFocus", Qt::QueuedConnection);
+        }
         isMidplaneVisible = true;
         isMidplaneEnabled = true;
         // Reverse only makes sense if Midplane is not true
@@ -368,8 +383,14 @@ void TaskRevolutionParameters::setCheckboxes(PartDesign::Revolution::RevolMethod
         isRevolveStartAngle2Visible = true;
         isRevolveAngle2Visible = true;
         isRevolveAngleRange2Visible = true;
-        ui->revolveAngle->selectNumber();
-        QMetaObject::invokeMethod(ui->revolveAngle, "setFocus", Qt::QueuedConnection);
+        if (useOffsetLengthInputMode()) {
+            ui->revolveAngleLength->selectNumber();
+            QMetaObject::invokeMethod(ui->revolveAngleLength, "setFocus", Qt::QueuedConnection);
+        }
+        else {
+            ui->revolveAngle->selectNumber();
+            QMetaObject::invokeMethod(ui->revolveAngle, "setFocus", Qt::QueuedConnection);
+        }
         isReversedEnabled = true;
     }
 
@@ -377,31 +398,39 @@ void TaskRevolutionParameters::setCheckboxes(PartDesign::Revolution::RevolMethod
     ui->revolveStartAngle->setEnabled(isRevolveStartAngleVisible);
     ui->labelStartAngle->setVisible(isRevolveStartAngleVisible);
 
-    ui->revolveAngle->setVisible(isRevolveAngleVisible);
-    ui->revolveAngle->setEnabled(isRevolveAngleVisible);
-    ui->labelAngle->setVisible(isRevolveAngleVisible);
+    const bool offsetLengthInput = useOffsetLengthInputMode();
+    const bool showEndAngle = isRevolveAngleVisible && !offsetLengthInput;
+    ui->revolveAngle->setVisible(showEndAngle);
+    ui->revolveAngle->setEnabled(showEndAngle);
+    ui->labelAngle->setVisible(showEndAngle);
 
     ui->revolveStartAngle2->setVisible(isRevolveStartAngle2Visible);
     ui->revolveStartAngle2->setEnabled(isRevolveStartAngle2Visible);
     ui->labelStartAngle2->setVisible(isRevolveStartAngle2Visible);
 
-    ui->revolveAngle2->setVisible(isRevolveAngle2Visible);
-    ui->revolveAngle2->setEnabled(isRevolveAngle2Visible);
-    ui->labelAngle2->setVisible(isRevolveAngle2Visible);
+    const bool showEndAngle2 = isRevolveAngle2Visible && !offsetLengthInput;
+    ui->revolveAngle2->setVisible(showEndAngle2);
+    ui->revolveAngle2->setEnabled(showEndAngle2);
+    ui->labelAngle2->setVisible(showEndAngle2);
 
-    ui->angleRangeMode->setVisible(isRevolveAngleRangeVisible);
-    ui->angleRangeMode->setEnabled(isRevolveAngleRangeVisible);
-    ui->labelAngleRangeMode->setVisible(isRevolveAngleRangeVisible);
-    ui->revolveAngleLength->setVisible(isRevolveAngleRangeVisible);
-    ui->revolveAngleLength->setEnabled(isRevolveAngleRangeVisible);
-    ui->labelAngleLength->setVisible(isRevolveAngleRangeVisible);
+    ui->labelStartAngle->setText(offsetLengthInput ? tr("Offset") : tr("Start"));
+    ui->labelStartAngle2->setText(offsetLengthInput ? tr("2nd offset") : tr("2nd start"));
+    ui->revolveAngleLength->setToolTip(
+        offsetLengthInput ? tr("Length between Offset and End")
+                          : tr("Length between Start and End")
+    );
+    ui->revolveAngleLength2->setToolTip(
+        offsetLengthInput ? tr("Length between 2nd offset and 2nd end")
+                          : tr("Length between 2nd start and 2nd end")
+    );
 
-    ui->angleRangeMode2->setVisible(isRevolveAngleRange2Visible);
-    ui->angleRangeMode2->setEnabled(isRevolveAngleRange2Visible);
-    ui->labelAngleRangeMode2->setVisible(isRevolveAngleRange2Visible);
-    ui->revolveAngleLength2->setVisible(isRevolveAngleRange2Visible);
-    ui->revolveAngleLength2->setEnabled(isRevolveAngleRange2Visible);
-    ui->labelAngleLength2->setVisible(isRevolveAngleRange2Visible);
+    ui->revolveAngleLength->setVisible(isRevolveAngleRangeVisible && offsetLengthInput);
+    ui->revolveAngleLength->setEnabled(isRevolveAngleRangeVisible && offsetLengthInput);
+    ui->labelAngleLength->setVisible(isRevolveAngleRangeVisible && offsetLengthInput);
+
+    ui->revolveAngleLength2->setVisible(isRevolveAngleRange2Visible && offsetLengthInput);
+    ui->revolveAngleLength2->setEnabled(isRevolveAngleRange2Visible && offsetLengthInput);
+    ui->labelAngleLength2->setVisible(isRevolveAngleRange2Visible && offsetLengthInput);
 
     ui->checkBoxMidplane->setEnabled(isMidplaneEnabled);
     ui->checkBoxMidplane->setVisible(isMidplaneVisible);
@@ -433,10 +462,6 @@ void TaskRevolutionParameters::connectSignals()
             this, [this](double val) { onAngleLengthChanged(val, false); });
     connect(ui->revolveAngleLength2, qOverload<double>(&Gui::QuantitySpinBox::valueChanged),
             this, [this](double val) { onAngleLengthChanged(val, true); });
-    connect(ui->angleRangeMode, qOverload<int>(&QComboBox::currentIndexChanged),
-            this, [this](int) { onAngleRangeModeChanged(false); });
-    connect(ui->angleRangeMode2, qOverload<int>(&QComboBox::currentIndexChanged),
-            this, [this](int) { onAngleRangeModeChanged(true); });
     connect(ui->axis, qOverload<int>(&QComboBox::activated),
             this, &TaskRevolutionParameters::onAxisChanged);
     connect(ui->checkBoxMidplane, &QCheckBox::toggled,
@@ -589,7 +614,7 @@ void TaskRevolutionParameters::onStartAngleChanged(double angle)
             : minimumRevolveStartEndGap;
         double end = ui->revolveAngle->value().getValue();
 
-        if (isStartLengthAngleMode(false)) {
+        if (useOffsetLengthInputMode()) {
             double angleLength = ui->revolveAngleLength->value().getValue();
             if (angleLength < requiredGap) {
                 angleLength = requiredGap;
@@ -680,7 +705,7 @@ void TaskRevolutionParameters::onStartAngle2Changed(double angle)
             constexpr double requiredGap = 0.0;
             double end = ui->revolveAngle2->value().getValue();
 
-            if (isStartLengthAngleMode(true)) {
+            if (useOffsetLengthInputMode()) {
                 double angleLength = ui->revolveAngleLength2->value().getValue();
                 if (angleLength < requiredGap) {
                     angleLength = requiredGap;
@@ -764,7 +789,7 @@ void TaskRevolutionParameters::onAngle2Changed(double len)
 
 void TaskRevolutionParameters::onAngleLengthChanged(double angleLength, bool secondSide)
 {
-    if (!getObject()) {
+    if (!getObject() || !useOffsetLengthInputMode()) {
         return;
     }
 
@@ -810,18 +835,6 @@ void TaskRevolutionParameters::onAngleLengthChanged(double angleLength, bool sec
     exitSelectionMode();
     recomputeFeature();
     setGizmoPositions();
-}
-
-void TaskRevolutionParameters::onAngleRangeModeChanged(bool secondSide)
-{
-    updateAngleLength(secondSide);
-    syncStartEndAngleLimits();
-}
-
-bool TaskRevolutionParameters::isStartLengthAngleMode(bool secondSide) const
-{
-    auto* rangeMode = secondSide ? ui->angleRangeMode2 : ui->angleRangeMode;
-    return rangeMode->currentIndex() == 1;
 }
 
 void TaskRevolutionParameters::updateAngleLength(bool secondSide)
@@ -1033,7 +1046,7 @@ void TaskRevolutionParameters::syncStartEndAngleLimits()
         propAngle,
         firstSideActive,
         firstSideGap,
-        isStartLengthAngleMode(false)
+        useOffsetLengthInputMode()
     );
     syncAngleRange(
         ui->revolveStartAngle2,
@@ -1043,7 +1056,7 @@ void TaskRevolutionParameters::syncStartEndAngleLimits()
         propAngle2,
         secondSideActive,
         secondSideGap,
-        isStartLengthAngleMode(true)
+        useOffsetLengthInputMode()
     );
 }
 

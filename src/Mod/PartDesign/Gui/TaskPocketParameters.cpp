@@ -38,10 +38,11 @@ using namespace Gui;
 TaskPocketParameters::TaskPocketParameters(ViewProviderPocket* PocketView, QWidget* parent, bool newObj)
     : TaskExtrudeParameters(PocketView, parent, "PartDesign_Pocket", tr("Pocket Parameters"))
 {
+    const QString startLabel = isOffsetLengthMode() ? tr("Offset") : tr("Start");
     ui->labelLength->setText(tr("End"));
-    ui->labelOffset->setText(tr("Start"));
+    ui->labelOffset->setText(startLabel);
     ui->labelLength2->setText(tr("End"));
-    ui->labelOffset2->setText(tr("Start"));
+    ui->labelOffset2->setText(startLabel);
 
     ui->lengthEdit->setToolTip(
         tr("End position of the pocket measured from the sketch plane on side 1")
@@ -103,8 +104,9 @@ void TaskPocketParameters::updatePocketStartEndLabels()
         == Mode::Dimension;
     const bool side2IsDimension = static_cast<Mode>(ui->changeMode2->currentIndex())
         == Mode::Dimension;
-    ui->labelOffset->setText(side1IsDimension ? tr("Start") : tr("Offset"));
-    ui->labelOffset2->setText(side2IsDimension ? tr("Start") : tr("Offset"));
+    const QString dimensionOffsetLabel = isOffsetLengthMode() ? tr("Offset") : tr("Start");
+    ui->labelOffset->setText(side1IsDimension ? dimensionOffsetLabel : tr("Offset"));
+    ui->labelOffset2->setText(side2IsDimension ? dimensionOffsetLabel : tr("Offset"));
 }
 
 void TaskPocketParameters::updateUI(Side side)

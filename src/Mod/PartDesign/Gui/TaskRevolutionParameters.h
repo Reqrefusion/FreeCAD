@@ -118,8 +118,6 @@ private:
     void translateModeList(int index);
     void syncStartEndAngleLimits();
     void onAngleLengthChanged(double angleLength, bool secondSide);
-    void onAngleRangeModeChanged(bool secondSide);
-    bool isStartLengthAngleMode(bool secondSide) const;
     void updateAngleLength(bool secondSide);
     // TODO: This is common with extrude. Maybe send to superclass.
     void translateFaceName();
