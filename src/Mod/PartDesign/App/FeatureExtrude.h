@@ -25,7 +25,6 @@
 #pragma once
 
 #include <App/PropertyUnits.h>
-#include <Base/Flags.h>
 
 #include <string>
 
