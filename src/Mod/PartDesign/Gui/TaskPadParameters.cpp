@@ -38,10 +38,11 @@ using namespace Gui;
 TaskPadParameters::TaskPadParameters(ViewProviderPad* PadView, QWidget* parent, bool newObj)
     : TaskExtrudeParameters(PadView, parent, "PartDesign_Pad", tr("Pad Parameters"))
 {
+    const QString startLabel = isOffsetLengthMode() ? tr("Offset") : tr("Start");
     ui->labelLength->setText(tr("End"));
-    ui->labelOffset->setText(tr("Start"));
+    ui->labelOffset->setText(startLabel);
     ui->labelLength2->setText(tr("End"));
-    ui->labelOffset2->setText(tr("Start"));
+    ui->labelOffset2->setText(startLabel);
 
     ui->lengthEdit->setToolTip(
         tr("End position of the pad measured from the sketch plane on side 1")
@@ -103,8 +104,9 @@ void TaskPadParameters::updatePadStartEndLabels()
         == Mode::Dimension;
     const bool side2IsDimension = static_cast<Mode>(ui->changeMode2->currentIndex())
         == Mode::Dimension;
-    ui->labelOffset->setText(side1IsDimension ? tr("Start") : tr("Offset"));
-    ui->labelOffset2->setText(side2IsDimension ? tr("Start") : tr("Offset"));
+    const QString dimensionOffsetLabel = isOffsetLengthMode() ? tr("Offset") : tr("Start");
+    ui->labelOffset->setText(side1IsDimension ? dimensionOffsetLabel : tr("Offset"));
+    ui->labelOffset2->setText(side2IsDimension ? dimensionOffsetLabel : tr("Offset"));
 }
 
 void TaskPadParameters::updateUI(Side side)

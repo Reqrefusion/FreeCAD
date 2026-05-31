@@ -24,12 +24,12 @@
 
 #include <QSignalBlocker>
 #include <QAction>
-#include <QCoreApplication>
 #include <QGridLayout>
 
 #include <algorithm>
 #include <cmath>
 
+#include <App/Application.h>
 #include <App/Document.h>
 #include <Base/Tools.h>
 #include <Base/UnitsApi.h>
@@ -79,15 +79,12 @@ static void makeStartGizmoPointLike(Gui::LinearGizmo* gizmo)
     base->cylinderRadius = 0.0F;
 }
 
-static void setupRangeModeCombo(QComboBox* combo)
+static bool useOffsetLengthInputMode()
 {
-    combo->addItem(QCoreApplication::translate("PartDesignGui::TaskExtrudeParameters", "Start-End"));
-    combo->addItem(QCoreApplication::translate("PartDesignGui::TaskExtrudeParameters", "Start-Length"));
-    combo->setToolTip(QCoreApplication::translate(
-        "PartDesignGui::TaskExtrudeParameters",
-        "Choose whether End or Length stays fixed when Start changes."
-    ));
-    combo->setCurrentIndex(0);
+    auto hGrp = App::GetApplication().GetParameterGroupByPath(
+        "User parameter:BaseApp/Preferences/Mod/PartDesign"
+    );
+    return hGrp->GetInt("StartEndInputMode", 0) == 1;
 }
 }  // namespace PartDesignGui
 
@@ -342,11 +339,6 @@ void TaskExtrudeParameters::connectSlots()
                 this,
                 [this, sideEnum](double val) { onRangeLengthChanged(val, sideEnum); }
             );
-        }
-        if (side.rangeMode) {
-            connect(side.rangeMode, qOverload<int>(&QComboBox::currentIndexChanged), this, [this, sideEnum](int) {
-                onRangeModeChanged(sideEnum);
-            });
         }
         connect(
             side.taperEdit,
@@ -781,7 +773,7 @@ void TaskExtrudeParameters::onOffsetChanged(double len, Side side)
             sideController.offsetEdit->setValue(len);
         }
 
-        if (isStartLengthMode(sideController)) {
+        if (isOffsetLengthMode()) {
             const double rangeLength = sideController.rangeLengthEdit->value().getValue();
             const double newEnd = len + rangeLength;
             QSignalBlocker lengthBlock(sideController.lengthEdit);
@@ -821,7 +813,7 @@ void TaskExtrudeParameters::onOffsetChanged(double len, Side side)
 void TaskExtrudeParameters::onRangeLengthChanged(double len, Side side)
 {
     auto& sideController = getSideController(side);
-    if (!showOffsetInDimension() || !isLengthMode(side)) {
+    if (!showOffsetInDimension() || !isLengthMode(side) || !isOffsetLengthMode()) {
         return;
     }
 
@@ -836,11 +828,6 @@ void TaskExtrudeParameters::onRangeLengthChanged(double len, Side side)
     updateRangeLength(sideController);
     tryRecomputeFeature();
     setGizmoPositions();
-}
-
-void TaskExtrudeParameters::onRangeModeChanged(Side side)
-{
-    updateRangeLength(getSideController(side));
 }
 
 void TaskExtrudeParameters::onTaperChanged(double angle, Side side)
@@ -968,22 +955,16 @@ void TaskExtrudeParameters::placeOffsetBeforeLength()
 {
     auto* grid = ui->gridLayout;
 
-    if (!m_side1.labelRangeMode) {
-        m_side1.labelRangeMode = new QLabel(tr("Input"), proxy);
+    if (!m_side1.labelRangeLength) {
         m_side1.labelRangeLength = new QLabel(tr("Length"), proxy);
         m_side1.rangeLengthEdit = new Gui::PrefQuantitySpinBox(proxy);
         m_side1.rangeLengthEdit->setUnitText(QStringLiteral("mm"));
-        m_side1.rangeLengthEdit->setToolTip(tr("Length between Start and End"));
-        m_side1.rangeMode = new QComboBox(proxy);
-        setupRangeModeCombo(m_side1.rangeMode);
+        m_side1.rangeLengthEdit->setToolTip(tr("Length between Offset and End"));
 
-        m_side2.labelRangeMode = new QLabel(tr("Input"), proxy);
         m_side2.labelRangeLength = new QLabel(tr("Length"), proxy);
         m_side2.rangeLengthEdit = new Gui::PrefQuantitySpinBox(proxy);
         m_side2.rangeLengthEdit->setUnitText(QStringLiteral("mm"));
-        m_side2.rangeLengthEdit->setToolTip(tr("Length between Start and End"));
-        m_side2.rangeMode = new QComboBox(proxy);
-        setupRangeModeCombo(m_side2.rangeMode);
+        m_side2.rangeLengthEdit->setToolTip(tr("Length between 2nd offset and 2nd end"));
     }
 
     grid->removeWidget(ui->labelLength);
@@ -992,12 +973,10 @@ void TaskExtrudeParameters::placeOffsetBeforeLength()
     grid->removeWidget(ui->offsetEdit);
     grid->addWidget(ui->labelOffset, 3, 0);
     grid->addWidget(ui->offsetEdit, 3, 1);
-    grid->addWidget(m_side1.labelRangeMode, 3, 2);
-    grid->addWidget(m_side1.rangeMode, 3, 3);
     grid->addWidget(ui->labelLength, 4, 0);
     grid->addWidget(ui->lengthEdit, 4, 1);
-    grid->addWidget(m_side1.labelRangeLength, 4, 2);
-    grid->addWidget(m_side1.rangeLengthEdit, 4, 3);
+    grid->addWidget(m_side1.labelRangeLength, 4, 0);
+    grid->addWidget(m_side1.rangeLengthEdit, 4, 1);
 
     grid->removeWidget(ui->labelLength2);
     grid->removeWidget(ui->lengthEdit2);
@@ -1005,12 +984,10 @@ void TaskExtrudeParameters::placeOffsetBeforeLength()
     grid->removeWidget(ui->offsetEdit2);
     grid->addWidget(ui->labelOffset2, 10, 0);
     grid->addWidget(ui->offsetEdit2, 10, 1);
-    grid->addWidget(m_side2.labelRangeMode, 10, 2);
-    grid->addWidget(m_side2.rangeMode, 10, 3);
     grid->addWidget(ui->labelLength2, 11, 0);
     grid->addWidget(ui->lengthEdit2, 11, 1);
-    grid->addWidget(m_side2.labelRangeLength, 11, 2);
-    grid->addWidget(m_side2.rangeLengthEdit, 11, 3);
+    grid->addWidget(m_side2.labelRangeLength, 11, 0);
+    grid->addWidget(m_side2.rangeLengthEdit, 11, 1);
 }
 
 bool TaskExtrudeParameters::isLengthMode(Side side) const
@@ -1020,9 +997,9 @@ bool TaskExtrudeParameters::isLengthMode(Side side) const
     return static_cast<Mode>(index) == Mode::Dimension;
 }
 
-bool TaskExtrudeParameters::isStartLengthMode(const SideController& side) const
+bool TaskExtrudeParameters::isOffsetLengthMode() const
 {
-    return side.rangeMode && side.rangeMode->currentIndex() == 1;
+    return useOffsetLengthInputMode();
 }
 
 void TaskExtrudeParameters::updateRangeLength(const SideController& side)
@@ -1174,8 +1151,14 @@ void TaskExtrudeParameters::updateSideUI(
         isOffsetVisible = showOffsetInDimension();
         isTaperVisible = true;
         if (setFocus) {
-            s.lengthEdit->selectNumber();
-            QMetaObject::invokeMethod(s.lengthEdit, "setFocus", Qt::QueuedConnection);
+            if (showOffsetInDimension() && isOffsetLengthMode() && s.rangeLengthEdit) {
+                s.rangeLengthEdit->selectNumber();
+                QMetaObject::invokeMethod(s.rangeLengthEdit, "setFocus", Qt::QueuedConnection);
+            }
+            else {
+                s.lengthEdit->selectNumber();
+                QMetaObject::invokeMethod(s.lengthEdit, "setFocus", Qt::QueuedConnection);
+            }
         }
     }
     else if (sideMode == Mode::ThroughAll && featureType == Type::Pocket) {
@@ -1209,7 +1192,8 @@ void TaskExtrudeParameters::updateSideUI(
 
     // Apply visibility based on the logic above AND the parent visibility.
     // This single 'isParentVisible' check correctly hides all of Side 2's UI at once.
-    const bool finalLengthVisible = isParentVisible && isLengthVisible;
+    const bool offsetLengthInput = isLengthVisible && isOffsetVisible && isOffsetLengthMode();
+    const bool finalLengthVisible = isParentVisible && isLengthVisible && !offsetLengthInput;
     s.labelLength->setVisible(finalLengthVisible);
     s.lengthEdit->setVisible(finalLengthVisible);
     s.lengthEdit->setEnabled(finalLengthVisible);
@@ -1219,11 +1203,8 @@ void TaskExtrudeParameters::updateSideUI(
     s.offsetEdit->setVisible(finalOffsetVisible);
     s.offsetEdit->setEnabled(finalOffsetVisible);
 
-    const bool finalRangeVisible = finalLengthVisible && finalOffsetVisible;
-    if (s.labelRangeMode) {
-        s.labelRangeMode->setVisible(finalRangeVisible);
-        s.rangeMode->setVisible(finalRangeVisible);
-        s.rangeMode->setEnabled(finalRangeVisible);
+    const bool finalRangeVisible = isParentVisible && offsetLengthInput;
+    if (s.labelRangeLength) {
         s.labelRangeLength->setVisible(finalRangeVisible);
         s.rangeLengthEdit->setVisible(finalRangeVisible);
         s.rangeLengthEdit->setEnabled(finalRangeVisible);
