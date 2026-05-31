@@ -65,6 +65,10 @@ TaskPadParameters::TaskPadParameters(ViewProviderPad* PadView, QWidget* parent, 
     ui->lengthEdit->setParamGrpPath(QByteArray("User parameter:BaseApp/History/PadLength"));
     ui->lengthEdit2->setEntryName(QByteArray("Length2"));
     ui->lengthEdit2->setParamGrpPath(QByteArray("User parameter:BaseApp/History/PadLength2"));
+    m_side1.rangeLengthEdit->setEntryName(QByteArray("RangeLength"));
+    m_side1.rangeLengthEdit->setParamGrpPath(QByteArray("User parameter:BaseApp/History/PadRangeLength"));
+    m_side2.rangeLengthEdit->setEntryName(QByteArray("RangeLength2"));
+    m_side2.rangeLengthEdit->setParamGrpPath(QByteArray("User parameter:BaseApp/History/PadRangeLength2"));
     ui->offsetEdit->setEntryName(QByteArray("Offset"));
     ui->offsetEdit->setParamGrpPath(QByteArray("User parameter:BaseApp/History/PadOffset"));
     ui->offsetEdit2->setEntryName(QByteArray("Offset2"));

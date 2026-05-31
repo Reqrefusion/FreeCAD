@@ -60,6 +60,7 @@ Groove::Groove()
     );
     ADD_PROPERTY_TYPE(StartAngle, (emptyAngle), "Groove", App::Prop_None, "Start angle");
     ADD_PROPERTY_TYPE(Angle, (fullAngle), "Groove", App::Prop_None, "End angle");
+    ADD_PROPERTY_TYPE(RangeAngle, (fullAngle), "Groove", App::Prop_None, "Angle");
     ADD_PROPERTY_TYPE(
         StartAngle2,
         (emptyAngle),
@@ -68,6 +69,7 @@ Groove::Groove()
         "Start angle in 2nd direction"
     );
     ADD_PROPERTY_TYPE(Angle2, (emptyAngle), "Groove", App::Prop_None, "End angle in 2nd direction");
+    ADD_PROPERTY_TYPE(RangeAngle2, (emptyAngle), "Groove", App::Prop_None, "Angle in 2nd direction");
     ADD_PROPERTY_TYPE(UpToFace, (nullptr), "Groove", App::Prop_None, "Face where groove will end");
     ADD_PROPERTY_TYPE(ReferenceAxis, (nullptr), "Groove", (App::Prop_None), "Reference axis of groove");
 }

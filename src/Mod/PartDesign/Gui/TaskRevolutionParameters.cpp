@@ -110,6 +110,8 @@ TaskRevolutionParameters::TaskRevolutionParameters(
         this->propAngle = &(rev->Angle);
         this->propStartAngle2 = &(rev->StartAngle2);
         this->propAngle2 = &(rev->Angle2);
+        this->propRangeAngle = &(rev->RangeAngle);
+        this->propRangeAngle2 = &(rev->RangeAngle2);
         this->propMidPlane = &(rev->Midplane);
         this->propReferenceAxis = &(rev->ReferenceAxis);
         this->propReversed = &(rev->Reversed);
@@ -118,6 +120,8 @@ TaskRevolutionParameters::TaskRevolutionParameters(
         ui->revolveAngle->bind(rev->Angle);
         ui->revolveStartAngle2->bind(rev->StartAngle2);
         ui->revolveAngle2->bind(rev->Angle2);
+        ui->revolveAngleLength->bind(rev->RangeAngle);
+        ui->revolveAngleLength2->bind(rev->RangeAngle2);
     }
     else {
         throw Base::TypeError("The object is neither a groove nor a revolution.");
@@ -213,12 +217,16 @@ void TaskRevolutionParameters::setupDialog()
     ui->revolveAngle2->setMaximum(propAngle2->getMaximum());
     ui->revolveAngle2->setMinimum(propAngle2->getMinimum());
 
-    ui->revolveAngleLength->setMinimum(0.0);
-    ui->revolveAngleLength->setMaximum(propAngle->getMaximum() - propStartAngle->getMinimum());
-    ui->revolveAngleLength2->setMinimum(0.0);
-    ui->revolveAngleLength2->setMaximum(propAngle2->getMaximum() - propStartAngle2->getMinimum());
-    updateAngleLength(false);
-    updateAngleLength(true);
+    ui->revolveAngleLength->setMinimum(propRangeAngle->getMinimum());
+    ui->revolveAngleLength->setMaximum(propRangeAngle->getMaximum());
+    ui->revolveAngleLength->setValue(propRangeAngle->getValue());
+    ui->revolveAngleLength2->setMinimum(propRangeAngle2->getMinimum());
+    ui->revolveAngleLength2->setMaximum(propRangeAngle2->getMaximum());
+    ui->revolveAngleLength2->setValue(propRangeAngle2->getValue());
+    if (!useOffsetLengthInputMode()) {
+        updateAngleLength(false);
+        updateAngleLength(true);
+    }
 
     index = int(rev->Type.getValue());
 
@@ -809,6 +817,7 @@ void TaskRevolutionParameters::onAngleLengthChanged(double angleLength, bool sec
     auto* endEdit = secondSide ? ui->revolveAngle2 : ui->revolveAngle;
     auto* lengthEdit = secondSide ? ui->revolveAngleLength2 : ui->revolveAngleLength;
     auto* endProp = secondSide ? propAngle2 : propAngle;
+    auto* rangeProp = secondSide ? propRangeAngle2 : propRangeAngle;
 
     const double requiredGap = secondSide || mode == PartDesign::Revolution::RevolMethod::TwoAngles
         ? 0.0
@@ -827,6 +836,7 @@ void TaskRevolutionParameters::onAngleLengthChanged(double angleLength, bool sec
         QSignalBlocker lengthBlock(lengthEdit);
         lengthEdit->setValue(angleLength);
     }
+    rangeProp->setValue(angleLength);
 
     QSignalBlocker endBlock(endEdit);
     endEdit->setValue(end);
@@ -844,8 +854,13 @@ void TaskRevolutionParameters::updateAngleLength(bool secondSide)
     auto* endEdit = secondSide ? ui->revolveAngle2 : ui->revolveAngle;
     auto* lengthEdit = secondSide ? ui->revolveAngleLength2 : ui->revolveAngleLength;
 
+    const double angleLength = endEdit->value().getValue() - startEdit->value().getValue();
     QSignalBlocker lengthBlock(lengthEdit);
-    lengthEdit->setValue(endEdit->value().getValue() - startEdit->value().getValue());
+    lengthEdit->setValue(angleLength);
+    if (!useOffsetLengthInputMode()) {
+        auto* rangeProp = secondSide ? propRangeAngle2 : propRangeAngle;
+        rangeProp->setValue(angleLength);
+    }
 }
 
 void TaskRevolutionParameters::onAxisChanged(int num)
@@ -947,6 +962,7 @@ void TaskRevolutionParameters::syncStartEndAngleLimits()
                               auto* lengthEdit,
                               auto* startProp,
                               auto* endProp,
+                              auto* rangeProp,
                               bool active,
                               double requiredGap,
                               bool startLengthMode) {
@@ -993,6 +1009,7 @@ void TaskRevolutionParameters::syncStartEndAngleLimits()
                 startProp->setValue(start);
             }
 
+            rangeProp->setValue(angleLength);
             end = start + angleLength;
             endEdit->setValue(end);
             endProp->setValue(end);
@@ -1027,6 +1044,7 @@ void TaskRevolutionParameters::syncStartEndAngleLimits()
         startEdit->setMaximum(maxStart);
         endEdit->setMinimum(minEnd);
         lengthEdit->setValue(end - start);
+        rangeProp->setValue(end - start);
         lengthEdit->setMaximum(std::max(requiredGap, endMax - start));
     };
 
@@ -1045,6 +1063,7 @@ void TaskRevolutionParameters::syncStartEndAngleLimits()
         ui->revolveAngleLength,
         propStartAngle,
         propAngle,
+        propRangeAngle,
         firstSideActive,
         firstSideGap,
         useOffsetLengthInputMode()
@@ -1055,6 +1074,7 @@ void TaskRevolutionParameters::syncStartEndAngleLimits()
         ui->revolveAngleLength2,
         propStartAngle2,
         propAngle2,
+        propRangeAngle2,
         secondSideActive,
         secondSideGap,
         useOffsetLengthInputMode()
@@ -1157,6 +1177,8 @@ void TaskRevolutionParameters::apply()
     ui->revolveAngle->apply();
     ui->revolveStartAngle2->apply();
     ui->revolveAngle2->apply();
+    ui->revolveAngleLength->apply();
+    ui->revolveAngleLength2->apply();
     std::vector<std::string> sub;
     App::DocumentObject* obj {};
     getReferenceAxis(obj, sub);
