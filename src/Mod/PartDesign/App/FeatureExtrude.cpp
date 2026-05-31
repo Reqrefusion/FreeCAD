@@ -562,9 +562,6 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
             prisms.push_back(prism1);
         }
         else if (Sidemethod == "Symmetric") {
-            // Length remains the total span when extrusion is symmetric to the sketch plane.
-            // Build both sides separately so taper and Start offset are applied from the sketch
-            // plane in both directions.
             if (method == "Length") {
                 gp_Dir dir2 = dir;
                 dir2.Reverse();

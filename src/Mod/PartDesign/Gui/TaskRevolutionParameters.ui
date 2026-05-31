@@ -150,14 +150,14 @@
      <item>
       <widget class="QLabel" name="labelAngleLength">
        <property name="text">
-        <string>Length</string>
+        <string>Angle</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="Gui::QuantitySpinBox" name="revolveAngleLength">
        <property name="toolTip">
-        <string>Length between Start and End</string>
+        <string>Angle between Start and End</string>
        </property>
        <property name="keyboardTracking">
         <bool>false</bool>
@@ -252,14 +252,14 @@
      <item>
       <widget class="QLabel" name="labelAngleLength2">
        <property name="text">
-        <string>2nd length</string>
+        <string>2nd angle</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="Gui::QuantitySpinBox" name="revolveAngleLength2">
        <property name="toolTip">
-        <string>Length between 2nd start and 2nd end</string>
+        <string>Angle between 2nd start and 2nd end</string>
        </property>
        <property name="keyboardTracking">
         <bool>false</bool>
