@@ -237,6 +237,7 @@ protected:
     virtual void translateModeList(QComboBox* box, int index);
     virtual void updateUI(Side side);
     virtual bool showOffsetInDimension() const;
+    bool isOffsetLengthMode() const;
     void placeOffsetBeforeLength();
     void syncStartEndLimits();
     void updateDirectionEdits();
@@ -267,7 +268,6 @@ private:
 
     void createSideControllers();
     bool isLengthMode(Side side) const;
-    bool isOffsetLengthMode() const;
     void updateRangeLength(const SideController& side);
 
     std::unique_ptr<Gui::GizmoContainer> gizmoContainer;
