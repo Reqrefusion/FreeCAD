@@ -119,7 +119,6 @@ Pocket::Pocket()
     ADD_PROPERTY_TYPE(TaperAngle2, (0.0), "Side2", App::Prop_None, "Taper angle for 2nd direction");
     TaperAngle2.setConstraints(&floatAngle);
 
-    // Use signed constraints so the End value can match the Start value range.
     Length.setConstraints(&signedLengthConstraint);
     Length2.setConstraints(&signedLengthConstraint);
 }

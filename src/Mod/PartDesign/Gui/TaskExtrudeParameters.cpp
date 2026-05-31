@@ -967,6 +967,8 @@ void TaskExtrudeParameters::placeOffsetBeforeLength()
         m_side2.rangeLengthEdit->setToolTip(tr("Length between 2nd offset and 2nd end"));
     }
 
+    grid->setVerticalSpacing(std::max(grid->verticalSpacing(), 6));
+
     grid->removeWidget(ui->labelLength);
     grid->removeWidget(ui->lengthEdit);
     grid->removeWidget(ui->labelOffset);

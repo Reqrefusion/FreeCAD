@@ -380,8 +380,6 @@ void SoRotatorBase::notify(SoNotList* notList)
         float rotAngle;
         rotation.getValue(axis, rotAngle);
 
-        // When an explicit angle range is used, rotation still provides the axis;
-        // startAngle and endAngle define the displayed arc.
         float start = 0.0F;
         float end = rotAngle;
         if (useAngleRange.getValue()) {

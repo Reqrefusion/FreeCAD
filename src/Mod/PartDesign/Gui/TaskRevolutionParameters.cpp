@@ -415,13 +415,14 @@ void TaskRevolutionParameters::setCheckboxes(PartDesign::Revolution::RevolMethod
 
     ui->labelStartAngle->setText(offsetLengthInput ? tr("Offset") : tr("Start"));
     ui->labelStartAngle2->setText(offsetLengthInput ? tr("2nd offset") : tr("2nd start"));
+    ui->labelAngleLength->setText(tr("Angle"));
+    ui->labelAngleLength2->setText(tr("2nd angle"));
     ui->revolveAngleLength->setToolTip(
-        offsetLengthInput ? tr("Length between Offset and End")
-                          : tr("Length between Start and End")
+        offsetLengthInput ? tr("Angle between Offset and End") : tr("Angle between Start and End")
     );
     ui->revolveAngleLength2->setToolTip(
-        offsetLengthInput ? tr("Length between 2nd offset and 2nd end")
-                          : tr("Length between 2nd start and 2nd end")
+        offsetLengthInput ? tr("Angle between 2nd offset and 2nd end")
+                          : tr("Angle between 2nd start and 2nd end")
     );
 
     ui->revolveAngleLength->setVisible(isRevolveAngleRangeVisible && offsetLengthInput);

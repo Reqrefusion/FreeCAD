@@ -400,15 +400,11 @@ void Revolved::generateRevolution(
         else if (method == RevolMethod::TwoAngles) {
             revolutions.push_back(makeRevolutionSegment(revolAx, startAngle, angle));
 
-            // Reversed is already applied to revolAx; the second side intentionally uses
-            // the opposite axis.
             gp_Ax1 revolAx2(revolAx);
             revolAx2.Reverse();
             revolutions.push_back(makeRevolutionSegment(revolAx2, startAngle2, angle2));
         }
         else if (midplane) {
-            // Start and end remain the total angular span in midplane mode and are split
-            // equally to both sides of the sketch plane, matching symmetric extrusion.
             const double symmetricStart = startAngle / 2.0;
             const double symmetricAngle = angle / 2.0;
 
