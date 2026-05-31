@@ -109,17 +109,17 @@ protected:
     void updateProperties();
 
     TopoShape generateSingleExtrusionSide(
-        const TopoShape& sketchShape,
+        const TopoShape& sketchShape,  // The base sketch for this side (global CS)
         const std::string& method,
         double length,
         double taperAngleDeg,
-        App::PropertyLinkSub& upToFacePropHandle,
-        App::PropertyLinkSubList& upToShapePropHandle,
+        App::PropertyLinkSub& upToFacePropHandle,  // e.g., &UpToFace or &UpToFace2
+        App::PropertyLinkSubList& upToShapePropHandle,  // e.g., &UpToShape or &UpToShape2
         gp_Dir dir,
         double offsetVal,
         bool makeFace,
-        const TopoShape& base,
-        TopLoc_Location& invObjLoc
+        const TopoShape& base,  // The base shape for context (global CS)
+        TopLoc_Location& invObjLoc  // MUST be passed. Cannot be re-accessed, see #26677
     );
 };
 
