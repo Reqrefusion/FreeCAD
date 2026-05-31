@@ -331,14 +331,13 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
         return App::DocumentObject::StdReturn;
     }
 
+    const bool makeface = options.testFlag(ExtrudeOption::MakeFace);
+    const bool fuse = options.testFlag(ExtrudeOption::MakeFuse);
+    const bool inverseDirection = options.testFlag(ExtrudeOption::InverseDirection);
 
-    bool makeface = options.testFlag(ExtrudeOption::MakeFace);
-    bool fuse = options.testFlag(ExtrudeOption::MakeFuse);
-    bool inverseDirection = options.testFlag(ExtrudeOption::InverseDirection);
-
-    std::string Sidemethod(SideType.getValueAsString());
-    std::string method(Type.getValueAsString());
-    std::string method2(Type2.getValueAsString());
+    const std::string Sidemethod(SideType.getValueAsString());
+    const std::string method(Type.getValueAsString());
+    const std::string method2(Type2.getValueAsString());
 
     // Validate parameters
     double L = method == "ThroughAll" ? getThroughAllLength()
