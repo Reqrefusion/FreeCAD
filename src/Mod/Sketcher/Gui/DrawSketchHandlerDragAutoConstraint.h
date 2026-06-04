@@ -69,22 +69,15 @@ private:
         int geoId,
         Sketcher::PointPos posId = Sketcher::PointPos::none
     );
-    Base::Vector2d getPosition(
-        const Sketcher::GeoElementId& dragged,
-        const Base::Vector2d& fallbackPos
-    ) const;
     bool hasMoved(const Base::Vector2d& actualPos) const;
-    Base::Vector2d getDirection(
+    Base::Vector2d getDirection(const Sketcher::GeoElementId& dragged, const Base::Vector2d& pos) const;
+    bool isExistingConstraint(
         const Sketcher::GeoElementId& dragged,
-        const Base::Vector2d& pos
+        const AutoConstraint& constraint
     ) const;
-    bool isExistingConstraint(const Sketcher::GeoElementId& dragged, const AutoConstraint& constraint) const;
     void removeInvalidConstraints(const Sketcher::GeoElementId& dragged);
-    void clearCursor();
-
 private:
     std::vector<AutoConstraint> suggestedConstraints;
-    bool hasStartPos = false;
     Base::Vector2d startPos {0.0, 0.0};
 };
 
