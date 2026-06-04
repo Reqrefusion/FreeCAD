@@ -76,6 +76,7 @@ private:
         const AutoConstraint& constraint
     ) const;
     void removeInvalidConstraints(const Sketcher::GeoElementId& dragged);
+
 private:
     std::vector<AutoConstraint> suggestedConstraints;
     Base::Vector2d startPos {0.0, 0.0};

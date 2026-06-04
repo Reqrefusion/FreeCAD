@@ -212,7 +212,9 @@ void DrawSketchHandlerDragAutoConstraint::update(
     }
 
     const auto& dragged = draggedElements.front();
-    const Base::Vector2d actualPos = toVector2d(obj->getPoint(dragged.GeoId, dragged.Pos));
+    const Base::Vector2d actualPos = toVector2d(
+        sketchgui->getSolvedSketch().getPoint(dragged.GeoId, dragged.Pos)
+    );
 
     if (!hasMoved(actualPos)) {
         unsetCursor();
