@@ -62,6 +62,7 @@ SketcherGuiExport void addSketcherWorkbenchConstraints(Gui::MenuItem& cons);
 SketcherGuiExport void addSketcherWorkbenchTools(Gui::MenuItem& consaccel);
 SketcherGuiExport void addSketcherWorkbenchBSplines(Gui::MenuItem& bspline);
 SketcherGuiExport void addSketcherWorkbenchVisual(Gui::MenuItem& visual);
+SketcherGuiExport void addSketcherWorkbenchAutoConstraints(Gui::MenuItem& autoconstraints);
 
 SketcherGuiExport void addSketcherWorkbenchSketchActions(Gui::ToolBarItem& sketch);
 SketcherGuiExport void addSketcherWorkbenchSketchEditModeActions(Gui::ToolBarItem& sketch);
@@ -70,5 +71,6 @@ SketcherGuiExport void addSketcherWorkbenchConstraints(Gui::ToolBarItem& cons);
 SketcherGuiExport void addSketcherWorkbenchTools(Gui::ToolBarItem& consaccel);
 SketcherGuiExport void addSketcherWorkbenchBSplines(Gui::ToolBarItem& bspline);
 SketcherGuiExport void addSketcherWorkbenchVisual(Gui::ToolBarItem& visual);
+SketcherGuiExport void addSketcherWorkbenchAutoConstraints(Gui::ToolBarItem& autoconstraints);
 
 }  // namespace SketcherGui

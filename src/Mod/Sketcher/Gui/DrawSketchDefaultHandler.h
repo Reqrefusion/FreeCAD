@@ -38,6 +38,7 @@
 #include <Mod/Sketcher/App/SolverGeometryExtension.h>
 
 #include "AutoConstraint.h"
+#include "AutoConstraintManager.h"
 #include "DrawSketchHandler.h"
 #include "ViewProviderSketch.h"
 #include "SnapManager.h"
@@ -691,6 +692,10 @@ protected:
         Sketcher::PointPos posId1
     )
     {
+        if (!AutoConstraintManager::isConstraintActive(ac.Type)) {
+            return true;
+        }
+
         int geoId2 = ac.GeoId;
         Sketcher::PointPos posId2 = ac.PosId;
 

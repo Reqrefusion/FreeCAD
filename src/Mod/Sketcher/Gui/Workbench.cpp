@@ -47,6 +47,7 @@ using namespace SketcherGui;
     qApp->translate("Workbench", "Visual Helpers");
     qApp->translate("Workbench", "Virtual Space");
     qApp->translate("Workbench", "Sketcher Edit Tools");
+    qApp->translate("Workbench", "Auto Constraints");
 #endif
 
 /// @namespace SketcherGui @class Workbench
@@ -142,6 +143,11 @@ Gui::ToolBarItem* Workbench::setupToolBars() const
     visual->setCommand("Visual Helpers");
     addSketcherWorkbenchVisual(*visual);
 
+    Gui::ToolBarItem* autoconstraints
+        = new Gui::ToolBarItem(root, Gui::ToolBarItem::DefaultVisibility::Unavailable);
+    autoconstraints->setCommand("Auto Constraints");
+    addSketcherWorkbenchAutoConstraints(*autoconstraints);
+
     return root;
 }
 
@@ -164,7 +170,8 @@ inline const QStringList editModeToolbarNames()
         QStringLiteral("Sketcher Tools"),
         QStringLiteral("B-Spline Tools"),
         QStringLiteral("Visual Helpers"),
-        QStringLiteral("Sketcher Edit Tools")
+        QStringLiteral("Sketcher Edit Tools"),
+        QStringLiteral("Auto Constraints")
     };
 }
 
@@ -299,6 +306,35 @@ inline void SketcherAddWorkbenchSketchEditModeActions(Gui::ToolBarItem& sketch)
     sketch << "Sketcher_LeaveSketch"
            << "Sketcher_ViewSketch"
            << "Sketcher_ViewSection";
+}
+
+template<typename T>
+void SketcherAddWorkbenchAutoConstraints(T& autoconstraints);
+
+template<>
+inline void SketcherAddWorkbenchAutoConstraints(Gui::MenuItem& autoconstraints)
+{
+    autoconstraints << "Sketcher_AutoConstraint_Coincident"
+                    << "Sketcher_AutoConstraint_PointOnObject"
+                    << "Sketcher_AutoConstraint_Horizontal"
+                    << "Sketcher_AutoConstraint_Vertical"
+                    << "Sketcher_AutoConstraint_Parallel"
+                    << "Sketcher_AutoConstraint_Perpendicular"
+                    << "Sketcher_AutoConstraint_Tangent"
+                    << "Sketcher_AutoConstraint_Symmetric";
+}
+
+template<>
+inline void SketcherAddWorkbenchAutoConstraints(Gui::ToolBarItem& autoconstraints)
+{
+    autoconstraints << "Sketcher_AutoConstraint_Coincident"
+                    << "Sketcher_AutoConstraint_PointOnObject"
+                    << "Sketcher_AutoConstraint_Horizontal"
+                    << "Sketcher_AutoConstraint_Vertical"
+                    << "Sketcher_AutoConstraint_Parallel"
+                    << "Sketcher_AutoConstraint_Perpendicular"
+                    << "Sketcher_AutoConstraint_Tangent"
+                    << "Sketcher_AutoConstraint_Symmetric";
 }
 
 template<typename T>
@@ -734,6 +770,16 @@ void addSketcherWorkbenchBSplines(Gui::ToolBarItem& bspline)
 void addSketcherWorkbenchVisual(Gui::ToolBarItem& visual)
 {
     SketcherAddWorkbenchVisual(visual);
+}
+
+void addSketcherWorkbenchAutoConstraints(Gui::MenuItem& autoconstraints)
+{
+    SketcherAddWorkbenchAutoConstraints(autoconstraints);
+}
+
+void addSketcherWorkbenchAutoConstraints(Gui::ToolBarItem& autoconstraints)
+{
+    SketcherAddWorkbenchAutoConstraints(autoconstraints);
 }
 
 } /* namespace SketcherGui */

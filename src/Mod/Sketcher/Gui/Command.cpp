@@ -56,6 +56,7 @@
 #include <Mod/Sketcher/App/ExternalGeometryFacade.h>
 #include <Mod/Sketcher/App/SketchObject.h>
 
+#include "AutoConstraintManager.h"
 #include "SketchMirrorDialog.h"
 #include "SketchOrientationDialog.h"
 #include "TaskSketcherValidation.h"
@@ -1921,6 +1922,82 @@ bool CmdSketcherSnap::isActive()
 }
 
 
+/* Auto Constraint mode toolbar commands
+ *
+ * Draft Snap stores active modes as one ordered bit-string (`snapModes`).  The Sketcher global
+ * autoconstraint switch already exists as ViewProviderSketch::Autoconstraints, so this command set
+ * only stores per-constraint-type modes.
+ */
+namespace
+{
+struct AutoConstraintCommandData
+{
+    const char* command;
+    const char* menuText;
+    const char* toolTip;
+    AutoConstraintManager::Mode mode;
+};
+
+class CmdSketcherAutoConstraintMode: public Gui::Command
+{
+public:
+    explicit CmdSketcherAutoConstraintMode(AutoConstraintCommandData data)
+        : Command(data.command)
+        , data(data)
+    {
+        sAppModule = "Sketcher";
+        sGroup = "Sketcher";
+        sMenuText = data.menuText;
+        sToolTipText = data.toolTip;
+        sWhatsThis = data.command;
+        sStatusTip = sToolTipText;
+        sPixmap = AutoConstraintManager::commandIconName(data.mode);
+        eType = ForEdit;
+        setCheckable(true);
+    }
+
+    const char* className() const override
+    {
+        return data.command;
+    }
+
+protected:
+    void activated(int iMsg) override
+    {
+        Q_UNUSED(iMsg)
+        AutoConstraintManager::toggleMode(data.mode);
+        syncAction();
+    }
+
+    bool isActive() override
+    {
+        syncAction();
+        return isCommandActive(getActiveGuiDocument());
+    }
+
+    Gui::Action* createAction() override
+    {
+        auto* action = Command::createAction();
+        action->setCheckable(true);
+        action->setChecked(AutoConstraintManager::isModeActive(data.mode));
+        return action;
+    }
+
+private:
+    void syncAction()
+    {
+        if (_pcAction) {
+            _pcAction->setChecked(AutoConstraintManager::isModeActive(data.mode));
+        }
+    }
+
+private:
+    AutoConstraintCommandData data;
+};
+
+}  // namespace
+
+
 /* Rendering Order */
 RenderingOrderAction::RenderingOrderAction(QObject* parent)
         : QWidgetAction(parent)
@@ -2166,6 +2243,38 @@ void CreateSketcherCommands()
     rcCmdMgr.addCommand(new CmdSketcherViewSection());
     rcCmdMgr.addCommand(new CmdSketcherGrid());
     rcCmdMgr.addCommand(new CmdSketcherSnap());
+    rcCmdMgr.addCommand(new CmdSketcherAutoConstraintMode({"Sketcher_AutoConstraint_Coincident",
+                                                     QT_TR_NOOP("Auto Coincident"),
+                                                     QT_TR_NOOP("Toggles automatic coincident constraints"),
+                                                     AutoConstraintManager::Mode::Coincident}));
+    rcCmdMgr.addCommand(new CmdSketcherAutoConstraintMode({"Sketcher_AutoConstraint_PointOnObject",
+                                                     QT_TR_NOOP("Auto Point-on-Object"),
+                                                     QT_TR_NOOP("Toggles automatic point-on-object constraints"),
+                                                     AutoConstraintManager::Mode::PointOnObject}));
+    rcCmdMgr.addCommand(new CmdSketcherAutoConstraintMode({"Sketcher_AutoConstraint_Horizontal",
+                                                     QT_TR_NOOP("Auto Horizontal"),
+                                                     QT_TR_NOOP("Toggles automatic horizontal constraints"),
+                                                     AutoConstraintManager::Mode::Horizontal}));
+    rcCmdMgr.addCommand(new CmdSketcherAutoConstraintMode({"Sketcher_AutoConstraint_Vertical",
+                                                     QT_TR_NOOP("Auto Vertical"),
+                                                     QT_TR_NOOP("Toggles automatic vertical constraints"),
+                                                     AutoConstraintManager::Mode::Vertical}));
+    rcCmdMgr.addCommand(new CmdSketcherAutoConstraintMode({"Sketcher_AutoConstraint_Parallel",
+                                                     QT_TR_NOOP("Auto Parallel"),
+                                                     QT_TR_NOOP("Toggles automatic parallel constraints"),
+                                                     AutoConstraintManager::Mode::Parallel}));
+    rcCmdMgr.addCommand(new CmdSketcherAutoConstraintMode({"Sketcher_AutoConstraint_Perpendicular",
+                                                     QT_TR_NOOP("Auto Perpendicular"),
+                                                     QT_TR_NOOP("Toggles automatic perpendicular constraints"),
+                                                     AutoConstraintManager::Mode::Perpendicular}));
+    rcCmdMgr.addCommand(new CmdSketcherAutoConstraintMode({"Sketcher_AutoConstraint_Tangent",
+                                                     QT_TR_NOOP("Auto Tangent"),
+                                                     QT_TR_NOOP("Toggles automatic tangent constraints"),
+                                                     AutoConstraintManager::Mode::Tangent}));
+    rcCmdMgr.addCommand(new CmdSketcherAutoConstraintMode({"Sketcher_AutoConstraint_Symmetric",
+                                                     QT_TR_NOOP("Auto Symmetric"),
+                                                     QT_TR_NOOP("Toggles automatic symmetric constraints"),
+                                                     AutoConstraintManager::Mode::Symmetric}));
     rcCmdMgr.addCommand(new CmdRenderingOrder());
 }
 // clang-format on

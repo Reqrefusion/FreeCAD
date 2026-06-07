@@ -41,6 +41,7 @@
 
 #include "CommandConstraints.h"
 #include "DrawSketchHandler.h"
+#include "AutoConstraintManager.h"
 #include "Utils.h"
 #include "ViewProviderSketch.h"
 
@@ -548,7 +549,8 @@ void DrawSketchHandler::seekPreselectionAutoConstraint(
             }
         }
 
-        if (constr.Type != Sketcher::None) {
+        if (constr.Type != Sketcher::None
+            && AutoConstraintManager::isConstraintActive(constr.Type)) {
             suggestedConstraints.push_back(constr);
         }
     }
@@ -652,7 +654,8 @@ bool DrawSketchHandler::seekAlignmentAutoConstraint(
             }
         }
 
-        if (bestConstraint != Sketcher::None) {
+        if (bestConstraint != Sketcher::None
+            && AutoConstraintManager::isConstraintActive(bestConstraint)) {
             AutoConstraint constr;
             constr.Type = bestConstraint;
             constr.GeoId = bestIndex;
@@ -661,7 +664,8 @@ bool DrawSketchHandler::seekAlignmentAutoConstraint(
         }
     }
 
-    if (constr.Type != Sketcher::None) {
+    if (constr.Type != Sketcher::None
+        && AutoConstraintManager::isConstraintActive(constr.Type)) {
         suggestedConstraints.push_back(constr);
         return true;
     }
@@ -877,8 +881,10 @@ bool DrawSketchHandler::seekTangentAutoConstraint(
         constr.Type = Tangent;
         constr.GeoId = tangId;
         constr.PosId = tanPos;
-        suggestedConstraints.push_back(constr);
-        return true;
+        if (AutoConstraintManager::isConstraintActive(constr.Type)) {
+            suggestedConstraints.push_back(constr);
+            return true;
+        }
     }
     return false;
 }
@@ -913,7 +919,8 @@ int DrawSketchHandler::seekAutoConstraint(
 
     if (Dir.Length() > 1e-8 && type != AutoConstraint::CURVE) {
         bool tangentCreated = false;
-        if (type != AutoConstraint::VERTEX_NO_TANGENCY) {
+        if (type != AutoConstraint::VERTEX_NO_TANGENCY
+            && AutoConstraintManager::isConstraintActive(Sketcher::Tangent)) {
             tangentCreated = seekTangentAutoConstraint(suggestedConstraints, Pos, Dir);
         }
 
@@ -948,6 +955,10 @@ void DrawSketchHandler::createAutoConstraints(
 
     // Iterate through constraints
     for (auto& cstr : autoConstrs) {
+        if (!AutoConstraintManager::isConstraintActive(cstr.Type)) {
+            continue;
+        }
+
         int geoId2 = cstr.GeoId;
 
         switch (cstr.Type) {

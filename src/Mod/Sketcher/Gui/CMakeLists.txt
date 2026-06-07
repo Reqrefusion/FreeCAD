@@ -40,6 +40,8 @@ SET(SketcherGui_SRCS
     Command.h
     Command.cpp
     AutoConstraint.h
+    AutoConstraintManager.h
+    AutoConstraintManager.cpp
     Utils.h
     Utils.cpp
     CircleEllipseConstructionMethod.h
