@@ -208,6 +208,112 @@ bool CmdSurfaceCurveOnMesh::isActive()
     return doc && doc->countObjectsOfType("Mesh::Feature") > 0;
 }
 
+
+//===========================================================================
+// CmdSurfaceWrap
+//===========================================================================
+DEF_STD_CMD_A(CmdSurfaceWrap)
+
+CmdSurfaceWrap::CmdSurfaceWrap()
+    : Command("Surface_Wrap")
+{
+    sAppModule = "Surface";
+    sGroup = QT_TR_NOOP("Surface");
+    sMenuText = QT_TR_NOOP("Wrap");
+    sToolTipText = QT_TR_NOOP("Wraps a source sketch, wire, or edge onto a selected face");
+    sStatusTip = sToolTipText;
+    sWhatsThis = "Surface_Wrap";
+    sPixmap = "Surface_Wrap";
+}
+
+void CmdSurfaceWrap::activated(int iMsg)
+{
+    Q_UNUSED(iMsg);
+
+    std::vector<Gui::SelectionObject> sel =
+        getSelection().getSelectionEx(nullptr, Part::Feature::getClassTypeId());
+
+    if (sel.size() < 2) {
+        QMessageBox::warning(Gui::getMainWindow(),
+                             qApp->translate("Surface_Wrap", "Wrong selection"),
+                             qApp->translate("Surface_Wrap",
+                                             "Select one source object and one target face."));
+        return;
+    }
+
+    std::string sourceSupportString;
+    std::string faceSupportString;
+    int sourceCount = 0;
+    int faceCount = 0;
+
+    for (const auto& objSel : sel) {
+        const std::vector<std::string>& subNames = objSel.getSubNames();
+
+        bool hasFaceSub = false;
+        bool hasNonFaceSub = false;
+        int localFaceCount = 0;
+
+        for (const std::string& sub : subNames) {
+            if (sub.rfind("Face", 0) == 0) {
+                hasFaceSub = true;
+                ++localFaceCount;
+            }
+            else {
+                hasNonFaceSub = true;
+            }
+        }
+
+        if (hasFaceSub && hasNonFaceSub) {
+            QMessageBox::warning(Gui::getMainWindow(),
+                                 qApp->translate("Surface_Wrap", "Wrong selection"),
+                                 qApp->translate("Surface_Wrap",
+                                                 "Do not mix face and non-face sub-elements in one selection."));
+            return;
+        }
+
+        if (hasFaceSub) {
+            faceCount += localFaceCount;
+            if (localFaceCount == 1 && faceSupportString.empty()) {
+                faceSupportString = objSel.getAsPropertyLinkSubString();
+            }
+            continue;
+        }
+
+        if (sourceSupportString.empty()) {
+            sourceSupportString = objSel.getAsPropertyLinkSubString();
+        }
+        ++sourceCount;
+    }
+
+    if (sourceCount != 1 || faceCount != 1 || sourceSupportString.empty() || faceSupportString.empty()) {
+        QMessageBox::warning(Gui::getMainWindow(),
+                             qApp->translate("Surface_Wrap", "Wrong selection"),
+                             qApp->translate("Surface_Wrap",
+                                             "Select exactly one source object or source edge/wire set, and exactly one target face."));
+        return;
+    }
+
+    std::string featName = getUniqueObjectName("Wrap");
+
+    openCommand(QT_TRANSLATE_NOOP("Command", "Wrap on surface"));
+    doCommand(Doc, "App.ActiveDocument.addObject(\"Surface::Wrap\",\"%s\")", featName.c_str());
+    doCommand(Doc,
+              "App.ActiveDocument.%s.Source = %s",
+              featName.c_str(),
+              sourceSupportString.c_str());
+    doCommand(Doc,
+              "App.ActiveDocument.%s.Face = %s",
+              featName.c_str(),
+              faceSupportString.c_str());
+    updateActive();
+    commitCommand();
+}
+
+bool CmdSurfaceWrap::isActive()
+{
+    return hasActiveDocument() && !Gui::Control().activeDialog();
+}
+
 //===========================================================================
 // CmdBlendCurve : Blend Curve Command
 //===========================================================================
@@ -363,5 +469,6 @@ void CreateSurfaceCommands()
     rcCmdMgr.addCommand(new CmdSurfaceSections());
     rcCmdMgr.addCommand(new CmdSurfaceExtendFace());
     rcCmdMgr.addCommand(new CmdSurfaceCurveOnMesh());
+    rcCmdMgr.addCommand(new CmdSurfaceWrap());
     rcCmdMgr.addCommand(new CmdBlendCurve());
 }
