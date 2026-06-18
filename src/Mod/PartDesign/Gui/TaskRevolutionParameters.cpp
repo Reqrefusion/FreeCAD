@@ -59,7 +59,7 @@ using namespace Gui;
 
 namespace PartDesignGui
 {
-static constexpr double minimumRevolveStartEndGap = 1.0e-7;
+static constexpr double minimumRevolveDistance = 1.0e-7;
 static constexpr float startGizmoPointRadius = 1.15F;
 
 static void makeStartRadialGizmoPointLike(Gui::RadialGizmo* gizmo)
@@ -575,7 +575,7 @@ void TaskRevolutionParameters::onStartAngleChanged(double start)
     );
     const double requiredGap = mode == PartDesign::Revolution::RevolMethod::TwoAngles
         ? 0.0
-        : minimumRevolveStartEndGap;
+        : minimumRevolveDistance;
     const double distance = ui->revolveAngle->value().getValue();
     const bool distanceFromStart = propDistanceType->getValue() == 0;
     const double maxStart = distanceFromStart ? propAngle->getMaximum() - distance
@@ -609,7 +609,7 @@ void TaskRevolutionParameters::onAngleChanged(double distance)
     );
     const double requiredGap = mode == PartDesign::Revolution::RevolMethod::TwoAngles
         ? 0.0
-        : minimumRevolveStartEndGap;
+        : minimumRevolveDistance;
     const double start = ui->revolveStartAngle->value().getValue();
     const bool distanceFromStart = propDistanceType->getValue() == 0;
     const double minimum = distanceFromStart ? requiredGap : start + requiredGap;
@@ -706,7 +706,7 @@ void TaskRevolutionParameters::syncDistanceLimits(bool secondSide)
         ui->changeMode->currentIndex()
     );
     const double requiredGap = !secondSide && mode != PartDesign::Revolution::RevolMethod::TwoAngles
-        ? minimumRevolveStartEndGap
+        ? minimumRevolveDistance
         : 0.0;
     const double startMinimum = startProp->getMinimum();
     const double distanceMaximum = distanceProp->getMaximum();

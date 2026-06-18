@@ -265,7 +265,6 @@ private:
     void changeFaceName(QLineEdit* lineEdit, const QString& text);
 
     void createSideControllers();
-    bool isLengthMode(Side side) const;
 
     std::unique_ptr<Gui::GizmoContainer> gizmoContainer;
     Gui::LinearGizmo* startGizmo1 = nullptr;

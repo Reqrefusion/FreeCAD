@@ -54,7 +54,6 @@ using namespace Gui;
 
 namespace PartDesignGui
 {
-static constexpr double minimumLinearStartEndGap = 1.0e-6;
 static constexpr float startGizmoPointRadius = 1.15F;
 
 static void makeStartGizmoPointLike(Gui::LinearGizmo* gizmo)
@@ -882,13 +881,6 @@ void TaskExtrudeParameters::placeOffsetBeforeLength()
     grid->addWidget(ui->labelLength2, 11, 0);
     grid->addWidget(ui->lengthEdit2, 11, 1);
     grid->addWidget(m_side2.distanceType, 11, 2);
-}
-
-bool TaskExtrudeParameters::isLengthMode(Side side) const
-{
-    const int index = side == Side::First ? ui->changeMode->currentIndex()
-                                          : ui->changeMode2->currentIndex();
-    return static_cast<Mode>(index) == Mode::Dimension;
 }
 
 void TaskExtrudeParameters::updateWholeUI(Type type, Side side)
