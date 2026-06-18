@@ -50,6 +50,8 @@ FC_LOG_LEVEL_INIT("PartDesign", true, true)
 using namespace PartDesign;
 
 const char* FeatureExtrude::SideTypesEnums[] = {"One side", "Two sides", "Symmetric", nullptr};
+const char* FeatureExtrude::DistanceTypesEnums[]
+    = {"Distance from start", "Distance from origin", nullptr};
 
 PROPERTY_SOURCE(PartDesign::FeatureExtrude, PartDesign::ProfileBased)
 
@@ -63,8 +65,8 @@ FeatureExtrude::FeatureExtrude() = default;
 short FeatureExtrude::mustExecute() const
 {
     if (Placement.isTouched() || SideType.isTouched() || Type.isTouched() || Type2.isTouched()
-        || Length.isTouched() || Length2.isTouched() || RangeLength.isTouched()
-        || RangeLength2.isTouched() || TaperAngle.isTouched() || TaperAngle2.isTouched()
+        || DistanceType.isTouched() || DistanceType2.isTouched() || Length.isTouched()
+        || Length2.isTouched() || TaperAngle.isTouched() || TaperAngle2.isTouched()
         || UseCustomVector.isTouched() || Direction.isTouched() || ReferenceAxis.isTouched()
         || AlongSketchNormal.isTouched() || Offset.isTouched()
         || Offset2.isTouched() || UpToFace.isTouched() || UpToFace2.isTouched()
@@ -205,6 +207,7 @@ void FeatureExtrude::updateProperties()
     std::string methodSide2 = Type2.getValueAsString();
 
     bool isLength1Enabled = false;
+    bool isDistanceType1Enabled = false;
     bool isTaper1Visible = false;
     bool isUpToFace1Enabled = false;
     bool isUpToShape1Enabled = false;
@@ -212,6 +215,7 @@ void FeatureExtrude::updateProperties()
 
     bool isType2Enabled = false;
     bool isLength2Enabled = false;
+    bool isDistanceType2Enabled = false;
     bool isTaper2Visible = false;
     bool isUpToFace2Enabled = false;
     bool isUpToShape2Enabled = false;
@@ -221,6 +225,7 @@ void FeatureExtrude::updateProperties()
 
     auto configureSideProperties = [&](const std::string& method,
                                        bool& lengthEnabled,
+                                       bool& distanceTypeEnabled,
                                        bool& taperVisible,
                                        bool& upToFaceEnabled,
                                        bool& upToShapeEnabled,
@@ -228,6 +233,7 @@ void FeatureExtrude::updateProperties()
                                        bool& localOffset) {
         if (method == "Length") {
             lengthEnabled = true;
+            distanceTypeEnabled = true;
             taperVisible = true;
             localAlongSketchNormal = true;
             localOffset = true;
@@ -253,6 +259,7 @@ void FeatureExtrude::updateProperties()
         configureSideProperties(
             methodSide1,
             isLength1Enabled,
+            isDistanceType1Enabled,
             isTaper1Visible,
             isUpToFace1Enabled,
             isUpToShape1Enabled,
@@ -268,6 +275,7 @@ void FeatureExtrude::updateProperties()
         configureSideProperties(
             methodSide1,
             isLength1Enabled,
+            isDistanceType1Enabled,
             isTaper1Visible,
             isUpToFace1Enabled,
             isUpToShape1Enabled,
@@ -279,6 +287,7 @@ void FeatureExtrude::updateProperties()
         configureSideProperties(
             methodSide2,
             isLength2Enabled,
+            isDistanceType2Enabled,
             isTaper2Visible,
             isUpToFace2Enabled,
             isUpToShape2Enabled,
@@ -293,6 +302,7 @@ void FeatureExtrude::updateProperties()
         configureSideProperties(
             methodSide1,
             isLength1Enabled,
+            isDistanceType1Enabled,
             isTaper1Visible,
             isUpToFace1Enabled,
             isUpToShape1Enabled,
@@ -303,7 +313,7 @@ void FeatureExtrude::updateProperties()
     }
 
     Length.setReadOnly(!isLength1Enabled);
-    RangeLength.setReadOnly(!isLength1Enabled);
+    DistanceType.setReadOnly(!isDistanceType1Enabled);
     TaperAngle.setReadOnly(!isTaper1Visible);
     UpToFace.setReadOnly(!isUpToFace1Enabled);
     UpToShape.setReadOnly(!isUpToShape1Enabled);
@@ -311,7 +321,7 @@ void FeatureExtrude::updateProperties()
 
     Type2.setReadOnly(!isType2Enabled);
     Length2.setReadOnly(!isLength2Enabled);
-    RangeLength2.setReadOnly(!isLength2Enabled);
+    DistanceType2.setReadOnly(!isDistanceType2Enabled);
     TaperAngle2.setReadOnly(!isTaper2Visible);
     UpToFace2.setReadOnly(!isUpToFace2Enabled);
     UpToShape2.setReadOnly(!isUpToShape2Enabled);
@@ -340,16 +350,31 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
     const std::string method2(Type2.getValueAsString());
 
     // Validate parameters
-    double L = method == "ThroughAll" ? getThroughAllLength()
-        : method == "Length"          ? Length.getValue()
-                                      : 0.0;
-    double L2 = Sidemethod == "Two sides" ? method2 == "ThroughAll" ? getThroughAllLength()
-            : method2 == "Length"                                   ? Length2.getValue()
-                                                                    : 0.0
-                                          : 0.0;
-
     double start1 = method == "Length" ? Offset.getValue() : 0.0;
     double start2 = Sidemethod == "Two sides" && method2 == "Length" ? Offset2.getValue() : 0.0;
+
+    auto resolveEnd = [](double start, double distance, const App::PropertyEnumeration& type) {
+        return type.getValue() == 0 ? start + distance : distance;
+    };
+
+    double L = 0.0;
+    if (method == "ThroughAll") {
+        L = getThroughAllLength();
+    }
+    else if (method == "Length") {
+        L = resolveEnd(start1, Length.getValue(), DistanceType);
+    }
+
+    double L2 = 0.0;
+    if (Sidemethod == "Two sides") {
+        if (method2 == "ThroughAll") {
+            L2 = getThroughAllLength();
+        }
+        else if (method2 == "Length") {
+            L2 = resolveEnd(start2, Length2.getValue(), DistanceType2);
+        }
+    }
+
     double effectiveL = method == "Length" ? std::abs(L - start1) : L;
     double effectiveL2 = Sidemethod == "Two sides" && method2 == "Length"
         ? std::abs(L2 - start2)

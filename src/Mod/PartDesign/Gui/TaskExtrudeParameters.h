@@ -143,11 +143,10 @@ protected:
         QComboBox* changeMode = nullptr;
         QLabel* labelLength = nullptr;
         QLabel* labelOffset = nullptr;
-        QLabel* labelRangeLength = nullptr;
         QLabel* labelTaperAngle = nullptr;
         Gui::PrefQuantitySpinBox* lengthEdit = nullptr;
         Gui::PrefQuantitySpinBox* offsetEdit = nullptr;
-        Gui::PrefQuantitySpinBox* rangeLengthEdit = nullptr;
+        QComboBox* distanceType = nullptr;
         Gui::PrefQuantitySpinBox* taperEdit = nullptr;
         QLineEdit* lineFaceName = nullptr;
         QToolButton* buttonFace = nullptr;
@@ -164,7 +163,7 @@ protected:
         App::PropertyEnumeration* Type = nullptr;
         App::PropertyLength* Length = nullptr;
         App::PropertyLength* Offset = nullptr;
-        App::PropertyLength* RangeLength = nullptr;
+        App::PropertyEnumeration* DistanceType = nullptr;
         App::PropertyAngle* TaperAngle = nullptr;
         App::PropertyLinkSub* UpToFace = nullptr;
         App::PropertyLinkSubList* UpToShape = nullptr;
@@ -195,7 +194,7 @@ private:
     void onModeChanged_Side2(int index);
     void onLengthChanged(double len, Side side);
     void onOffsetChanged(double len, Side side);
-    void onRangeLengthChanged(double len, Side side);
+    void onDistanceTypeChanged(int index, Side side);
     void onTaperChanged(double angle, Side side);
     void onSelectFaceToggle(bool checked, Side side);
 
@@ -238,9 +237,7 @@ protected:
     virtual void translateModeList(QComboBox* box, int index);
     virtual void updateUI(Side side);
     virtual bool showOffsetInDimension() const;
-    bool isOffsetLengthMode() const;
     void placeOffsetBeforeLength();
-    void syncStartEndLimits();
     void updateDirectionEdits();
     void setDirectionMode(int index);
     void handleLineFaceNameClick(QLineEdit*);
@@ -269,7 +266,6 @@ private:
 
     void createSideControllers();
     bool isLengthMode(Side side) const;
-    void updateRangeLength(const SideController& side);
 
     std::unique_ptr<Gui::GizmoContainer> gizmoContainer;
     Gui::LinearGizmo* startGizmo1 = nullptr;

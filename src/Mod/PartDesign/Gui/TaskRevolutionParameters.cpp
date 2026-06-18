@@ -26,7 +26,8 @@
 
 #include <algorithm>
 
-#include <App/Application.h>
+#include <Inventor/SbRotation.h>
+
 #include <App/Document.h>
 #include <App/DocumentObject.h>
 #include <App/Origin.h>
@@ -77,13 +78,6 @@ static void makeStartRadialGizmoPointLike(Gui::RadialGizmo* gizmo)
     dragger->baseGeomVisible = false;
 }
 
-static bool useOffsetLengthInputMode()
-{
-    auto hGrp = App::GetApplication().GetParameterGroupByPath(
-        "User parameter:BaseApp/Preferences/Mod/PartDesign"
-    );
-    return hGrp->GetInt("StartEndInputMode", 0) == 1;
-}
 }  // namespace PartDesignGui
 
 TaskRevolutionParameters::TaskRevolutionParameters(
@@ -110,8 +104,8 @@ TaskRevolutionParameters::TaskRevolutionParameters(
         this->propAngle = &(rev->Angle);
         this->propStartAngle2 = &(rev->StartAngle2);
         this->propAngle2 = &(rev->Angle2);
-        this->propRangeAngle = &(rev->RangeAngle);
-        this->propRangeAngle2 = &(rev->RangeAngle2);
+        this->propDistanceType = &(rev->DistanceType);
+        this->propDistanceType2 = &(rev->DistanceType2);
         this->propMidPlane = &(rev->Midplane);
         this->propReferenceAxis = &(rev->ReferenceAxis);
         this->propReversed = &(rev->Reversed);
@@ -120,8 +114,6 @@ TaskRevolutionParameters::TaskRevolutionParameters(
         ui->revolveAngle->bind(rev->Angle);
         ui->revolveStartAngle2->bind(rev->StartAngle2);
         ui->revolveAngle2->bind(rev->Angle2);
-        ui->revolveAngleLength->bind(rev->RangeAngle);
-        ui->revolveAngleLength2->bind(rev->RangeAngle2);
     }
     else {
         throw Base::TypeError("The object is neither a groove nor a revolution.");
@@ -217,21 +209,21 @@ void TaskRevolutionParameters::setupDialog()
     ui->revolveAngle2->setMaximum(propAngle2->getMaximum());
     ui->revolveAngle2->setMinimum(propAngle2->getMinimum());
 
-    ui->revolveAngleLength->setMinimum(propRangeAngle->getMinimum());
-    ui->revolveAngleLength->setMaximum(propRangeAngle->getMaximum());
-    ui->revolveAngleLength->setValue(propRangeAngle->getValue());
-    ui->revolveAngleLength2->setMinimum(propRangeAngle2->getMinimum());
-    ui->revolveAngleLength2->setMaximum(propRangeAngle2->getMaximum());
-    ui->revolveAngleLength2->setValue(propRangeAngle2->getValue());
-    if (!useOffsetLengthInputMode()) {
-        updateAngleLength(false);
-        updateAngleLength(true);
-    }
+    auto setupDistanceType = [this](QComboBox* combo, int currentIndex) {
+        combo->clear();
+        combo->addItem(tr("Distance from start"));
+        combo->addItem(tr("Distance from origin"));
+        combo->setCurrentIndex(currentIndex);
+    };
+    setupDistanceType(ui->distanceType, propDistanceType->getValue());
+    setupDistanceType(ui->distanceType2, propDistanceType2->getValue());
+
+    syncDistanceLimits(false);
+    syncDistanceLimits(true);
 
     index = int(rev->Type.getValue());
 
     translateModeList(index);
-    syncStartEndAngleLimits();
 }
 
 void TaskRevolutionParameters::translateModeList(int index)
@@ -337,34 +329,21 @@ void TaskRevolutionParameters::addAxisToCombo(
 
 void TaskRevolutionParameters::setCheckboxes(PartDesign::Revolution::RevolMethod mode)
 {
-    // disable/hide everything unless we are sure we don't need it
-    // exception: the direction parameters are in any case visible
-    bool isRevolveStartAngleVisible = false;
-    bool isRevolveAngleVisible = false;
-    bool isRevolveStartAngle2Visible = false;
-    bool isRevolveAngle2Visible = false;
-    bool isRevolveAngleRangeVisible = false;
-    bool isRevolveAngleRange2Visible = false;
+    // Disable/hide everything unless it is used by the selected method.
+    bool isFirstDistanceVisible = false;
+    bool isSecondDistanceVisible = false;
     bool isMidplaneEnabled = false;
     bool isMidplaneVisible = false;
     bool isReversedEnabled = false;
     bool isFaceEditEnabled = false;
 
     if (mode == PartDesign::Revolution::RevolMethod::Angle) {
-        isRevolveStartAngleVisible = true;
-        isRevolveAngleVisible = true;
-        isRevolveAngleRangeVisible = true;
-        if (useOffsetLengthInputMode()) {
-            ui->revolveAngleLength->selectNumber();
-            QMetaObject::invokeMethod(ui->revolveAngleLength, "setFocus", Qt::QueuedConnection);
-        }
-        else {
-            ui->revolveAngle->selectNumber();
-            QMetaObject::invokeMethod(ui->revolveAngle, "setFocus", Qt::QueuedConnection);
-        }
+        isFirstDistanceVisible = true;
+        ui->revolveAngle->selectNumber();
+        QMetaObject::invokeMethod(ui->revolveAngle, "setFocus", Qt::QueuedConnection);
         isMidplaneVisible = true;
         isMidplaneEnabled = true;
-        // Reverse only makes sense if Midplane is not true
+        // Reverse only makes sense if Midplane is not true.
         isReversedEnabled = !ui->checkBoxMidplane->isChecked();
     }
     else if (mode == PartDesign::Revolution::RevolMethod::ThroughAll && isGroove) {
@@ -379,67 +358,38 @@ void TaskRevolutionParameters::setCheckboxes(PartDesign::Revolution::RevolMethod
         isReversedEnabled = true;
         isFaceEditEnabled = true;
         QMetaObject::invokeMethod(ui->lineFaceName, "setFocus", Qt::QueuedConnection);
-        // Go into reference selection mode if no face has been selected yet
+        // Go into reference selection mode if no face has been selected yet.
         if (ui->lineFaceName->property("FeatureName").isNull()) {
             ui->buttonFace->setChecked(true);
         }
     }
     else if (mode == PartDesign::Revolution::RevolMethod::TwoAngles) {
-        isRevolveStartAngleVisible = true;
-        isRevolveAngleVisible = true;
-        isRevolveAngleRangeVisible = true;
-        isRevolveStartAngle2Visible = true;
-        isRevolveAngle2Visible = true;
-        isRevolveAngleRange2Visible = true;
-        if (useOffsetLengthInputMode()) {
-            ui->revolveAngleLength->selectNumber();
-            QMetaObject::invokeMethod(ui->revolveAngleLength, "setFocus", Qt::QueuedConnection);
-        }
-        else {
-            ui->revolveAngle->selectNumber();
-            QMetaObject::invokeMethod(ui->revolveAngle, "setFocus", Qt::QueuedConnection);
-        }
+        isFirstDistanceVisible = true;
+        isSecondDistanceVisible = true;
+        ui->revolveAngle->selectNumber();
+        QMetaObject::invokeMethod(ui->revolveAngle, "setFocus", Qt::QueuedConnection);
         isReversedEnabled = true;
     }
 
-    ui->revolveStartAngle->setVisible(isRevolveStartAngleVisible);
-    ui->revolveStartAngle->setEnabled(isRevolveStartAngleVisible);
-    ui->labelStartAngle->setVisible(isRevolveStartAngleVisible);
+    ui->revolveStartAngle->setVisible(isFirstDistanceVisible);
+    ui->revolveStartAngle->setEnabled(isFirstDistanceVisible);
+    ui->labelStartAngle->setVisible(isFirstDistanceVisible);
 
-    const bool offsetLengthInput = useOffsetLengthInputMode();
-    const bool showEndAngle = isRevolveAngleVisible && !offsetLengthInput;
-    ui->revolveAngle->setVisible(showEndAngle);
-    ui->revolveAngle->setEnabled(showEndAngle);
-    ui->labelAngle->setVisible(showEndAngle);
+    ui->revolveAngle->setVisible(isFirstDistanceVisible);
+    ui->revolveAngle->setEnabled(isFirstDistanceVisible);
+    ui->labelAngle->setVisible(isFirstDistanceVisible);
+    ui->distanceType->setVisible(isFirstDistanceVisible);
+    ui->distanceType->setEnabled(isFirstDistanceVisible);
 
-    ui->revolveStartAngle2->setVisible(isRevolveStartAngle2Visible);
-    ui->revolveStartAngle2->setEnabled(isRevolveStartAngle2Visible);
-    ui->labelStartAngle2->setVisible(isRevolveStartAngle2Visible);
+    ui->revolveStartAngle2->setVisible(isSecondDistanceVisible);
+    ui->revolveStartAngle2->setEnabled(isSecondDistanceVisible);
+    ui->labelStartAngle2->setVisible(isSecondDistanceVisible);
 
-    const bool showEndAngle2 = isRevolveAngle2Visible && !offsetLengthInput;
-    ui->revolveAngle2->setVisible(showEndAngle2);
-    ui->revolveAngle2->setEnabled(showEndAngle2);
-    ui->labelAngle2->setVisible(showEndAngle2);
-
-    ui->labelStartAngle->setText(offsetLengthInput ? tr("Offset") : tr("Start"));
-    ui->labelStartAngle2->setText(offsetLengthInput ? tr("2nd offset") : tr("2nd start"));
-    ui->labelAngleLength->setText(tr("Angle"));
-    ui->labelAngleLength2->setText(tr("2nd angle"));
-    ui->revolveAngleLength->setToolTip(
-        offsetLengthInput ? tr("Angle between Offset and End") : tr("Angle between Start and End")
-    );
-    ui->revolveAngleLength2->setToolTip(
-        offsetLengthInput ? tr("Angle between 2nd offset and 2nd end")
-                          : tr("Angle between 2nd start and 2nd end")
-    );
-
-    ui->revolveAngleLength->setVisible(isRevolveAngleRangeVisible && offsetLengthInput);
-    ui->revolveAngleLength->setEnabled(isRevolveAngleRangeVisible && offsetLengthInput);
-    ui->labelAngleLength->setVisible(isRevolveAngleRangeVisible && offsetLengthInput);
-
-    ui->revolveAngleLength2->setVisible(isRevolveAngleRange2Visible && offsetLengthInput);
-    ui->revolveAngleLength2->setEnabled(isRevolveAngleRange2Visible && offsetLengthInput);
-    ui->labelAngleLength2->setVisible(isRevolveAngleRange2Visible && offsetLengthInput);
+    ui->revolveAngle2->setVisible(isSecondDistanceVisible);
+    ui->revolveAngle2->setEnabled(isSecondDistanceVisible);
+    ui->labelAngle2->setVisible(isSecondDistanceVisible);
+    ui->distanceType2->setVisible(isSecondDistanceVisible);
+    ui->distanceType2->setEnabled(isSecondDistanceVisible);
 
     ui->checkBoxMidplane->setEnabled(isMidplaneEnabled);
     ui->checkBoxMidplane->setVisible(isMidplaneVisible);
@@ -453,7 +403,9 @@ void TaskRevolutionParameters::setCheckboxes(PartDesign::Revolution::RevolMethod
     if (!isFaceEditEnabled) {
         ui->buttonFace->setChecked(false);
     }
-    syncStartEndAngleLimits();
+
+    syncDistanceLimits(false);
+    syncDistanceLimits(true);
 }
 
 void TaskRevolutionParameters::connectSignals()
@@ -467,10 +419,10 @@ void TaskRevolutionParameters::connectSignals()
             this, &TaskRevolutionParameters::onStartAngle2Changed);
     connect(ui->revolveAngle2, qOverload<double>(&Gui::QuantitySpinBox::valueChanged),
             this, &TaskRevolutionParameters::onAngle2Changed);
-    connect(ui->revolveAngleLength, qOverload<double>(&Gui::QuantitySpinBox::valueChanged),
-            this, [this](double val) { onAngleLengthChanged(val, false); });
-    connect(ui->revolveAngleLength2, qOverload<double>(&Gui::QuantitySpinBox::valueChanged),
-            this, [this](double val) { onAngleLengthChanged(val, true); });
+    connect(ui->distanceType, qOverload<int>(&QComboBox::activated),
+            this, &TaskRevolutionParameters::onDistanceTypeChanged);
+    connect(ui->distanceType2, qOverload<int>(&QComboBox::activated),
+            this, &TaskRevolutionParameters::onDistanceType2Changed);
     connect(ui->axis, qOverload<int>(&QComboBox::activated),
             this, &TaskRevolutionParameters::onAxisChanged);
     connect(ui->checkBoxMidplane, &QCheckBox::toggled,
@@ -612,255 +564,236 @@ void TaskRevolutionParameters::clearFaceName()
     ui->lineFaceName->setProperty("FaceName", QVariant());
 }
 
-void TaskRevolutionParameters::onStartAngleChanged(double angle)
+void TaskRevolutionParameters::onStartAngleChanged(double start)
 {
-    if (getObject()) {
-        const auto mode = static_cast<PartDesign::Revolution::RevolMethod>(
-            ui->changeMode->currentIndex()
-        );
-        const double requiredGap = mode == PartDesign::Revolution::RevolMethod::TwoAngles
-            ? 0.0
-            : minimumRevolveStartEndGap;
-        double end = ui->revolveAngle->value().getValue();
-
-        if (useOffsetLengthInputMode()) {
-            double angleLength = ui->revolveAngleLength->value().getValue();
-            if (angleLength < requiredGap) {
-                angleLength = requiredGap;
-                QSignalBlocker lengthBlock(ui->revolveAngleLength);
-                ui->revolveAngleLength->setValue(angleLength);
-            }
-
-            end = angle + angleLength;
-            if (end > propAngle->getMaximum()) {
-                end = propAngle->getMaximum();
-                angle = end - angleLength;
-                QSignalBlocker startBlock(ui->revolveStartAngle);
-                ui->revolveStartAngle->setValue(angle);
-            }
-
-            QSignalBlocker endBlock(ui->revolveAngle);
-            ui->revolveAngle->setValue(end);
-            propAngle->setValue(end);
-        }
-        else {
-            const double maxStart = end - requiredGap;
-            if (angle > maxStart) {
-                if (maxStart >= propStartAngle->getMinimum()) {
-                    angle = maxStart;
-                }
-                else {
-                    angle = propStartAngle->getMinimum();
-                    end = angle + requiredGap;
-                    QSignalBlocker endBlock(ui->revolveAngle);
-                    ui->revolveAngle->setValue(end);
-                    propAngle->setValue(end);
-                }
-
-                QSignalBlocker startBlock(ui->revolveStartAngle);
-                ui->revolveStartAngle->setValue(angle);
-            }
-        }
-
-        propStartAngle->setValue(angle);
-        updateAngleLength(false);
-        syncStartEndAngleLimits();
-        exitSelectionMode();
-        recomputeFeature();
-        setGizmoPositions();
-    }
-}
-
-void TaskRevolutionParameters::onAngleChanged(double len)
-{
-    if (getObject()) {
-        const auto mode = static_cast<PartDesign::Revolution::RevolMethod>(
-            ui->changeMode->currentIndex()
-        );
-        const double requiredGap = mode == PartDesign::Revolution::RevolMethod::TwoAngles
-            ? 0.0
-            : minimumRevolveStartEndGap;
-        double start = ui->revolveStartAngle->value().getValue();
-        const double minEnd = start + requiredGap;
-        if (len < minEnd) {
-            if (minEnd <= propAngle->getMaximum()) {
-                len = minEnd;
-            }
-            else {
-                len = propAngle->getMaximum();
-                start = len - requiredGap;
-                QSignalBlocker startBlock(ui->revolveStartAngle);
-                ui->revolveStartAngle->setValue(start);
-                propStartAngle->setValue(start);
-            }
-
-            QSignalBlocker endBlock(ui->revolveAngle);
-            ui->revolveAngle->setValue(len);
-        }
-
-        propAngle->setValue(len);
-        updateAngleLength(false);
-        syncStartEndAngleLimits();
-        exitSelectionMode();
-        recomputeFeature();
-        setGizmoPositions();
-    }
-}
-
-void TaskRevolutionParameters::onStartAngle2Changed(double angle)
-{
-    if (getObject()) {
-        if (propStartAngle2) {
-            constexpr double requiredGap = 0.0;
-            double end = ui->revolveAngle2->value().getValue();
-
-            if (useOffsetLengthInputMode()) {
-                double angleLength = ui->revolveAngleLength2->value().getValue();
-                if (angleLength < requiredGap) {
-                    angleLength = requiredGap;
-                    QSignalBlocker lengthBlock(ui->revolveAngleLength2);
-                    ui->revolveAngleLength2->setValue(angleLength);
-                }
-
-                end = angle + angleLength;
-                if (end > propAngle2->getMaximum()) {
-                    end = propAngle2->getMaximum();
-                    angle = end - angleLength;
-                    QSignalBlocker startBlock(ui->revolveStartAngle2);
-                    ui->revolveStartAngle2->setValue(angle);
-                }
-
-                QSignalBlocker endBlock(ui->revolveAngle2);
-                ui->revolveAngle2->setValue(end);
-                propAngle2->setValue(end);
-            }
-            else {
-                const double maxStart = end - requiredGap;
-                if (angle > maxStart) {
-                    if (maxStart >= propStartAngle2->getMinimum()) {
-                        angle = maxStart;
-                    }
-                    else {
-                        angle = propStartAngle2->getMinimum();
-                        end = angle + requiredGap;
-                        QSignalBlocker endBlock(ui->revolveAngle2);
-                        ui->revolveAngle2->setValue(end);
-                        propAngle2->setValue(end);
-                    }
-
-                    QSignalBlocker startBlock(ui->revolveStartAngle2);
-                    ui->revolveStartAngle2->setValue(angle);
-                }
-            }
-
-            propStartAngle2->setValue(angle);
-            updateAngleLength(true);
-        }
-        syncStartEndAngleLimits();
-        exitSelectionMode();
-        recomputeFeature();
-        setGizmoPositions();
-    }
-}
-
-void TaskRevolutionParameters::onAngle2Changed(double len)
-{
-    if (getObject()) {
-        if (propAngle2) {
-            constexpr double requiredGap = 0.0;
-            double start = ui->revolveStartAngle2->value().getValue();
-            const double minEnd = start + requiredGap;
-            if (len < minEnd) {
-                if (minEnd <= propAngle2->getMaximum()) {
-                    len = minEnd;
-                }
-                else {
-                    len = propAngle2->getMaximum();
-                    start = len - requiredGap;
-                    QSignalBlocker startBlock(ui->revolveStartAngle2);
-                    ui->revolveStartAngle2->setValue(start);
-                    propStartAngle2->setValue(start);
-                }
-
-                QSignalBlocker endBlock(ui->revolveAngle2);
-                ui->revolveAngle2->setValue(len);
-            }
-
-            propAngle2->setValue(len);
-            updateAngleLength(true);
-        }
-        syncStartEndAngleLimits();
-        exitSelectionMode();
-        recomputeFeature();
-        setGizmoPositions();
-    }
-}
-
-void TaskRevolutionParameters::onAngleLengthChanged(double angleLength, bool secondSide)
-{
-    if (!getObject() || !useOffsetLengthInputMode()) {
+    if (!getObject()) {
         return;
     }
 
     const auto mode = static_cast<PartDesign::Revolution::RevolMethod>(
         ui->changeMode->currentIndex()
     );
-    const bool active = secondSide
-        ? mode == PartDesign::Revolution::RevolMethod::TwoAngles
-        : mode == PartDesign::Revolution::RevolMethod::Angle
-            || mode == PartDesign::Revolution::RevolMethod::TwoAngles;
-    if (!active) {
-        return;
-    }
-
-    auto* startEdit = secondSide ? ui->revolveStartAngle2 : ui->revolveStartAngle;
-    auto* endEdit = secondSide ? ui->revolveAngle2 : ui->revolveAngle;
-    auto* lengthEdit = secondSide ? ui->revolveAngleLength2 : ui->revolveAngleLength;
-    auto* endProp = secondSide ? propAngle2 : propAngle;
-    auto* rangeProp = secondSide ? propRangeAngle2 : propRangeAngle;
-
-    const double requiredGap = secondSide || mode == PartDesign::Revolution::RevolMethod::TwoAngles
+    const double requiredGap = mode == PartDesign::Revolution::RevolMethod::TwoAngles
         ? 0.0
         : minimumRevolveStartEndGap;
-    if (angleLength < requiredGap) {
-        angleLength = requiredGap;
-        QSignalBlocker lengthBlock(lengthEdit);
-        lengthEdit->setValue(angleLength);
+    const double distance = ui->revolveAngle->value().getValue();
+    const bool distanceFromStart = propDistanceType->getValue() == 0;
+    const double maxStart = distanceFromStart ? propAngle->getMaximum() - distance
+                                              : distance - requiredGap;
+
+    start = std::clamp(
+        start,
+        propStartAngle->getMinimum(),
+        std::max(propStartAngle->getMinimum(), maxStart)
+    );
+    {
+        QSignalBlocker blocker(ui->revolveStartAngle);
+        ui->revolveStartAngle->setValue(start);
     }
+    propStartAngle->setValue(start);
 
-    const double start = startEdit->value().getValue();
-    double end = start + angleLength;
-    if (end > endProp->getMaximum()) {
-        end = endProp->getMaximum();
-        angleLength = end - start;
-        QSignalBlocker lengthBlock(lengthEdit);
-        lengthEdit->setValue(angleLength);
-    }
-    rangeProp->setValue(angleLength);
-
-    QSignalBlocker endBlock(endEdit);
-    endEdit->setValue(end);
-    endProp->setValue(end);
-
-    syncStartEndAngleLimits();
+    syncDistanceLimits(false);
     exitSelectionMode();
     recomputeFeature();
     setGizmoPositions();
 }
 
-void TaskRevolutionParameters::updateAngleLength(bool secondSide)
+void TaskRevolutionParameters::onAngleChanged(double distance)
+{
+    if (!getObject()) {
+        return;
+    }
+
+    const auto mode = static_cast<PartDesign::Revolution::RevolMethod>(
+        ui->changeMode->currentIndex()
+    );
+    const double requiredGap = mode == PartDesign::Revolution::RevolMethod::TwoAngles
+        ? 0.0
+        : minimumRevolveStartEndGap;
+    const double start = ui->revolveStartAngle->value().getValue();
+    const bool distanceFromStart = propDistanceType->getValue() == 0;
+    const double minimum = distanceFromStart ? requiredGap : start + requiredGap;
+    const double maximum = distanceFromStart ? propAngle->getMaximum() - start
+                                              : propAngle->getMaximum();
+
+    distance = std::clamp(distance, minimum, std::max(minimum, maximum));
+    {
+        QSignalBlocker blocker(ui->revolveAngle);
+        ui->revolveAngle->setValue(distance);
+    }
+    propAngle->setValue(distance);
+
+    syncDistanceLimits(false);
+    exitSelectionMode();
+    recomputeFeature();
+    setGizmoPositions();
+}
+
+void TaskRevolutionParameters::onDistanceTypeChanged(int index)
+{
+    changeDistanceType(index, false);
+}
+
+void TaskRevolutionParameters::onStartAngle2Changed(double start)
+{
+    if (!getObject()) {
+        return;
+    }
+
+    constexpr double requiredGap = 0.0;
+    const double distance = ui->revolveAngle2->value().getValue();
+    const bool distanceFromStart = propDistanceType2->getValue() == 0;
+    const double maxStart = distanceFromStart ? propAngle2->getMaximum() - distance
+                                              : distance - requiredGap;
+
+    start = std::clamp(
+        start,
+        propStartAngle2->getMinimum(),
+        std::max(propStartAngle2->getMinimum(), maxStart)
+    );
+    {
+        QSignalBlocker blocker(ui->revolveStartAngle2);
+        ui->revolveStartAngle2->setValue(start);
+    }
+    propStartAngle2->setValue(start);
+
+    syncDistanceLimits(true);
+    exitSelectionMode();
+    recomputeFeature();
+    setGizmoPositions();
+}
+
+void TaskRevolutionParameters::onAngle2Changed(double distance)
+{
+    if (!getObject()) {
+        return;
+    }
+
+    constexpr double requiredGap = 0.0;
+    const double start = ui->revolveStartAngle2->value().getValue();
+    const bool distanceFromStart = propDistanceType2->getValue() == 0;
+    const double minimum = distanceFromStart ? requiredGap : start + requiredGap;
+    const double maximum = distanceFromStart ? propAngle2->getMaximum() - start
+                                              : propAngle2->getMaximum();
+
+    distance = std::clamp(distance, minimum, std::max(minimum, maximum));
+    {
+        QSignalBlocker blocker(ui->revolveAngle2);
+        ui->revolveAngle2->setValue(distance);
+    }
+    propAngle2->setValue(distance);
+
+    syncDistanceLimits(true);
+    exitSelectionMode();
+    recomputeFeature();
+    setGizmoPositions();
+}
+
+void TaskRevolutionParameters::onDistanceType2Changed(int index)
+{
+    changeDistanceType(index, true);
+}
+
+void TaskRevolutionParameters::syncDistanceLimits(bool secondSide)
 {
     auto* startEdit = secondSide ? ui->revolveStartAngle2 : ui->revolveStartAngle;
-    auto* endEdit = secondSide ? ui->revolveAngle2 : ui->revolveAngle;
-    auto* lengthEdit = secondSide ? ui->revolveAngleLength2 : ui->revolveAngleLength;
+    auto* distanceEdit = secondSide ? ui->revolveAngle2 : ui->revolveAngle;
+    auto* startProp = secondSide ? propStartAngle2 : propStartAngle;
+    auto* distanceProp = secondSide ? propAngle2 : propAngle;
+    auto* typeProp = secondSide ? propDistanceType2 : propDistanceType;
 
-    const double angleLength = endEdit->value().getValue() - startEdit->value().getValue();
-    QSignalBlocker lengthBlock(lengthEdit);
-    lengthEdit->setValue(angleLength);
-    if (!useOffsetLengthInputMode()) {
-        auto* rangeProp = secondSide ? propRangeAngle2 : propRangeAngle;
-        rangeProp->setValue(angleLength);
+    const auto mode = static_cast<PartDesign::Revolution::RevolMethod>(
+        ui->changeMode->currentIndex()
+    );
+    const double requiredGap = !secondSide && mode != PartDesign::Revolution::RevolMethod::TwoAngles
+        ? minimumRevolveStartEndGap
+        : 0.0;
+    const double startMinimum = startProp->getMinimum();
+    const double distanceMaximum = distanceProp->getMaximum();
+    const bool distanceFromStart = typeProp->getValue() == 0;
+    double start = startProp->getValue();
+    double distance = distanceProp->getValue();
+
+    if (distanceFromStart) {
+        distance = std::clamp(distance, requiredGap, distanceMaximum);
+        start = std::clamp(
+            start,
+            startMinimum,
+            std::max(startMinimum, distanceMaximum - distance)
+        );
+        distance = std::clamp(
+            distance,
+            requiredGap,
+            std::max(requiredGap, distanceMaximum - start)
+        );
     }
+    else {
+        distance = std::clamp(
+            distance,
+            std::min(distanceMaximum, start + requiredGap),
+            distanceMaximum
+        );
+        start = std::clamp(
+            start,
+            startMinimum,
+            std::max(startMinimum, distance - requiredGap)
+        );
+    }
+
+    QSignalBlocker startBlock(startEdit);
+    QSignalBlocker distanceBlock(distanceEdit);
+    startEdit->setMinimum(startMinimum);
+    startEdit->setMaximum(startProp->getMaximum());
+    distanceEdit->setMinimum(distanceProp->getMinimum());
+    distanceEdit->setMaximum(distanceMaximum);
+    startEdit->setValue(start);
+    distanceEdit->setValue(distance);
+    startProp->setValue(start);
+    distanceProp->setValue(distance);
+
+    if (distanceFromStart) {
+        startEdit->setMaximum(std::max(startMinimum, distanceMaximum - distance));
+        distanceEdit->setMinimum(requiredGap);
+        distanceEdit->setMaximum(std::max(requiredGap, distanceMaximum - start));
+    }
+    else {
+        startEdit->setMaximum(std::max(startMinimum, distance - requiredGap));
+        distanceEdit->setMinimum(std::min(distanceMaximum, start + requiredGap));
+    }
+}
+
+void TaskRevolutionParameters::changeDistanceType(int index, bool secondSide)
+{
+    if (!getObject()) {
+        return;
+    }
+
+    auto* startEdit = secondSide ? ui->revolveStartAngle2 : ui->revolveStartAngle;
+    auto* distanceEdit = secondSide ? ui->revolveAngle2 : ui->revolveAngle;
+    auto* distanceProp = secondSide ? propAngle2 : propAngle;
+    auto* typeProp = secondSide ? propDistanceType2 : propDistanceType;
+
+    const int oldIndex = typeProp->getValue();
+    if (oldIndex == index) {
+        return;
+    }
+
+    const double start = startEdit->value().getValue();
+    const double oldDistance = distanceEdit->value().getValue();
+    const double end = oldIndex == 0 ? start + oldDistance : oldDistance;
+    const double newDistance = index == 0 ? end - start : end;
+
+    typeProp->setValue(index);
+    {
+        QSignalBlocker blocker(distanceEdit);
+        distanceEdit->setValue(newDistance);
+    }
+    distanceProp->setValue(newDistance);
+
+    syncDistanceLimits(secondSide);
+    exitSelectionMode();
+    recomputeFeature();
+    setGizmoPositions();
 }
 
 void TaskRevolutionParameters::onAxisChanged(int num)
@@ -955,132 +888,6 @@ void TaskRevolutionParameters::onReversed(bool on)
     }
 }
 
-void TaskRevolutionParameters::syncStartEndAngleLimits()
-{
-    auto syncAngleRange = [](auto* startEdit,
-                              auto* endEdit,
-                              auto* lengthEdit,
-                              auto* startProp,
-                              auto* endProp,
-                              auto* rangeProp,
-                              bool active,
-                              double requiredGap,
-                              bool startLengthMode) {
-        QSignalBlocker startBlock(startEdit);
-        QSignalBlocker endBlock(endEdit);
-        QSignalBlocker lengthBlock(lengthEdit);
-
-        const double startMin = startProp->getMinimum();
-        const double startMax = startProp->getMaximum();
-        const double endMin = endProp->getMinimum();
-        const double endMax = endProp->getMaximum();
-
-        startEdit->setMinimum(startMin);
-        startEdit->setMaximum(startMax);
-        endEdit->setMinimum(endMin);
-        endEdit->setMaximum(endMax);
-        lengthEdit->setMinimum(requiredGap);
-        lengthEdit->setMaximum(std::max(requiredGap, endMax - startMin));
-
-        if (!active) {
-            return;
-        }
-
-        double start = startEdit->value().getValue();
-        double end = endEdit->value().getValue();
-        double angleLength = lengthEdit->value().getValue();
-
-        if (startLengthMode) {
-            if (angleLength < requiredGap) {
-                angleLength = requiredGap;
-                lengthEdit->setValue(angleLength);
-            }
-
-            const double maxAngleLength = endMax - startMin;
-            if (angleLength > maxAngleLength) {
-                angleLength = maxAngleLength;
-                lengthEdit->setValue(angleLength);
-            }
-
-            const double maxStart = endMax - angleLength;
-            if (start > maxStart) {
-                start = maxStart;
-                startEdit->setValue(start);
-                startProp->setValue(start);
-            }
-
-            rangeProp->setValue(angleLength);
-            end = start + angleLength;
-            endEdit->setValue(end);
-            endProp->setValue(end);
-            startEdit->setMaximum(std::min(startMax, maxStart));
-            endEdit->setMinimum(std::min(endMax, start + requiredGap));
-            lengthEdit->setMaximum(std::max(requiredGap, endMax - start));
-            return;
-        }
-
-        if (end - start < requiredGap) {
-            const double adjustedEnd = start + requiredGap;
-            if (adjustedEnd <= endMax) {
-                end = adjustedEnd;
-                endEdit->setValue(end);
-                endProp->setValue(end);
-            }
-            else {
-                start = end - requiredGap;
-                startEdit->setValue(start);
-                startProp->setValue(start);
-            }
-        }
-
-        const double maxStart = std::max(
-            startMin,
-            std::min(startMax, end - requiredGap)
-        );
-        const double minEnd = std::min(
-            endMax,
-            std::max(endMin, start + requiredGap)
-        );
-        startEdit->setMaximum(maxStart);
-        endEdit->setMinimum(minEnd);
-        lengthEdit->setValue(end - start);
-        rangeProp->setValue(end - start);
-        lengthEdit->setMaximum(std::max(requiredGap, endMax - start));
-    };
-
-    const auto mode = static_cast<PartDesign::Revolution::RevolMethod>(ui->changeMode->currentIndex());
-    const bool firstSideActive = mode == PartDesign::Revolution::RevolMethod::Angle
-        || mode == PartDesign::Revolution::RevolMethod::TwoAngles;
-    const bool secondSideActive = mode == PartDesign::Revolution::RevolMethod::TwoAngles;
-    const double firstSideGap = mode == PartDesign::Revolution::RevolMethod::TwoAngles
-        ? 0.0
-        : minimumRevolveStartEndGap;
-    constexpr double secondSideGap = 0.0;
-
-    syncAngleRange(
-        ui->revolveStartAngle,
-        ui->revolveAngle,
-        ui->revolveAngleLength,
-        propStartAngle,
-        propAngle,
-        propRangeAngle,
-        firstSideActive,
-        firstSideGap,
-        useOffsetLengthInputMode()
-    );
-    syncAngleRange(
-        ui->revolveStartAngle2,
-        ui->revolveAngle2,
-        ui->revolveAngleLength2,
-        propStartAngle2,
-        propAngle2,
-        propRangeAngle2,
-        secondSideActive,
-        secondSideGap,
-        useOffsetLengthInputMode()
-    );
-}
-
 void TaskRevolutionParameters::onModeChanged(int index)
 {
     App::PropertyEnumeration* propEnum = &(getObject<PartDesign::Revolved>()->Type);
@@ -1163,10 +970,18 @@ void TaskRevolutionParameters::changeEvent(QEvent* event)
     TaskBox::changeEvent(event);
     if (event->type() == QEvent::LanguageChange) {
         ui->retranslateUi(proxy);
-        // Translate mode items
+        // Translate mode and distance type items.
         translateModeList(ui->changeMode->currentIndex());
-        updateAngleLength(false);
-        updateAngleLength(true);
+        auto translateDistanceType = [this](QComboBox* combo) {
+            const int index = combo->currentIndex();
+            QSignalBlocker blocker(combo);
+            combo->clear();
+            combo->addItem(tr("Distance from start"));
+            combo->addItem(tr("Distance from origin"));
+            combo->setCurrentIndex(index);
+        };
+        translateDistanceType(ui->distanceType);
+        translateDistanceType(ui->distanceType2);
     }
 }
 
@@ -1177,13 +992,13 @@ void TaskRevolutionParameters::apply()
     ui->revolveAngle->apply();
     ui->revolveStartAngle2->apply();
     ui->revolveAngle2->apply();
-    ui->revolveAngleLength->apply();
-    ui->revolveAngleLength2->apply();
     std::vector<std::string> sub;
     App::DocumentObject* obj {};
     getReferenceAxis(obj, sub);
     std::string axis = buildLinkSingleSubPythonStr(obj, sub);
     auto tobj = getObject();
+    FCMD_OBJ_CMD(tobj, "DistanceType = " << ui->distanceType->currentIndex());
+    FCMD_OBJ_CMD(tobj, "DistanceType2 = " << ui->distanceType2->currentIndex());
     FCMD_OBJ_CMD(tobj, "ReferenceAxis = " << axis);
     FCMD_OBJ_CMD(tobj, "Midplane = " << (getMidplane() ? 1 : 0));
     FCMD_OBJ_CMD(tobj, "Reversed = " << (getReversed() ? 1 : 0));
@@ -1282,32 +1097,49 @@ void TaskRevolutionParameters::setGizmoPositions()
     rotationGizmo2->setMultFactor(defaultGizmoMultFactor);
 
     const double startAngleRad = ui->revolveStartAngle->rawValue() * firstSideMultFactor;
-    const double endAngleRad = ui->revolveAngle->rawValue() * firstSideMultFactor;
+    const double distanceAngleRad = ui->revolveAngle->rawValue() * firstSideMultFactor;
     const double startAngle2Rad = ui->revolveStartAngle2->rawValue() * defaultGizmoMultFactor;
-    const double endAngle2Rad = ui->revolveAngle2->rawValue() * defaultGizmoMultFactor;
+    const double distanceAngle2Rad = ui->revolveAngle2->rawValue() * defaultGizmoMultFactor;
+    const bool distanceFromStart = propDistanceType->getValue() == 0;
+    const bool distanceFromStart2 = propDistanceType2->getValue() == 0;
 
-    startRotationGizmo->Gizmo::setDraggerPlacement(basePos + axisComp, normalComp);
-    startRotationGizmo->getDraggerContainer()->setArcNormalDirection(
-        Base::convertTo<SbVec3f>(axisDir)
-    );
+    const SbVec3f basePosition = Base::convertTo<SbVec3f>(basePos + axisComp);
+    const SbVec3f firstAxis = Base::convertTo<SbVec3f>(axisDir);
+    const SbVec3f secondAxis = Base::convertTo<SbVec3f>(-axisDir);
+    const SbVec3f baseDirection = Base::convertTo<SbVec3f>(normalComp);
+    SbVec3f firstDistanceDirection = baseDirection;
+    SbVec3f secondDistanceDirection = baseDirection;
+    if (distanceFromStart) {
+        SbRotation(firstAxis, static_cast<float>(startAngleRad))
+            .multVec(baseDirection, firstDistanceDirection);
+    }
+    if (distanceFromStart2) {
+        SbRotation(secondAxis, static_cast<float>(startAngle2Rad))
+            .multVec(baseDirection, secondDistanceDirection);
+    }
+
+    startRotationGizmo->setDraggerPlacement(basePosition, baseDirection);
+    startRotationGizmo->getDraggerContainer()->setArcNormalDirection(firstAxis);
     startRotationGizmo->setVisibility(sideType == "Angle" || sideType == "TwoAngles");
 
-    rotationGizmo->Gizmo::setDraggerPlacement(basePos + axisComp, normalComp);
-    rotationGizmo->getDraggerContainer()->setArcNormalDirection(Base::convertTo<SbVec3f>(axisDir));
-    rotationGizmo->setBaseAngleRange(startAngleRad, endAngleRad);
+    rotationGizmo->setDraggerPlacement(basePosition, firstDistanceDirection);
+    rotationGizmo->getDraggerContainer()->setArcNormalDirection(firstAxis);
+    rotationGizmo->setBaseAngleRange(
+        distanceFromStart ? 0.0 : startAngleRad,
+        distanceAngleRad
+    );
     rotationGizmo->setVisibility(sideType == "Angle" || sideType == "TwoAngles");
 
-    startRotationGizmo2->Gizmo::setDraggerPlacement(basePos + axisComp, normalComp);
-    startRotationGizmo2->getDraggerContainer()->setArcNormalDirection(
-        Base::convertTo<SbVec3f>(-axisDir)
-    );
+    startRotationGizmo2->setDraggerPlacement(basePosition, baseDirection);
+    startRotationGizmo2->getDraggerContainer()->setArcNormalDirection(secondAxis);
     startRotationGizmo2->setVisibility(sideType == "TwoAngles");
 
-    rotationGizmo2->Gizmo::setDraggerPlacement(basePos + axisComp, normalComp);
-    rotationGizmo2->getDraggerContainer()->setArcNormalDirection(
-        Base::convertTo<SbVec3f>(-axisDir)
+    rotationGizmo2->setDraggerPlacement(basePosition, secondDistanceDirection);
+    rotationGizmo2->getDraggerContainer()->setArcNormalDirection(secondAxis);
+    rotationGizmo2->setBaseAngleRange(
+        distanceFromStart2 ? 0.0 : startAngle2Rad,
+        distanceAngle2Rad
     );
-    rotationGizmo2->setBaseAngleRange(startAngle2Rad, endAngle2Rad);
     rotationGizmo2->setVisibility(sideType == "TwoAngles");
 }
 

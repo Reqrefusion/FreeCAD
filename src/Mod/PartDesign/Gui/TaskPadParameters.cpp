@@ -38,20 +38,19 @@ using namespace Gui;
 TaskPadParameters::TaskPadParameters(ViewProviderPad* PadView, QWidget* parent, bool newObj)
     : TaskExtrudeParameters(PadView, parent, "PartDesign_Pad", tr("Pad Parameters"))
 {
-    const QString startLabel = isOffsetLengthMode() ? tr("Offset") : tr("Start");
-    ui->labelLength->setText(tr("End"));
-    ui->labelOffset->setText(startLabel);
-    ui->labelLength2->setText(tr("End"));
-    ui->labelOffset2->setText(startLabel);
+    ui->labelLength->setText(tr("Distance"));
+    ui->labelOffset->setText(tr("Start"));
+    ui->labelLength2->setText(tr("2nd distance"));
+    ui->labelOffset2->setText(tr("2nd start"));
 
     ui->lengthEdit->setToolTip(
-        tr("End position of the pad measured from the sketch plane on side 1")
+        tr("Distance used to determine the end position of the pad on side 1")
     );
     ui->offsetEdit->setToolTip(
         tr("Start position of the pad measured from the sketch plane on side 1")
     );
     ui->lengthEdit2->setToolTip(
-        tr("End position of the pad measured from the sketch plane on side 2")
+        tr("Distance used to determine the end position of the pad on side 2")
     );
     ui->offsetEdit2->setToolTip(
         tr("Start position of the pad measured from the sketch plane on side 2")
@@ -65,10 +64,6 @@ TaskPadParameters::TaskPadParameters(ViewProviderPad* PadView, QWidget* parent, 
     ui->lengthEdit->setParamGrpPath(QByteArray("User parameter:BaseApp/History/PadLength"));
     ui->lengthEdit2->setEntryName(QByteArray("Length2"));
     ui->lengthEdit2->setParamGrpPath(QByteArray("User parameter:BaseApp/History/PadLength2"));
-    m_side1.rangeLengthEdit->setEntryName(QByteArray("RangeLength"));
-    m_side1.rangeLengthEdit->setParamGrpPath(QByteArray("User parameter:BaseApp/History/PadRangeLength"));
-    m_side2.rangeLengthEdit->setEntryName(QByteArray("RangeLength2"));
-    m_side2.rangeLengthEdit->setParamGrpPath(QByteArray("User parameter:BaseApp/History/PadRangeLength2"));
     ui->offsetEdit->setEntryName(QByteArray("Offset"));
     ui->offsetEdit->setParamGrpPath(QByteArray("User parameter:BaseApp/History/PadOffset"));
     ui->offsetEdit2->setEntryName(QByteArray("Offset2"));
@@ -99,18 +94,17 @@ void TaskPadParameters::translateModeList(QComboBox* box, int index)
     box->setCurrentIndex(index);
 }
 
-void TaskPadParameters::updatePadStartEndLabels()
+void TaskPadParameters::updatePadDistanceLabels()
 {
-    ui->labelLength->setText(tr("End"));
-    ui->labelLength2->setText(tr("End"));
+    ui->labelLength->setText(tr("Distance"));
+    ui->labelLength2->setText(tr("2nd distance"));
 
     const bool side1IsDimension = static_cast<Mode>(ui->changeMode->currentIndex())
         == Mode::Dimension;
     const bool side2IsDimension = static_cast<Mode>(ui->changeMode2->currentIndex())
         == Mode::Dimension;
-    const QString dimensionOffsetLabel = isOffsetLengthMode() ? tr("Offset") : tr("Start");
-    ui->labelOffset->setText(side1IsDimension ? dimensionOffsetLabel : tr("Offset"));
-    ui->labelOffset2->setText(side2IsDimension ? dimensionOffsetLabel : tr("Offset"));
+    ui->labelOffset->setText(side1IsDimension ? tr("Start") : tr("Offset"));
+    ui->labelOffset2->setText(side2IsDimension ? tr("2nd start") : tr("Offset"));
 }
 
 void TaskPadParameters::updateUI(Side side)
@@ -119,7 +113,7 @@ void TaskPadParameters::updateUI(Side side)
     fillDirectionCombo();
     // set and enable checkboxes
     updateWholeUI(Type::Pad, side);
-    updatePadStartEndLabels();
+    updatePadDistanceLabels();
 }
 
 bool TaskPadParameters::showOffsetInDimension() const
@@ -136,13 +130,20 @@ void TaskPadParameters::onModeChanged(int index, Side side)
             sideCtrl.Type->setValue("Length");
             if (side == Side::First) {
                 // Avoid error message
-                double L = sideCtrl.lengthEdit->value().getValue();
+                auto effectiveDistance = [](const auto& side) {
+                    const double start = side.offsetEdit->value().getValue();
+                    const double distance = side.lengthEdit->value().getValue();
+                    const double end = side.DistanceType->getValue() == 0 ? start + distance
+                                                                          : distance;
+                    return std::abs(end - start);
+                };
+                const double L = effectiveDistance(sideCtrl);
                 Side otherSide = side == Side::First ? Side::Second : Side::First;
                 auto& sideCtrl2 = getSideController(otherSide);
-                double L2 = static_cast<SidesMode>(getSidesMode()) == SidesMode::TwoSides
-                    ? sideCtrl2.lengthEdit->value().getValue()
+                const double L2 = static_cast<SidesMode>(getSidesMode()) == SidesMode::TwoSides
+                    ? effectiveDistance(sideCtrl2)
                     : 0;
-                if (std::abs(L + L2) < Precision::Confusion()) {
+                if (L + L2 < Precision::Confusion()) {
                     sideCtrl.lengthEdit->setValue(5.0);
                 }
             }

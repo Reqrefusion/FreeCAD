@@ -59,8 +59,9 @@ Groove::Groove()
         "Axis"
     );
     ADD_PROPERTY_TYPE(StartAngle, (emptyAngle), "Groove", App::Prop_None, "Start angle");
-    ADD_PROPERTY_TYPE(Angle, (fullAngle), "Groove", App::Prop_None, "End angle");
-    ADD_PROPERTY_TYPE(RangeAngle, (fullAngle), "Groove", App::Prop_None, "Angle");
+    ADD_PROPERTY_TYPE(DistanceType, (0L), "Groove", App::Prop_None, "How angular distance is measured");
+    DistanceType.setEnums(DistanceTypesEnums);
+    ADD_PROPERTY_TYPE(Angle, (fullAngle), "Groove", App::Prop_None, "Angular distance");
     ADD_PROPERTY_TYPE(
         StartAngle2,
         (emptyAngle),
@@ -68,8 +69,21 @@ Groove::Groove()
         App::Prop_None,
         "Start angle in 2nd direction"
     );
-    ADD_PROPERTY_TYPE(Angle2, (emptyAngle), "Groove", App::Prop_None, "End angle in 2nd direction");
-    ADD_PROPERTY_TYPE(RangeAngle2, (emptyAngle), "Groove", App::Prop_None, "Angle in 2nd direction");
+    ADD_PROPERTY_TYPE(
+        DistanceType2,
+        (0L),
+        "Groove",
+        App::Prop_None,
+        "How angular distance is measured in 2nd direction"
+    );
+    DistanceType2.setEnums(DistanceTypesEnums);
+    ADD_PROPERTY_TYPE(
+        Angle2,
+        (emptyAngle),
+        "Groove",
+        App::Prop_None,
+        "Angular distance in 2nd direction"
+    );
     ADD_PROPERTY_TYPE(UpToFace, (nullptr), "Groove", App::Prop_None, "Face where groove will end");
     ADD_PROPERTY_TYPE(ReferenceAxis, (nullptr), "Groove", (App::Prop_None), "Reference axis of groove");
 }

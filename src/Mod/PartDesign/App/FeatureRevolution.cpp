@@ -63,8 +63,9 @@ Revolution::Revolution()
         "Axis"
     );
     ADD_PROPERTY_TYPE(StartAngle, (emptyAngle), "Revolution", App::Prop_None, "Start angle");
-    ADD_PROPERTY_TYPE(Angle, (fullAngle), "Revolution", App::Prop_None, "End angle");
-    ADD_PROPERTY_TYPE(RangeAngle, (fullAngle), "Revolution", App::Prop_None, "Angle");
+    ADD_PROPERTY_TYPE(DistanceType, (0L), "Revolution", App::Prop_None, "How angular distance is measured");
+    DistanceType.setEnums(DistanceTypesEnums);
+    ADD_PROPERTY_TYPE(Angle, (fullAngle), "Revolution", App::Prop_None, "Angular distance");
     ADD_PROPERTY_TYPE(
         StartAngle2,
         (emptyAngle),
@@ -73,18 +74,19 @@ Revolution::Revolution()
         "Start angle in 2nd direction"
     );
     ADD_PROPERTY_TYPE(
+        DistanceType2,
+        (0L),
+        "Revolution",
+        App::Prop_None,
+        "How angular distance is measured in 2nd direction"
+    );
+    DistanceType2.setEnums(DistanceTypesEnums);
+    ADD_PROPERTY_TYPE(
         Angle2,
         (emptyAngle),
         "Revolution",
         App::Prop_None,
-        "End angle in 2nd direction"
-    );
-    ADD_PROPERTY_TYPE(
-        RangeAngle2,
-        (emptyAngle),
-        "Revolution",
-        App::Prop_None,
-        "Angle in 2nd direction"
+        "Angular distance in 2nd direction"
     );
     ADD_PROPERTY_TYPE(UpToFace, (nullptr), "Revolution", App::Prop_None, "Face where revolution will end");
     ADD_PROPERTY_TYPE(

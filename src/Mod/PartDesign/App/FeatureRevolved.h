@@ -49,8 +49,8 @@ public:
     App::PropertyAngle Angle2;
     App::PropertyAngle StartAngle;
     App::PropertyAngle StartAngle2;
-    App::PropertyAngle RangeAngle;
-    App::PropertyAngle RangeAngle2;
+    App::PropertyEnumeration DistanceType;
+    App::PropertyEnumeration DistanceType2;
 
     /** if this property is set to a valid link, both Axis and Base properties
      *  are calculated according to the linked line
@@ -144,6 +144,7 @@ private:
     void updateProperties(RevolMethod method);
 
     static const App::PropertyAngle::Constraints floatAngle;
+    static const char* DistanceTypesEnums[];
 };
 
 }  // namespace PartDesign
