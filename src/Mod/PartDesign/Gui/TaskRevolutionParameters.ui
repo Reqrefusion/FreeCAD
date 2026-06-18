@@ -117,7 +117,7 @@
      <item>
       <widget class="QLabel" name="labelAngle">
        <property name="text">
-        <string>End</string>
+        <string>Distance</string>
        </property>
       </widget>
      </item>
@@ -143,39 +143,10 @@
        </property>
       </widget>
      </item>
-    </layout>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="horizontalLayoutAngleLength">
      <item>
-      <widget class="QLabel" name="labelAngleLength">
-       <property name="text">
-        <string>Angle</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="Gui::QuantitySpinBox" name="revolveAngleLength">
+      <widget class="QComboBox" name="distanceType">
        <property name="toolTip">
-        <string>Angle between Start and End</string>
-       </property>
-       <property name="keyboardTracking">
-        <bool>false</bool>
-       </property>
-       <property name="unit" stdset="0">
-        <string notr="true">deg</string>
-       </property>
-       <property name="minimum">
-        <double>0.000000000000000</double>
-       </property>
-       <property name="maximum">
-        <double>360.000000000000000</double>
-       </property>
-       <property name="singleStep">
-        <double>10.000000000000000</double>
-       </property>
-       <property name="value">
-        <double>360.000000000000000</double>
+        <string>How the distance is measured</string>
        </property>
       </widget>
      </item>
@@ -219,7 +190,7 @@
      <item>
       <widget class="QLabel" name="labelAngle2">
        <property name="text">
-        <string>2nd end</string>
+        <string>2nd distance</string>
        </property>
       </widget>
      </item>
@@ -245,39 +216,10 @@
        </property>
       </widget>
      </item>
-    </layout>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="horizontalLayoutAngleLength2">
      <item>
-      <widget class="QLabel" name="labelAngleLength2">
-       <property name="text">
-        <string>2nd angle</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="Gui::QuantitySpinBox" name="revolveAngleLength2">
+      <widget class="QComboBox" name="distanceType2">
        <property name="toolTip">
-        <string>Angle between 2nd start and 2nd end</string>
-       </property>
-       <property name="keyboardTracking">
-        <bool>false</bool>
-       </property>
-       <property name="unit" stdset="0">
-        <string notr="true">deg</string>
-       </property>
-       <property name="minimum">
-        <double>0.000000000000000</double>
-       </property>
-       <property name="maximum">
-        <double>360.000000000000000</double>
-       </property>
-       <property name="singleStep">
-        <double>10.000000000000000</double>
-       </property>
-       <property name="value">
-        <double>0.000000000000000</double>
+        <string>How the second distance is measured</string>
        </property>
       </widget>
      </item>
@@ -347,10 +289,10 @@
   <tabstop>axis</tabstop>
   <tabstop>revolveStartAngle</tabstop>
   <tabstop>revolveAngle</tabstop>
-  <tabstop>revolveAngleLength</tabstop>
+  <tabstop>distanceType</tabstop>
   <tabstop>revolveStartAngle2</tabstop>
   <tabstop>revolveAngle2</tabstop>
-  <tabstop>revolveAngleLength2</tabstop>
+  <tabstop>distanceType2</tabstop>
   <tabstop>checkBoxMidplane</tabstop>
   <tabstop>checkBoxReversed</tabstop>
   <tabstop>checkBoxUpdateView</tabstop>

@@ -46,6 +46,8 @@ namespace PartDesign
 PROPERTY_SOURCE_ABSTRACT(PartDesign::Revolved, PartDesign::ProfileBased)  // NOLINT
 
 const App::PropertyAngle::Constraints Revolved::floatAngle = {0.0, 360.0, 1.0};
+const char* Revolved::DistanceTypesEnums[]
+    = {"Distance from start", "Distance from origin", nullptr};
 
 Revolved::Revolved()
 {
@@ -53,16 +55,14 @@ Revolved::Revolved()
     Angle2.setConstraints(&floatAngle);
     StartAngle.setConstraints(&floatAngle);
     StartAngle2.setConstraints(&floatAngle);
-    RangeAngle.setConstraints(&floatAngle);
-    RangeAngle2.setConstraints(&floatAngle);
 }
 
 short Revolved::mustExecute() const
 {
     if (Placement.isTouched() || ReferenceAxis.isTouched() || Axis.isTouched() || Base.isTouched()
         || UpToFace.isTouched() || Angle.isTouched() || Angle2.isTouched()
-        || StartAngle.isTouched() || StartAngle2.isTouched()
-        || RangeAngle.isTouched() || RangeAngle2.isTouched()) {
+        || StartAngle.isTouched() || StartAngle2.isTouched() || DistanceType.isTouched()
+        || DistanceType2.isTouched()) {
         return 1;
     }
     return ProfileBased::mustExecute();
@@ -99,10 +99,14 @@ App::DocumentObjectExecReturn* Revolved::tryExecuteRevolved(Part::RevolMode revo
     const auto method = static_cast<RevolMethod>(Type.getValue());
 
     // Validate parameters
-    double angleDeg = Angle.getValue();
-    double angle2Deg = Angle2.getValue();
     double startAngleDeg = StartAngle.getValue();
     double startAngle2Deg = StartAngle2.getValue();
+    auto resolveEndAngle =
+        [](double start, double distance, const App::PropertyEnumeration& type) {
+            return type.getValue() == 0 ? start + distance : distance;
+        };
+    double angleDeg = resolveEndAngle(startAngleDeg, Angle.getValue(), DistanceType);
+    double angle2Deg = resolveEndAngle(startAngle2Deg, Angle2.getValue(), DistanceType2);
     if (angleDeg > maxDegree || angle2Deg > maxDegree || startAngleDeg > maxDegree
         || startAngle2Deg > maxDegree) {
         return new App::DocumentObjectExecReturn(
@@ -118,7 +122,7 @@ App::DocumentObjectExecReturn* Revolved::tryExecuteRevolved(Part::RevolMode revo
     if (method == RevolMethod::Angle) {
         if (angle - startAngle < Precision::Angular()) {
             return new App::DocumentObjectExecReturn(
-                QT_TRANSLATE_NOOP("Exception", "End angle must be greater than start angle")
+                QT_TRANSLATE_NOOP("Exception", "Revolution distance must be greater than zero")
             );
         }
     }
@@ -126,13 +130,13 @@ App::DocumentObjectExecReturn* Revolved::tryExecuteRevolved(Part::RevolMode revo
         if (angle - startAngle < -Precision::Angular()) {
             return new App::DocumentObjectExecReturn(QT_TRANSLATE_NOOP(
                 "Exception",
-                "End angle must not be smaller than start angle on side 1"
+                "Revolution distance must not be negative on side 1"
             ));
         }
         if (angle2 - startAngle2 < -Precision::Angular()) {
             return new App::DocumentObjectExecReturn(QT_TRANSLATE_NOOP(
                 "Exception",
-                "End angle must not be smaller than start angle on side 2"
+                "Revolution distance must not be negative on side 2"
             ));
         }
         if (std::fabs(angle - startAngle) + std::fabs(angle2 - startAngle2)
@@ -489,10 +493,10 @@ void Revolved::updateProperties(RevolMethod method)
     // disable everything unless we are sure we need it
     bool isStartAngleEnabled = false;
     bool isAngleEnabled = false;
-    bool isRangeAngleEnabled = false;
+    bool isDistanceTypeEnabled = false;
     bool isStartAngle2Enabled = false;
     bool isAngle2Enabled = false;
-    bool isRangeAngle2Enabled = false;
+    bool isDistanceType2Enabled = false;
     bool isMidplaneEnabled = false;
     bool isReversedEnabled = false;
     bool isUpToFaceEnabled = false;
@@ -500,7 +504,7 @@ void Revolved::updateProperties(RevolMethod method)
         case RevolMethod::Angle:
             isStartAngleEnabled = true;
             isAngleEnabled = true;
-            isRangeAngleEnabled = true;
+            isDistanceTypeEnabled = true;
             isMidplaneEnabled = true;
             isReversedEnabled = !Midplane.getValue();
             break;
@@ -520,18 +524,18 @@ void Revolved::updateProperties(RevolMethod method)
             isAngleEnabled = true;
             isStartAngle2Enabled = true;
             isAngle2Enabled = true;
-            isRangeAngleEnabled = true;
-            isRangeAngle2Enabled = true;
+            isDistanceTypeEnabled = true;
+            isDistanceType2Enabled = true;
             isReversedEnabled = true;
             break;
     }
 
     StartAngle.setReadOnly(!isStartAngleEnabled);
     Angle.setReadOnly(!isAngleEnabled);
-    RangeAngle.setReadOnly(!isRangeAngleEnabled);
+    DistanceType.setReadOnly(!isDistanceTypeEnabled);
     StartAngle2.setReadOnly(!isStartAngle2Enabled);
     Angle2.setReadOnly(!isAngle2Enabled);
-    RangeAngle2.setReadOnly(!isRangeAngle2Enabled);
+    DistanceType2.setReadOnly(!isDistanceType2Enabled);
     Midplane.setReadOnly(!isMidplaneEnabled);
     Reversed.setReadOnly(!isReversedEnabled);
     UpToFace.setReadOnly(!isUpToFaceEnabled);
