@@ -87,7 +87,7 @@ static bool isSingleAngleMethod(RevolMethod mode)
 
 static bool isAngleFromStartMethod(RevolMethod mode)
 {
-    return mode != RevolMethod::AngleFromOrigin;
+    return mode == RevolMethod::AngleFromStart || mode == RevolMethod::TwoAngles;
 }
 
 static RevolMethod modeFromPropertyType(const App::PropertyEnumeration& type)

@@ -746,7 +746,8 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
                 }
 
                 // Side 2
-                if (!isDimensionMethod(method2) || std::abs(effectiveL2) >= Precision::Confusion()) {
+                if (!isDimensionMethod(method2)
+                    || std::abs(effectiveL2) >= Precision::Confusion()) {
                     TopoShape prism2 = generateSingleExtrusionSide(
                         movedSketchForLengthStart(sketchshape, method2, extrusionStart2, dir2),
                         method2,
