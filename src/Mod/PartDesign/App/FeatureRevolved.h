@@ -85,6 +85,8 @@ protected:
      */
     App::DocumentObjectExecReturn* executeRevolved(Part::RevolMode revolMode);
 
+    static const char* DistanceTypesEnums[];
+
 private:
     App::DocumentObjectExecReturn* tryExecuteRevolved(Part::RevolMode revolMode);
     TopoShape tryGetBaseShape() const;
@@ -144,7 +146,6 @@ private:
     void updateProperties(RevolMethod method);
 
     static const App::PropertyAngle::Constraints floatAngle;
-    static const char* DistanceTypesEnums[];
 };
 
 }  // namespace PartDesign
