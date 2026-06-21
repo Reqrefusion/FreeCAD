@@ -54,6 +54,7 @@ using namespace Gui;
 
 namespace PartDesignGui
 {
+static constexpr double minimumLinearDistance = 1.0e-6;
 static constexpr float startGizmoPointRadius = 1.15F;
 
 static void makeStartGizmoPointLike(Gui::LinearGizmo* gizmo)
@@ -341,6 +342,7 @@ void TaskExtrudeParameters::readValuesFromHistory()
     ui->taperEdit->selectNumber();
     ui->taperEdit2->setToLastUsedValue();
     ui->taperEdit2->selectNumber();
+    syncDimensionLimits();
 }
 
 void TaskExtrudeParameters::connectSlots()
@@ -715,6 +717,7 @@ void TaskExtrudeParameters::onLengthChanged(double len, Side side)
 {
     auto& sideController = getSideController(side);
     sideController.Length->setValue(len);
+    syncDimensionLimits();
     tryRecomputeFeature();
     setGizmoPositions();
 }
@@ -723,8 +726,211 @@ void TaskExtrudeParameters::onOffsetChanged(double len, Side side)
 {
     auto& sideController = getSideController(side);
     sideController.Offset->setValue(len);
+    syncDimensionLimits();
     tryRecomputeFeature();
     setGizmoPositions();
+}
+
+bool TaskExtrudeParameters::sideUsesDimension(Side side) const
+{
+    const auto& sideController = side == Side::First ? m_side1 : m_side2;
+    return isDimensionMode(modeFromPropertyType(*sideController.Type));
+}
+
+bool TaskExtrudeParameters::sideUsesDistanceFromStart(Side side) const
+{
+    const auto& sideController = side == Side::First ? m_side1 : m_side2;
+    return isDimensionFromStartMode(modeFromPropertyType(*sideController.Type));
+}
+
+double TaskExtrudeParameters::sideEndPosition(const SideController& side) const
+{
+    const double start = side.offsetEdit->value().getValue();
+    const double distance = side.lengthEdit->value().getValue();
+    return isDimensionFromStartMode(modeFromPropertyType(*side.Type)) ? start + distance
+                                                                      : distance;
+}
+
+void TaskExtrudeParameters::syncDimensionLimits()
+{
+    if (!showOffsetInDimension()) {
+        return;
+    }
+
+    auto syncSide = [this](SideController& side,
+                           bool dimensionMode,
+                           bool distanceFromStart,
+                           double rangeMinimum,
+                           bool forceNonZeroDistance) {
+        QSignalBlocker startBlock(side.offsetEdit);
+        QSignalBlocker distanceBlock(side.lengthEdit);
+
+        const double startPropertyMinimum = side.Offset->getMinimum();
+        const double startPropertyMaximum = side.Offset->getMaximum();
+        const double distancePropertyMinimum = side.Length->getMinimum();
+        const double distancePropertyMaximum = side.Length->getMaximum();
+
+        side.offsetEdit->setMinimum(startPropertyMinimum);
+        side.offsetEdit->setMaximum(startPropertyMaximum);
+        side.lengthEdit->setMinimum(distancePropertyMinimum);
+        side.lengthEdit->setMaximum(distancePropertyMaximum);
+
+        if (!dimensionMode) {
+            return;
+        }
+
+        const double coordinateMaximum = std::min(startPropertyMaximum, distancePropertyMaximum);
+        const double coordinateMinimum = std::min(
+            coordinateMaximum,
+            std::max(rangeMinimum, startPropertyMinimum)
+        );
+
+        double start = std::clamp(
+            side.offsetEdit->value().getValue(),
+            coordinateMinimum,
+            startPropertyMaximum
+        );
+        double distance = side.lengthEdit->value().getValue();
+        double end = distanceFromStart ? start + distance : distance;
+
+        if (distanceFromStart) {
+            const double distanceMinimum = std::max(
+                distancePropertyMinimum,
+                coordinateMinimum - start
+            );
+            const double distanceMaximum = std::min(
+                distancePropertyMaximum,
+                coordinateMaximum - start
+            );
+            distance = std::clamp(distance, distanceMinimum, distanceMaximum);
+            end = start + distance;
+        }
+        else {
+            end = std::clamp(end, coordinateMinimum, coordinateMaximum);
+            distance = end;
+        }
+
+        if (forceNonZeroDistance && std::fabs(end - start) < minimumLinearDistance) {
+            double adjustedEnd = start + minimumLinearDistance;
+            if (adjustedEnd > coordinateMaximum) {
+                adjustedEnd = start - minimumLinearDistance;
+            }
+            end = std::clamp(adjustedEnd, coordinateMinimum, coordinateMaximum);
+            distance = distanceFromStart ? end - start : end;
+        }
+
+        side.offsetEdit->setValue(start);
+        side.lengthEdit->setValue(distance);
+        side.Offset->setValue(start);
+        side.Length->setValue(distance);
+
+        if (distanceFromStart) {
+            const double distanceMinimum = std::max(
+                distancePropertyMinimum,
+                coordinateMinimum - start
+            );
+            const double distanceMaximum = std::min(
+                distancePropertyMaximum,
+                coordinateMaximum - start
+            );
+            const double startMinimum = std::max(
+                coordinateMinimum,
+                coordinateMinimum - distance
+            );
+            const double startMaximum = std::min(
+                startPropertyMaximum,
+                coordinateMaximum - distance
+            );
+
+            side.offsetEdit->setMinimum(std::min(startMinimum, startMaximum));
+            side.offsetEdit->setMaximum(std::max(startMinimum, startMaximum));
+            side.lengthEdit->setMinimum(std::min(distanceMinimum, distanceMaximum));
+            side.lengthEdit->setMaximum(std::max(distanceMinimum, distanceMaximum));
+        }
+        else {
+            side.offsetEdit->setMinimum(coordinateMinimum);
+            side.offsetEdit->setMaximum(startPropertyMaximum);
+            side.lengthEdit->setMinimum(
+                std::max(distancePropertyMinimum, coordinateMinimum)
+            );
+            side.lengthEdit->setMaximum(
+                std::min(distancePropertyMaximum, coordinateMaximum)
+            );
+        }
+    };
+
+    const auto sidesMode = static_cast<SidesMode>(ui->sidesMode->currentIndex());
+    const bool side1Dimension = sideUsesDimension(Side::First);
+    const bool side2Dimension = sidesMode == SidesMode::TwoSides
+        && sideUsesDimension(Side::Second);
+
+    double side1RangeMinimum = m_side1.Offset->getMinimum();
+    double side2RangeMinimum = m_side2.Offset->getMinimum();
+
+    if (sidesMode == SidesMode::Symmetric) {
+        side1RangeMinimum = std::max(0.0, side1RangeMinimum);
+    }
+    else if (sidesMode == SidesMode::TwoSides) {
+        if (side2Dimension) {
+            const double side2Start = m_side2.offsetEdit->value().getValue();
+            const double side2End = sideEndPosition(m_side2);
+            side1RangeMinimum = std::max(
+                side1RangeMinimum,
+                -std::min(side2Start, side2End)
+            );
+        }
+        syncSide(
+            m_side1,
+            side1Dimension,
+            sideUsesDistanceFromStart(Side::First),
+            side1RangeMinimum,
+            false
+        );
+
+        if (side1Dimension) {
+            const double side1Start = m_side1.offsetEdit->value().getValue();
+            const double side1End = sideEndPosition(m_side1);
+            side2RangeMinimum = std::max(
+                side2RangeMinimum,
+                -std::min(side1Start, side1End)
+            );
+        }
+        syncSide(
+            m_side2,
+            side2Dimension,
+            sideUsesDistanceFromStart(Side::Second),
+            side2RangeMinimum,
+            false
+        );
+
+        if (side1Dimension && side2Dimension) {
+            const double side1Start = m_side1.offsetEdit->value().getValue();
+            const double side1End = sideEndPosition(m_side1);
+            const double side2Start = m_side2.offsetEdit->value().getValue();
+            const double side2End = sideEndPosition(m_side2);
+            const bool side1Zero = std::fabs(side1End - side1Start) < minimumLinearDistance;
+            const bool side2Zero = std::fabs(side2End - side2Start) < minimumLinearDistance;
+            if (side1Zero && side2Zero) {
+                syncSide(
+                    m_side1,
+                    true,
+                    sideUsesDistanceFromStart(Side::First),
+                    side1RangeMinimum,
+                    true
+                );
+            }
+        }
+        return;
+    }
+
+    syncSide(
+        m_side1,
+        side1Dimension,
+        sideUsesDistanceFromStart(Side::First),
+        side1RangeMinimum,
+        true
+    );
+    syncSide(m_side2, false, false, side2RangeMinimum, false);
 }
 
 void TaskExtrudeParameters::onTaperChanged(double angle, Side side)
@@ -894,6 +1100,7 @@ void TaskExtrudeParameters::updateWholeUI(Type type, Side side)
     updateSideUI(m_side2, type, mode2, isSide2GroupVisible, (side == Side::Second));
 
     ui->checkBoxReversed->setEnabled(sidesMode != SidesMode::Symmetric || !isDimensionMode(mode1));
+    syncDimensionLimits();
 }
 
 void TaskExtrudeParameters::updateSideUI(
@@ -1392,6 +1599,8 @@ void TaskExtrudeParameters::saveHistory()
 
 void TaskExtrudeParameters::applyParameters()
 {
+    syncDimensionLimits();
+
     auto obj = getObject();
 
     QString facename = QStringLiteral("None");
@@ -1445,6 +1654,7 @@ void TaskExtrudeParameters::onSidesModeChanged(int index)
             break;
     }
 
+    syncDimensionLimits();
     recomputeFeature();
     setGizmoPositions();
 }
