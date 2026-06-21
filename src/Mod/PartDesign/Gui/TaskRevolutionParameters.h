@@ -81,10 +81,8 @@ public:
 private Q_SLOTS:
     void onStartAngleChanged(double);
     void onAngleChanged(double);
-    void onDistanceTypeChanged(int);
     void onStartAngle2Changed(double);
     void onAngle2Changed(double);
-    void onDistanceType2Changed(int);
     void onAxisChanged(int);
     void onMidplane(bool);
     void onReversed(bool);
@@ -109,8 +107,6 @@ private:
     App::PropertyAngle* propAngle;
     App::PropertyAngle* propStartAngle2;
     App::PropertyAngle* propAngle2;
-    App::PropertyEnumeration* propDistanceType;
-    App::PropertyEnumeration* propDistanceType2;
     App::PropertyBool* propReversed;
     App::PropertyBool* propMidPlane;
     App::PropertyLinkSub* propReferenceAxis;
@@ -121,7 +117,6 @@ private:
     void updateUI(int index);
     void translateModeList(int index);
     void syncDistanceLimits(bool secondSide);
-    void changeDistanceType(int index, bool secondSide);
     // TODO: This is common with extrude. Maybe send to superclass.
     void translateFaceName();
     void clearFaceName();

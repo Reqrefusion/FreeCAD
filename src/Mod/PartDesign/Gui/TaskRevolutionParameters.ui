@@ -117,7 +117,7 @@
      <item>
       <widget class="QLabel" name="labelAngle">
        <property name="text">
-        <string>Distance</string>
+        <string>Angle</string>
        </property>
       </widget>
      </item>
@@ -140,13 +140,6 @@
        </property>
        <property name="value">
         <double>360.000000000000000</double>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="distanceType">
-       <property name="toolTip">
-        <string>How the distance is measured</string>
        </property>
       </widget>
      </item>
@@ -190,7 +183,7 @@
      <item>
       <widget class="QLabel" name="labelAngle2">
        <property name="text">
-        <string>2nd distance</string>
+        <string>2nd angle</string>
        </property>
       </widget>
      </item>
@@ -213,13 +206,6 @@
        </property>
        <property name="value">
         <double>0.000000000000000</double>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="distanceType2">
-       <property name="toolTip">
-        <string>How the second distance is measured</string>
        </property>
       </widget>
      </item>
@@ -289,10 +275,8 @@
   <tabstop>axis</tabstop>
   <tabstop>revolveStartAngle</tabstop>
   <tabstop>revolveAngle</tabstop>
-  <tabstop>distanceType</tabstop>
   <tabstop>revolveStartAngle2</tabstop>
   <tabstop>revolveAngle2</tabstop>
-  <tabstop>distanceType2</tabstop>
   <tabstop>checkBoxMidplane</tabstop>
   <tabstop>checkBoxReversed</tabstop>
   <tabstop>checkBoxUpdateView</tabstop>
