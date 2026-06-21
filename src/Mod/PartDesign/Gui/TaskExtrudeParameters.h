@@ -196,6 +196,10 @@ private:
     void onModeChanged_Side2(int index);
     void onLengthChanged(double len, Side side);
     void onOffsetChanged(double len, Side side);
+    bool sideUsesDimension(Side side) const;
+    bool sideUsesDistanceFromStart(Side side) const;
+    double sideEndPosition(const SideController& side) const;
+    void syncDimensionLimits();
     void onTaperChanged(double angle, Side side);
     void onSelectFaceToggle(bool checked, Side side);
 
