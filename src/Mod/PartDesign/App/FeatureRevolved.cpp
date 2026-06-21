@@ -116,7 +116,7 @@ App::DocumentObjectExecReturn* Revolved::tryExecuteRevolved(Part::RevolMode revo
     if (method == RevolMethod::AngleFromStart || method == RevolMethod::AngleFromOrigin) {
         if (angle - startAngle < Precision::Angular()) {
             return new App::DocumentObjectExecReturn(
-                QT_TRANSLATE_NOOP("Exception", "Revolution distance must be greater than zero")
+                QT_TRANSLATE_NOOP("Exception", "Revolution angle must be greater than zero")
             );
         }
     }
@@ -124,13 +124,13 @@ App::DocumentObjectExecReturn* Revolved::tryExecuteRevolved(Part::RevolMode revo
         if (angle - startAngle < -Precision::Angular()) {
             return new App::DocumentObjectExecReturn(QT_TRANSLATE_NOOP(
                 "Exception",
-                "Revolution distance must not be negative on side 1"
+                "Revolution angle must not be negative on side 1"
             ));
         }
         if (angle2 - startAngle2 < -Precision::Angular()) {
             return new App::DocumentObjectExecReturn(QT_TRANSLATE_NOOP(
                 "Exception",
-                "Revolution distance must not be negative on side 2"
+                "Revolution angle must not be negative on side 2"
             ));
         }
         if (std::fabs(angle - startAngle) + std::fabs(angle2 - startAngle2)

@@ -98,14 +98,14 @@ Pad::Pad()
         (0.0),
         "Side1",
         App::Prop_None,
-        "Pad start position for length mode; offset from end face for up-to modes"
+        "Pad start position for dimension modes; offset from end face for up-to modes"
     );
     ADD_PROPERTY_TYPE(
         Offset2,
         (0.0),
         "Side2",
         App::Prop_None,
-        "Pad start position for length mode on side 2; offset from end face for up-to modes"
+        "Pad start position for dimension modes on side 2; offset from end face for up-to modes"
     );
     Offset.setConstraints(&signedLengthConstraint);
     Offset2.setConstraints(&signedLengthConstraint);
