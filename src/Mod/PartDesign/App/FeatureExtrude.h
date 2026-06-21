@@ -49,8 +49,6 @@ public:
     App::PropertyEnumeration SideType;
     App::PropertyEnumeration Type;
     App::PropertyEnumeration Type2;
-    App::PropertyEnumeration DistanceType;
-    App::PropertyEnumeration DistanceType2;
     App::PropertyLength Length;
     App::PropertyLength Length2;
     App::PropertyAngle TaperAngle;
@@ -77,7 +75,6 @@ public:
     //@}
 
     static const char* SideTypesEnums[];
-    static const char* DistanceTypesEnums[];
 
 protected:
     void onDocumentRestored() override;

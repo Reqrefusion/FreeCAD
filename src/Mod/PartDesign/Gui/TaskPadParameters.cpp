@@ -86,7 +86,8 @@ TaskPadParameters::~TaskPadParameters() = default;
 void TaskPadParameters::translateModeList(QComboBox* box, int index)
 {
     box->clear();
-    box->addItem(tr("Dimension"));
+    box->addItem(tr("Dimension from start"));
+    box->addItem(tr("Dimension from origin"));
     box->addItem(tr("To last"));
     box->addItem(tr("To first"));
     box->addItem(tr("Up to face"));
@@ -99,10 +100,12 @@ void TaskPadParameters::updatePadDistanceLabels()
     ui->labelLength->setText(tr("Distance"));
     ui->labelLength2->setText(tr("2nd distance"));
 
-    const bool side1IsDimension = static_cast<Mode>(ui->changeMode->currentIndex())
-        == Mode::Dimension;
-    const bool side2IsDimension = static_cast<Mode>(ui->changeMode2->currentIndex())
-        == Mode::Dimension;
+    const bool side1IsDimension = isDimensionMode(
+        static_cast<Mode>(ui->changeMode->currentIndex())
+    );
+    const bool side2IsDimension = isDimensionMode(
+        static_cast<Mode>(ui->changeMode2->currentIndex())
+    );
     ui->labelOffset->setText(side1IsDimension ? tr("Start") : tr("Offset"));
     ui->labelOffset2->setText(side2IsDimension ? tr("2nd start") : tr("Offset"));
 }
@@ -126,15 +129,18 @@ void TaskPadParameters::onModeChanged(int index, Side side)
     auto& sideCtrl = getSideController(side);
 
     switch (static_cast<Mode>(index)) {
-        case Mode::Dimension:
-            sideCtrl.Type->setValue("Length");
+        case Mode::DimensionFromStart:
+        case Mode::DimensionFromOrigin:
+            sideCtrl.Type->setValue(
+                isDimensionFromStartMode(static_cast<Mode>(index)) ? "Length" : "LengthFromOrigin"
+            );
             if (side == Side::First) {
                 // Avoid error message
                 auto effectiveDistance = [](const auto& side) {
                     const double start = side.offsetEdit->value().getValue();
                     const double distance = side.lengthEdit->value().getValue();
-                    const double end = side.DistanceType->getValue() == 0 ? start + distance
-                                                                          : distance;
+                    const bool fromStart = std::string(side.Type->getValueAsString()) == "Length";
+                    const double end = fromStart ? start + distance : distance;
                     return std::abs(end - start);
                 };
                 const double L = effectiveDistance(sideCtrl);

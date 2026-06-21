@@ -97,7 +97,8 @@ public:
 
     enum class Mode
     {
-        Dimension,
+        DimensionFromStart,
+        DimensionFromOrigin,
         ThroughAll,
         ToLast = ThroughAll,
         ToFirst,
@@ -146,7 +147,6 @@ protected:
         QLabel* labelTaperAngle = nullptr;
         Gui::PrefQuantitySpinBox* lengthEdit = nullptr;
         Gui::PrefQuantitySpinBox* offsetEdit = nullptr;
-        QComboBox* distanceType = nullptr;
         Gui::PrefQuantitySpinBox* taperEdit = nullptr;
         QLineEdit* lineFaceName = nullptr;
         QToolButton* buttonFace = nullptr;
@@ -163,7 +163,6 @@ protected:
         App::PropertyEnumeration* Type = nullptr;
         App::PropertyLength* Length = nullptr;
         App::PropertyLength* Offset = nullptr;
-        App::PropertyEnumeration* DistanceType = nullptr;
         App::PropertyAngle* TaperAngle = nullptr;
         App::PropertyLinkSub* UpToFace = nullptr;
         App::PropertyLinkSubList* UpToShape = nullptr;
@@ -190,11 +189,13 @@ private Q_SLOTS:
     void onReversedChanged(bool);
 
 private:
+    static Mode modeFromPropertyType(const App::PropertyEnumeration& type);
+    static int propertyTypeIndexFromMode(Mode mode);
+
     void onModeChanged_Side1(int index);
     void onModeChanged_Side2(int index);
     void onLengthChanged(double len, Side side);
     void onOffsetChanged(double len, Side side);
-    void onDistanceTypeChanged(int index, Side side);
     void onTaperChanged(double angle, Side side);
     void onSelectFaceToggle(bool checked, Side side);
 
@@ -205,6 +206,9 @@ private:
     void onUnselectShapeFacesTrigger(Side side);
 
 protected:
+    static bool isDimensionMode(Mode mode);
+    static bool isDimensionFromStartMode(Mode mode);
+
     void updateWholeUI(Type type, Side side);
     void updateSideUI(
         const SideController& s,
