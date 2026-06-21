@@ -42,8 +42,16 @@ using namespace PartDesign;
 // because the files store the enum index. So it is not possible to migrate files if the
 // enum entry is removed (see #23612). In the distant future, when all files are reasonably
 // migrated we can drop this.
-const char* Pad::TypeEnums[]
-    = {"Length", "UpToLast", "UpToFirst", "UpToFace", "?TwoLengths", "UpToShape", nullptr};
+const char* Pad::TypeEnums[] = {
+    "Length",
+    "UpToLast",
+    "UpToFirst",
+    "UpToFace",
+    "?TwoLengths",
+    "UpToShape",
+    "LengthFromOrigin",
+    nullptr
+};
 
 PROPERTY_SOURCE(PartDesign::Pad, PartDesign::FeatureExtrude)
 
@@ -57,10 +65,6 @@ Pad::Pad()
     SideType.setEnums(SideTypesEnums);
     Type.setEnums(TypeEnums);
     Type2.setEnums(TypeEnums);
-    ADD_PROPERTY_TYPE(DistanceType, (0L), "Side1", App::Prop_None, "How pad distance is measured");
-    ADD_PROPERTY_TYPE(DistanceType2, (0L), "Side2", App::Prop_None, "How pad distance is measured on side 2");
-    DistanceType.setEnums(DistanceTypesEnums);
-    DistanceType2.setEnums(DistanceTypesEnums);
     ADD_PROPERTY_TYPE(Length, (10.0), "Side1", App::Prop_None, "Pad distance");
     ADD_PROPERTY_TYPE(Length2, (10.0), "Side2", App::Prop_None, "Pad distance in 2nd direction");
     ADD_PROPERTY_TYPE(UseCustomVector, (false), "Pad", App::Prop_None, "Use custom vector for pad direction");

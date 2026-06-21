@@ -102,6 +102,58 @@ TaskExtrudeParameters::TaskExtrudeParameters(
     this->groupLayout()->addWidget(proxy);
 }
 
+bool TaskExtrudeParameters::isDimensionMode(Mode mode)
+{
+    return mode == Mode::DimensionFromStart || mode == Mode::DimensionFromOrigin;
+}
+
+bool TaskExtrudeParameters::isDimensionFromStartMode(Mode mode)
+{
+    return mode == Mode::DimensionFromStart;
+}
+
+TaskExtrudeParameters::Mode TaskExtrudeParameters::modeFromPropertyType(
+    const App::PropertyEnumeration& type
+)
+{
+    const std::string value = type.getValueAsString();
+    if (value == "LengthFromOrigin") {
+        return Mode::DimensionFromOrigin;
+    }
+    if (value == "ThroughAll" || value == "UpToLast") {
+        return Mode::ThroughAll;
+    }
+    if (value == "UpToFirst") {
+        return Mode::ToFirst;
+    }
+    if (value == "UpToFace") {
+        return Mode::ToFace;
+    }
+    if (value == "UpToShape") {
+        return Mode::ToShape;
+    }
+    return Mode::DimensionFromStart;
+}
+
+int TaskExtrudeParameters::propertyTypeIndexFromMode(Mode mode)
+{
+    switch (mode) {
+        case Mode::DimensionFromStart:
+            return 0;
+        case Mode::DimensionFromOrigin:
+            return 6;
+        case Mode::ThroughAll:
+            return 1;
+        case Mode::ToFirst:
+            return 2;
+        case Mode::ToFace:
+            return 3;
+        case Mode::ToShape:
+            return 5;
+    }
+    return 0;
+}
+
 void TaskExtrudeParameters::setupDialog()
 {
     auto createRemoveAction = [this]() -> QAction* {
@@ -161,13 +213,7 @@ void TaskExtrudeParameters::setupSideDialog(SideController& side)
     Base::Quantity length = side.Length->getQuantityValue();
     Base::Quantity offset = side.Offset->getQuantityValue();
     Base::Quantity taper = side.TaperAngle->getQuantityValue();
-    int typeIndex = side.Type->getValue();
-    // The Type/Type2 properties are stuck with the deprecated 'TwoLength' mode.
-    // Because enums do not store text just an index. So this create
-    // a inconsistence between the UI and the property.
-    if (typeIndex > static_cast<int>(Mode::ToShape)) {
-        typeIndex--;
-    }
+    const int typeIndex = static_cast<int>(modeFromPropertyType(*side.Type));
 
     // --- Set up UI widgets with initial values ---
     side.lengthEdit->setValue(length);
@@ -181,10 +227,6 @@ void TaskExtrudeParameters::setupSideDialog(SideController& side)
     side.lengthEdit->bind(*side.Length);
     side.offsetEdit->bind(*side.Offset);
     side.taperEdit->bind(*side.TaperAngle);
-    if (side.distanceType) {
-        QSignalBlocker block(side.distanceType);
-        side.distanceType->setCurrentIndex(side.DistanceType->getValue());
-    }
 
     // --- Handle "Up to face" label logic ---
     App::DocumentObject* faceObj = side.UpToFace->getValue();
@@ -254,7 +296,6 @@ void TaskExtrudeParameters::createSideControllers()
     m_side1.Type = &extrude->Type;
     m_side1.Length = &extrude->Length;
     m_side1.Offset = &extrude->Offset;
-    m_side1.DistanceType = &extrude->DistanceType;
     m_side1.TaperAngle = &extrude->TaperAngle;
     m_side1.UpToFace = &extrude->UpToFace;
     m_side1.UpToShape = &extrude->UpToShape;
@@ -281,7 +322,6 @@ void TaskExtrudeParameters::createSideControllers()
     m_side2.Type = &extrude->Type2;
     m_side2.Length = &extrude->Length2;
     m_side2.Offset = &extrude->Offset2;
-    m_side2.DistanceType = &extrude->DistanceType2;
     m_side2.TaperAngle = &extrude->TaperAngle2;
     m_side2.UpToFace = &extrude->UpToFace2;
     m_side2.UpToShape = &extrude->UpToShape2;
@@ -320,14 +360,6 @@ void TaskExtrudeParameters::connectSlots()
             this,
             [this, sideEnum](double val) { onOffsetChanged(val, sideEnum); }
         );
-        if (side.distanceType) {
-            connect(
-                side.distanceType,
-                qOverload<int>(&QComboBox::currentIndexChanged),
-                this,
-                [this, sideEnum](int index) { onDistanceTypeChanged(index, sideEnum); }
-            );
-        }
         connect(
             side.taperEdit,
             qOverload<double>(&Gui::PrefQuantitySpinBox::valueChanged),
@@ -695,29 +727,6 @@ void TaskExtrudeParameters::onOffsetChanged(double len, Side side)
     setGizmoPositions();
 }
 
-void TaskExtrudeParameters::onDistanceTypeChanged(int index, Side side)
-{
-    auto& sideController = getSideController(side);
-    const int oldIndex = sideController.DistanceType->getValue();
-    if (oldIndex == index) {
-        return;
-    }
-
-    const double start = sideController.offsetEdit->value().getValue();
-    const double oldDistance = sideController.lengthEdit->value().getValue();
-    const double end = oldIndex == 0 ? start + oldDistance : oldDistance;
-    const double newDistance = index == 0 ? end - start : end;
-
-    {
-        QSignalBlocker block(sideController.lengthEdit);
-        sideController.lengthEdit->setValue(newDistance);
-    }
-    sideController.Length->setValue(newDistance);
-    sideController.DistanceType->setValue(index);
-    tryRecomputeFeature();
-    setGizmoPositions();
-}
-
 void TaskExtrudeParameters::onTaperChanged(double angle, Side side)
 {
     getSideController(side).TaperAngle->setValue(angle);
@@ -843,23 +852,6 @@ void TaskExtrudeParameters::placeOffsetBeforeLength()
 {
     auto* grid = ui->gridLayout;
 
-    auto setupDistanceType = [this](QComboBox*& combo, const QString& toolTip) {
-        combo = new QComboBox(proxy);
-        combo->addItem(tr("Distance from start"));
-        combo->addItem(tr("Distance from origin"));
-        combo->setToolTip(toolTip);
-        combo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-    };
-
-    setupDistanceType(
-        m_side1.distanceType,
-        tr("Choose whether Distance is measured from Start or from the sketch origin")
-    );
-    setupDistanceType(
-        m_side2.distanceType,
-        tr("Choose whether the 2nd Distance is measured from Start or from the sketch origin")
-    );
-
     grid->setVerticalSpacing(std::max(grid->verticalSpacing(), 6));
 
     grid->removeWidget(ui->labelLength);
@@ -870,7 +862,6 @@ void TaskExtrudeParameters::placeOffsetBeforeLength()
     grid->addWidget(ui->offsetEdit, 3, 1);
     grid->addWidget(ui->labelLength, 4, 0);
     grid->addWidget(ui->lengthEdit, 4, 1);
-    grid->addWidget(m_side1.distanceType, 4, 2);
 
     grid->removeWidget(ui->labelLength2);
     grid->removeWidget(ui->lengthEdit2);
@@ -880,7 +871,6 @@ void TaskExtrudeParameters::placeOffsetBeforeLength()
     grid->addWidget(ui->offsetEdit2, 10, 1);
     grid->addWidget(ui->labelLength2, 11, 0);
     grid->addWidget(ui->lengthEdit2, 11, 1);
-    grid->addWidget(m_side2.distanceType, 11, 2);
 }
 
 void TaskExtrudeParameters::updateWholeUI(Type type, Side side)
@@ -903,7 +893,7 @@ void TaskExtrudeParameters::updateWholeUI(Type type, Side side)
     // Side 2 is only visible if in TwoSides mode, and we pass whether it should receive focus.
     updateSideUI(m_side2, type, mode2, isSide2GroupVisible, (side == Side::Second));
 
-    ui->checkBoxReversed->setEnabled(sidesMode != SidesMode::Symmetric || mode1 != Mode::Dimension);
+    ui->checkBoxReversed->setEnabled(sidesMode != SidesMode::Symmetric || !isDimensionMode(mode1));
 }
 
 void TaskExtrudeParameters::updateSideUI(
@@ -921,7 +911,7 @@ void TaskExtrudeParameters::updateSideUI(
     bool isFaceVisible = false;
     bool isShapeVisible = false;
 
-    if (sideMode == Mode::Dimension) {
+    if (isDimensionMode(sideMode)) {
         isLengthVisible = true;
         isOffsetVisible = showOffsetInDimension();
         isTaperVisible = true;
@@ -965,11 +955,6 @@ void TaskExtrudeParameters::updateSideUI(
     s.labelLength->setVisible(finalLengthVisible);
     s.lengthEdit->setVisible(finalLengthVisible);
     s.lengthEdit->setEnabled(finalLengthVisible);
-    if (s.distanceType) {
-        s.distanceType->setVisible(finalLengthVisible && isOffsetVisible);
-        s.distanceType->setEnabled(finalLengthVisible && isOffsetVisible);
-    }
-
     const bool finalOffsetVisible = isParentVisible && isOffsetVisible;
     s.labelOffset->setVisible(finalOffsetVisible);
     s.offsetEdit->setVisible(finalOffsetVisible);
@@ -1389,17 +1374,6 @@ void TaskExtrudeParameters::changeEvent(QEvent* e)
         translateModeList(ui->changeMode, ui->changeMode->currentIndex());
         translateModeList(ui->changeMode2, ui->changeMode2->currentIndex());
         translateSidesList(ui->sidesMode->currentIndex());
-        auto translateDistanceType = [this](QComboBox* combo) {
-            const int current = combo->currentIndex();
-            QSignalBlocker block(combo);
-            combo->clear();
-            combo->addItem(tr("Distance from start"));
-            combo->addItem(tr("Distance from origin"));
-            combo->setCurrentIndex(current);
-        };
-        translateDistanceType(m_side1.distanceType);
-        translateDistanceType(m_side2.distanceType);
-
         translateFaceName(ui->lineFaceName);
         translateFaceName(ui->lineFaceName2);
     }
@@ -1429,15 +1403,8 @@ void TaskExtrudeParameters::applyParameters()
         facename2 = getFaceName(ui->lineFaceName2);
     }
 
-    // Handle deprecated 'TwoLength' mode.
-    int type1 = getMode();
-    if (static_cast<Mode>(type1) == Mode::ToShape) {
-        type1++;
-    }
-    int type2 = getMode2();
-    if (static_cast<Mode>(type2) == Mode::ToShape) {
-        type2++;
-    }
+    const int type1 = propertyTypeIndexFromMode(static_cast<Mode>(getMode()));
+    const int type2 = propertyTypeIndexFromMode(static_cast<Mode>(getMode2()));
 
     ui->lengthEdit->apply();
     ui->lengthEdit2->apply();
@@ -1453,8 +1420,6 @@ void TaskExtrudeParameters::applyParameters()
     FCMD_OBJ_CMD(obj, "SideType = " << getSidesMode());
     FCMD_OBJ_CMD(obj, "Type = " << type1);
     FCMD_OBJ_CMD(obj, "Type2 = " << type2);
-    FCMD_OBJ_CMD(obj, "DistanceType = " << m_side1.distanceType->currentIndex());
-    FCMD_OBJ_CMD(obj, "DistanceType2 = " << m_side2.distanceType->currentIndex());
     FCMD_OBJ_CMD(obj, "UpToFace = " << facename.toUtf8().data());
     FCMD_OBJ_CMD(obj, "UpToFace2 = " << facename2.toUtf8().data());
     FCMD_OBJ_CMD(obj, "Reversed = " << (getReversed() ? 1 : 0));
@@ -1562,11 +1527,13 @@ void TaskExtrudeParameters::setGizmoPositions()
     std::string extrudeType2 = std::string(extrude->Type2.getValueAsString());
     double dir = extrude->Reversed.getValue() ? -1 : 1;
 
-    const bool showStartGizmo1 = showOffsetInDimension() && extrudeType == "Length";
+    const bool isDimension1 = extrudeType == "Length" || extrudeType == "LengthFromOrigin";
+    const bool isDimension2 = extrudeType2 == "Length" || extrudeType2 == "LengthFromOrigin";
+    const bool showStartGizmo1 = showOffsetInDimension() && isDimension1;
     const bool showStartGizmo2 = showOffsetInDimension() && sideType == "Two sides"
-        && extrudeType2 == "Length";
-    const bool distanceFromStart1 = extrude->DistanceType.getValue() == 0;
-    const bool distanceFromStart2 = extrude->DistanceType2.getValue() == 0;
+        && isDimension2;
+    const bool distanceFromStart1 = extrudeType == "Length";
+    const bool distanceFromStart2 = extrudeType2 == "Length";
 
     Base::Vector3d padDir = extrude->Direction.getValue().Normalized();
     Base::Vector3d sketchDir = extrude->getProfileNormal().Normalized();
@@ -1611,9 +1578,9 @@ void TaskExtrudeParameters::setGizmoPositions()
         distanceFromStart1
     );
     startGizmo1->setVisibility(showStartGizmo1);
-    lengthGizmo1->setVisibility(extrudeType == "Length");
+    lengthGizmo1->setVisibility(isDimension1);
     taperAngleGizmo1->placeOverLinearGizmo(lengthGizmo1);
-    taperAngleGizmo1->setVisibility(extrudeType == "Length");
+    taperAngleGizmo1->setVisibility(isDimension1);
 
     setLinearGizmoRange(
         startGizmo2,
@@ -1625,9 +1592,9 @@ void TaskExtrudeParameters::setGizmoPositions()
         distanceFromStart2
     );
     startGizmo2->setVisibility(showStartGizmo2);
-    lengthGizmo2->setVisibility(sideType == "Two sides" && extrudeType2 == "Length");
+    lengthGizmo2->setVisibility(sideType == "Two sides" && isDimension2);
     taperAngleGizmo2->placeOverLinearGizmo(lengthGizmo2);
-    taperAngleGizmo2->setVisibility(sideType == "Two sides" && extrudeType2 == "Length");
+    taperAngleGizmo2->setVisibility(sideType == "Two sides" && isDimension2);
 
     gizmoContainer->calculateScaleAndOrientation();
 }

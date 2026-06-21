@@ -49,10 +49,20 @@ FC_LOG_LEVEL_INIT("PartDesign", true, true)
 
 using namespace PartDesign;
 
-const char* FeatureExtrude::SideTypesEnums[] = {"One side", "Two sides", "Symmetric", nullptr};
-const char* FeatureExtrude::DistanceTypesEnums[]
-    = {"Distance from start", "Distance from origin", nullptr};
+namespace
+{
+bool isDimensionMethod(const std::string& method)
+{
+    return method == "Length" || method == "LengthFromOrigin";
+}
 
+bool isDimensionFromStart(const std::string& method)
+{
+    return method == "Length";
+}
+}
+
+const char* FeatureExtrude::SideTypesEnums[] = {"One side", "Two sides", "Symmetric", nullptr};
 PROPERTY_SOURCE(PartDesign::FeatureExtrude, PartDesign::ProfileBased)
 
 App::PropertyQuantityConstraint::Constraints FeatureExtrude::signedLengthConstraint
@@ -65,8 +75,8 @@ FeatureExtrude::FeatureExtrude() = default;
 short FeatureExtrude::mustExecute() const
 {
     if (Placement.isTouched() || SideType.isTouched() || Type.isTouched() || Type2.isTouched()
-        || DistanceType.isTouched() || DistanceType2.isTouched() || Length.isTouched()
-        || Length2.isTouched() || TaperAngle.isTouched() || TaperAngle2.isTouched()
+        || Length.isTouched() || Length2.isTouched() || TaperAngle.isTouched()
+        || TaperAngle2.isTouched()
         || UseCustomVector.isTouched() || Direction.isTouched() || ReferenceAxis.isTouched()
         || AlongSketchNormal.isTouched() || Offset.isTouched()
         || Offset2.isTouched() || UpToFace.isTouched() || UpToFace2.isTouched()
@@ -207,7 +217,6 @@ void FeatureExtrude::updateProperties()
     std::string methodSide2 = Type2.getValueAsString();
 
     bool isLength1Enabled = false;
-    bool isDistanceType1Enabled = false;
     bool isTaper1Visible = false;
     bool isUpToFace1Enabled = false;
     bool isUpToShape1Enabled = false;
@@ -215,7 +224,6 @@ void FeatureExtrude::updateProperties()
 
     bool isType2Enabled = false;
     bool isLength2Enabled = false;
-    bool isDistanceType2Enabled = false;
     bool isTaper2Visible = false;
     bool isUpToFace2Enabled = false;
     bool isUpToShape2Enabled = false;
@@ -225,15 +233,13 @@ void FeatureExtrude::updateProperties()
 
     auto configureSideProperties = [&](const std::string& method,
                                        bool& lengthEnabled,
-                                       bool& distanceTypeEnabled,
                                        bool& taperVisible,
                                        bool& upToFaceEnabled,
                                        bool& upToShapeEnabled,
                                        bool& localAlongSketchNormal,
                                        bool& localOffset) {
-        if (method == "Length") {
+        if (isDimensionMethod(method)) {
             lengthEnabled = true;
-            distanceTypeEnabled = true;
             taperVisible = true;
             localAlongSketchNormal = true;
             localOffset = true;
@@ -259,7 +265,6 @@ void FeatureExtrude::updateProperties()
         configureSideProperties(
             methodSide1,
             isLength1Enabled,
-            isDistanceType1Enabled,
             isTaper1Visible,
             isUpToFace1Enabled,
             isUpToShape1Enabled,
@@ -275,7 +280,6 @@ void FeatureExtrude::updateProperties()
         configureSideProperties(
             methodSide1,
             isLength1Enabled,
-            isDistanceType1Enabled,
             isTaper1Visible,
             isUpToFace1Enabled,
             isUpToShape1Enabled,
@@ -287,7 +291,6 @@ void FeatureExtrude::updateProperties()
         configureSideProperties(
             methodSide2,
             isLength2Enabled,
-            isDistanceType2Enabled,
             isTaper2Visible,
             isUpToFace2Enabled,
             isUpToShape2Enabled,
@@ -302,7 +305,6 @@ void FeatureExtrude::updateProperties()
         configureSideProperties(
             methodSide1,
             isLength1Enabled,
-            isDistanceType1Enabled,
             isTaper1Visible,
             isUpToFace1Enabled,
             isUpToShape1Enabled,
@@ -313,7 +315,6 @@ void FeatureExtrude::updateProperties()
     }
 
     Length.setReadOnly(!isLength1Enabled);
-    DistanceType.setReadOnly(!isDistanceType1Enabled);
     TaperAngle.setReadOnly(!isTaper1Visible);
     UpToFace.setReadOnly(!isUpToFace1Enabled);
     UpToShape.setReadOnly(!isUpToShape1Enabled);
@@ -321,7 +322,6 @@ void FeatureExtrude::updateProperties()
 
     Type2.setReadOnly(!isType2Enabled);
     Length2.setReadOnly(!isLength2Enabled);
-    DistanceType2.setReadOnly(!isDistanceType2Enabled);
     TaperAngle2.setReadOnly(!isTaper2Visible);
     UpToFace2.setReadOnly(!isUpToFace2Enabled);
     UpToShape2.setReadOnly(!isUpToShape2Enabled);
@@ -350,19 +350,21 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
     const std::string method2(Type2.getValueAsString());
 
     // Validate parameters
-    double start1 = method == "Length" ? Offset.getValue() : 0.0;
-    double start2 = Sidemethod == "Two sides" && method2 == "Length" ? Offset2.getValue() : 0.0;
+    double start1 = isDimensionMethod(method) ? Offset.getValue() : 0.0;
+    double start2 = Sidemethod == "Two sides" && isDimensionMethod(method2)
+        ? Offset2.getValue()
+        : 0.0;
 
-    auto resolveEnd = [](double start, double distance, const App::PropertyEnumeration& type) {
-        return type.getValue() == 0 ? start + distance : distance;
+    auto resolveEnd = [](const std::string& method, double start, double dimension) {
+        return isDimensionFromStart(method) ? start + dimension : dimension;
     };
 
     double L = 0.0;
     if (method == "ThroughAll") {
         L = getThroughAllLength();
     }
-    else if (method == "Length") {
-        L = resolveEnd(start1, Length.getValue(), DistanceType);
+    else if (isDimensionMethod(method)) {
+        L = resolveEnd(method, start1, Length.getValue());
     }
 
     double L2 = 0.0;
@@ -370,13 +372,13 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
         if (method2 == "ThroughAll") {
             L2 = getThroughAllLength();
         }
-        else if (method2 == "Length") {
-            L2 = resolveEnd(start2, Length2.getValue(), DistanceType2);
+        else if (isDimensionMethod(method2)) {
+            L2 = resolveEnd(method2, start2, Length2.getValue());
         }
     }
 
-    double effectiveL = method == "Length" ? std::abs(L - start1) : L;
-    double effectiveL2 = Sidemethod == "Two sides" && method2 == "Length"
+    double effectiveL = isDimensionMethod(method) ? std::abs(L - start1) : L;
+    double effectiveL2 = Sidemethod == "Two sides" && isDimensionMethod(method2)
         ? std::abs(L2 - start2)
         : L2;
 
@@ -406,23 +408,25 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
         );
     };
 
-    if (Sidemethod == "Symmetric" && method == "Length"
+    if (Sidemethod == "Symmetric" && isDimensionMethod(method)
         && (start1 < -Precision::Confusion() || L < -Precision::Confusion())) {
         return symmetricNonNegativeRangeError();
     }
-    if (Sidemethod == "Two sides" && method == "Length" && method2 == "Length") {
+    if (Sidemethod == "Two sides" && isDimensionMethod(method)
+        && isDimensionMethod(method2)) {
         const double minSide1 = std::min(start1, L);
         const double minSide2 = std::min(start2, L2);
         if (minSide1 + minSide2 < -Precision::Confusion()) {
             return twoSidedRangeCrossingError();
         }
     }
-    if ((Sidemethod == "One side" || Sidemethod == "Symmetric") && method == "Length") {
+    if ((Sidemethod == "One side" || Sidemethod == "Symmetric") && isDimensionMethod(method)) {
         if (std::abs(effectiveL) < Precision::Confusion()) {
             return totalLengthZeroError();
         }
     }
-    else if (Sidemethod == "Two sides" && method == "Length" && method2 == "Length") {
+    else if (Sidemethod == "Two sides" && isDimensionMethod(method)
+             && isDimensionMethod(method2)) {
         if (std::abs(effectiveL) + std::abs(effectiveL2) < Precision::Confusion()) {
             return totalLengthZeroError();
         }
@@ -552,8 +556,8 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
         }
         sketchshape.move(invObjLoc);
 
-        const double extrusionStart1 = method == "Length" ? std::min(start1, L) : start1;
-        const double extrusionStart2 = method2 == "Length" ? std::min(start2, L2) : start2;
+        const double extrusionStart1 = isDimensionMethod(method) ? std::min(start1, L) : start1;
+        const double extrusionStart2 = isDimensionMethod(method2) ? std::min(start2, L2) : start2;
 
         std::vector<TopoShape> prisms;  // Stores prisms, all in global CS
         double taper1 = TaperAngle.getValue();
@@ -564,7 +568,7 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
                                              double start,
                                              gp_Dir sideDir) {
             TopoShape movedSketch = sourceSketch.makeElementCopy();
-            if (methodName == "Length" && std::fabs(start) > Precision::Confusion()) {
+            if (isDimensionMethod(methodName) && std::fabs(start) > Precision::Confusion()) {
                 gp_Trsf startTransform;
                 startTransform.SetTranslation(gp_Vec(sideDir) * start);
                 movedSketch.move(startTransform);
@@ -576,7 +580,7 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
             TopoShape prism1 = generateSingleExtrusionSide(
                 movedSketchForLengthStart(sketchshape, method, extrusionStart1, dir),
                 method,
-                method == "Length" ? effectiveL : L,
+                isDimensionMethod(method) ? effectiveL : L,
                 taper1,
                 UpToFace,
                 UpToShape,
@@ -589,7 +593,7 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
             prisms.push_back(prism1);
         }
         else if (Sidemethod == "Symmetric") {
-            if (method == "Length") {
+            if (isDimensionMethod(method)) {
                 gp_Dir dir2 = dir;
                 dir2.Reverse();
 
@@ -668,10 +672,12 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
             dir2.Reverse();
             bool noTaper = std::fabs(taper1) < Precision::Angular()
                 && std::fabs(taper2) < Precision::Angular();
-            bool method1LengthBased = method == "Length" || method == "ThroughAll";
-            bool method2LengthBased = method2 == "Length" || method2 == "ThroughAll";
-            bool hasLengthStart = (method == "Length" && std::fabs(start1) > Precision::Confusion())
-                || (method2 == "Length" && std::fabs(start2) > Precision::Confusion());
+            bool method1LengthBased = isDimensionMethod(method) || method == "ThroughAll";
+            bool method2LengthBased = isDimensionMethod(method2) || method2 == "ThroughAll";
+            bool hasLengthStart = isDimensionMethod(method)
+                    && std::fabs(start1) > Precision::Confusion()
+                || isDimensionMethod(method2)
+                    && std::fabs(start2) > Precision::Confusion();
 
             if (!hasLengthStart && method1LengthBased && method2 != "UpToFirst" && noTaper) {
                 gp_Trsf start_transform;
@@ -720,11 +726,11 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
                 }
             }
             else {
-                if (method != "Length" || std::abs(effectiveL) >= Precision::Confusion()) {
+                if (!isDimensionMethod(method) || std::abs(effectiveL) >= Precision::Confusion()) {
                     TopoShape prism1 = generateSingleExtrusionSide(
                         movedSketchForLengthStart(sketchshape, method, extrusionStart1, dir),
                         method,
-                        method == "Length" ? effectiveL : L,
+                        isDimensionMethod(method) ? effectiveL : L,
                         taper1,
                         UpToFace,
                         UpToShape,
@@ -740,11 +746,11 @@ App::DocumentObjectExecReturn* FeatureExtrude::buildExtrusion(ExtrudeOptions opt
                 }
 
                 // Side 2
-                if (method2 != "Length" || std::abs(effectiveL2) >= Precision::Confusion()) {
+                if (!isDimensionMethod(method2) || std::abs(effectiveL2) >= Precision::Confusion()) {
                     TopoShape prism2 = generateSingleExtrusionSide(
                         movedSketchForLengthStart(sketchshape, method2, extrusionStart2, dir2),
                         method2,
-                        method2 == "Length" ? effectiveL2 : L2,
+                        isDimensionMethod(method2) ? effectiveL2 : L2,
                         taper2,
                         UpToFace2,
                         UpToShape2,
@@ -970,7 +976,7 @@ TopoShape FeatureExtrude::generateSingleExtrusionSide(
             }
         }
     }
-    else if (method == "Length" || method == "ThroughAll") {
+    else if (isDimensionMethod(method) || method == "ThroughAll") {
         using std::numbers::pi;
 
         Part::ExtrusionParameters params;
