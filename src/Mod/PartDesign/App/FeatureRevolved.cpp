@@ -46,8 +46,6 @@ namespace PartDesign
 PROPERTY_SOURCE_ABSTRACT(PartDesign::Revolved, PartDesign::ProfileBased)  // NOLINT
 
 const App::PropertyAngle::Constraints Revolved::floatAngle = {0.0, 360.0, 1.0};
-const char* Revolved::DistanceTypesEnums[]
-    = {"Distance from start", "Distance from origin", nullptr};
 
 Revolved::Revolved()
 {
@@ -61,8 +59,7 @@ short Revolved::mustExecute() const
 {
     if (Placement.isTouched() || ReferenceAxis.isTouched() || Axis.isTouched() || Base.isTouched()
         || UpToFace.isTouched() || Angle.isTouched() || Angle2.isTouched()
-        || StartAngle.isTouched() || StartAngle2.isTouched() || DistanceType.isTouched()
-        || DistanceType2.isTouched()) {
+        || StartAngle.isTouched() || StartAngle2.isTouched()) {
         return 1;
     }
     return ProfileBased::mustExecute();
@@ -101,12 +98,9 @@ App::DocumentObjectExecReturn* Revolved::tryExecuteRevolved(Part::RevolMode revo
     // Validate parameters
     double startAngleDeg = StartAngle.getValue();
     double startAngle2Deg = StartAngle2.getValue();
-    auto resolveEndAngle =
-        [](double start, double distance, const App::PropertyEnumeration& type) {
-            return type.getValue() == 0 ? start + distance : distance;
-        };
-    double angleDeg = resolveEndAngle(startAngleDeg, Angle.getValue(), DistanceType);
-    double angle2Deg = resolveEndAngle(startAngle2Deg, Angle2.getValue(), DistanceType2);
+    const bool angleFromStart = method != RevolMethod::AngleFromOrigin;
+    double angleDeg = angleFromStart ? startAngleDeg + Angle.getValue() : Angle.getValue();
+    double angle2Deg = startAngle2Deg + Angle2.getValue();
     if (angleDeg > maxDegree || angle2Deg > maxDegree || startAngleDeg > maxDegree
         || startAngle2Deg > maxDegree) {
         return new App::DocumentObjectExecReturn(
@@ -119,7 +113,7 @@ App::DocumentObjectExecReturn* Revolved::tryExecuteRevolved(Part::RevolMode revo
     double angle2 = Base::toRadians(angle2Deg);
     double startAngle2 = Base::toRadians(startAngle2Deg);
 
-    if (method == RevolMethod::Angle) {
+    if (method == RevolMethod::AngleFromStart || method == RevolMethod::AngleFromOrigin) {
         if (angle - startAngle < Precision::Angular()) {
             return new App::DocumentObjectExecReturn(
                 QT_TRANSLATE_NOOP("Exception", "Revolution distance must be greater than zero")
@@ -370,8 +364,8 @@ void Revolved::generateRevolution(
     RevolMethod method
 )
 {
-    if (method == RevolMethod::Angle || method == RevolMethod::TwoAngles
-        || method == RevolMethod::ThroughAll) {
+    if (method == RevolMethod::AngleFromStart || method == RevolMethod::AngleFromOrigin
+        || method == RevolMethod::TwoAngles || method == RevolMethod::ThroughAll) {
         gp_Ax1 revolAx(axis);
         if (reversed) {
             revolAx.Reverse();
@@ -493,18 +487,16 @@ void Revolved::updateProperties(RevolMethod method)
     // disable everything unless we are sure we need it
     bool isStartAngleEnabled = false;
     bool isAngleEnabled = false;
-    bool isDistanceTypeEnabled = false;
     bool isStartAngle2Enabled = false;
     bool isAngle2Enabled = false;
-    bool isDistanceType2Enabled = false;
     bool isMidplaneEnabled = false;
     bool isReversedEnabled = false;
     bool isUpToFaceEnabled = false;
     switch (method) {
-        case RevolMethod::Angle:
+        case RevolMethod::AngleFromStart:
+        case RevolMethod::AngleFromOrigin:
             isStartAngleEnabled = true;
             isAngleEnabled = true;
-            isDistanceTypeEnabled = true;
             isMidplaneEnabled = true;
             isReversedEnabled = !Midplane.getValue();
             break;
@@ -524,18 +516,14 @@ void Revolved::updateProperties(RevolMethod method)
             isAngleEnabled = true;
             isStartAngle2Enabled = true;
             isAngle2Enabled = true;
-            isDistanceTypeEnabled = true;
-            isDistanceType2Enabled = true;
             isReversedEnabled = true;
             break;
     }
 
     StartAngle.setReadOnly(!isStartAngleEnabled);
     Angle.setReadOnly(!isAngleEnabled);
-    DistanceType.setReadOnly(!isDistanceTypeEnabled);
     StartAngle2.setReadOnly(!isStartAngle2Enabled);
     Angle2.setReadOnly(!isAngle2Enabled);
-    DistanceType2.setReadOnly(!isDistanceType2Enabled);
     Midplane.setReadOnly(!isMidplaneEnabled);
     Reversed.setReadOnly(!isReversedEnabled);
     UpToFace.setReadOnly(!isUpToFaceEnabled);

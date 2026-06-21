@@ -49,8 +49,6 @@ public:
     App::PropertyAngle Angle2;
     App::PropertyAngle StartAngle;
     App::PropertyAngle StartAngle2;
-    App::PropertyEnumeration DistanceType;
-    App::PropertyEnumeration DistanceType2;
 
     /** if this property is set to a valid link, both Axis and Base properties
      *  are calculated according to the linked line
@@ -67,12 +65,14 @@ public:
 
     enum class RevolMethod
     {
-        Angle,
+        AngleFromStart,
+        Angle = AngleFromStart,
         ThroughAll,
         ToLast = ThroughAll,
         ToFirst,
         ToFace,
-        TwoAngles
+        TwoAngles,
+        AngleFromOrigin
     };
 
 protected:
@@ -85,7 +85,6 @@ protected:
      */
     App::DocumentObjectExecReturn* executeRevolved(Part::RevolMode revolMode);
 
-    static const char* DistanceTypesEnums[];
 
 private:
     App::DocumentObjectExecReturn* tryExecuteRevolved(Part::RevolMode revolMode);
