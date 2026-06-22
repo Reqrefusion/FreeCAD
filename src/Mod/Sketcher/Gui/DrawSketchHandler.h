@@ -312,6 +312,19 @@ protected:
 
     Sketcher::SketchObject* getSketchObject();
 
+    bool generateOneAutoConstraintFromSuggestion(
+        const AutoConstraint& autoConstraint,
+        int geoId,
+        Sketcher::PointPos pointPos,
+        std::vector<std::unique_ptr<Sketcher::Constraint>>& autoConstraints
+    );
+    bool removeRedundantAutoConstraints(
+        std::vector<std::unique_ptr<Sketcher::Constraint>>& autoConstraints
+    );
+    void addGeneratedAutoConstraints(
+        const std::vector<std::unique_ptr<Sketcher::Constraint>>& autoConstraints
+    );
+
     void setAngleSnapping(bool enable, Base::Vector2d referencePoint = Base::Vector2d(0., 0.));
 
     void moveConstraint(int constNum, const Base::Vector2d& toPos, OffsetMode offset = NoOffset);

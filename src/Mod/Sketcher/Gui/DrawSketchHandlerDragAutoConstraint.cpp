@@ -379,5 +379,31 @@ void DrawSketchHandlerDragAutoConstraint::create(const std::vector<GeoElementId>
         return;
     }
 
-    createAutoConstraints(suggestedConstraints, dragged.front().GeoId, dragged.front().Pos, false);
+    SketchObject* obj = getSketchObject();
+    if (!obj) {
+        return;
+    }
+
+    std::vector<std::unique_ptr<Constraint>> autoConstraints;
+    autoConstraints.reserve(suggestedConstraints.size());
+
+    for (const AutoConstraint& suggestion : suggestedConstraints) {
+        if (!generateOneAutoConstraintFromSuggestion(
+                suggestion,
+                dragged.front().GeoId,
+                dragged.front().Pos,
+                autoConstraints
+            )) {
+            break;
+        }
+    }
+
+    const bool valid = removeRedundantAutoConstraints(autoConstraints);
+    obj->solve(false);
+
+    if (!valid || autoConstraints.empty()) {
+        return;
+    }
+
+    addGeneratedAutoConstraints(autoConstraints);
 }
