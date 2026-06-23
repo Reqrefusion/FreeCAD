@@ -750,7 +750,7 @@ protected:
      */
     void removeRedundantAutoConstraints()
     {
-        if (!DrawSketchHandler::removeRedundantAutoConstraints(AutoConstraints)) {
+        if (!filterRedundantAutoConstraints(AutoConstraints)) {
             THROWM(
                 Base::RuntimeError,
                 QT_TRANSLATE_NOOP(

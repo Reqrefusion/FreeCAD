@@ -1312,7 +1312,7 @@ bool DrawSketchHandler::generateOneAutoConstraintFromSuggestion(
     return true;
 }
 
-bool DrawSketchHandler::removeRedundantAutoConstraints(
+bool DrawSketchHandler::filterRedundantAutoConstraints(
     std::vector<std::unique_ptr<Sketcher::Constraint>>& autoConstraints
 )
 {
