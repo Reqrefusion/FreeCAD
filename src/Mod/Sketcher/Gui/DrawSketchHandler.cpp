@@ -24,6 +24,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <ranges>
 #include <tuple>
 #include <utility>
@@ -1320,52 +1321,52 @@ bool DrawSketchHandler::filterRedundantAutoConstraints(
         return true;
     }
 
-    SketchObject* sketchObject = getSketchObject();
-    if (!sketchObject) {
-        return false;
-    }
+    auto sketchobject = getSketchObject();
 
-    sketchObject->diagnoseAdditionalConstraints(toPointerVector(autoConstraints));
+    auto constraints = toPointerVector(autoConstraints);
 
-    const int lastSketchConstraintIndex = sketchObject->Constraints.getSize() - 1;
-    std::vector<int> removeIndices;
+    // Allows a diagnose with the new autoconstraints as if they were part of the sketchobject,
+    // but WITHOUT adding them to the sketchobject..
+    sketchobject->diagnoseAdditionalConstraints(constraints);
 
-    if (sketchObject->getLastHasRedundancies()) {
+    if (sketchobject->getLastHasRedundancies()) {
         Base::Console().message(
-            sketchObject->getFullLabel(),
-            QT_TRANSLATE_NOOP(
-                "Notifications",
-                "Autoconstraints cause redundancy. Removing them"
-            ) "\n"
+            sketchobject->getFullLabel(),
+            QT_TRANSLATE_NOOP("Notifications", "Autoconstraints cause redundancy. Removing them") "\n"
         );
 
-        for (int solverIndex : sketchObject->getLastRedundant()) {
-            const int constraintIndex = solverIndex - 1;
-            if (constraintIndex <= lastSketchConstraintIndex) {
+        auto lastsketchconstraintindex = sketchobject->Constraints.getSize() - 1;
+
+        auto redundants = sketchobject->getLastRedundant();  // redundants is always sorted
+
+        for (int index = redundants.size() - 1; index >= 0; index--) {
+            int redundantconstraintindex = redundants[index] - 1;
+            if (redundantconstraintindex > lastsketchconstraintindex) {
+                int removeindex = redundantconstraintindex - lastsketchconstraintindex - 1;
+                autoConstraints.erase(std::next(autoConstraints.begin(), removeindex));
+            }
+            else {
                 return false;
             }
-            removeIndices.push_back(constraintIndex - lastSketchConstraintIndex - 1);
         }
+
+        // NOTE: If we removed all redundants in the list, then at this moment there are no
+        // redundants anymore
     }
 
-    if (sketchObject->getLastHasConflicts()) {
-        for (int solverIndex : sketchObject->getLastConflicting()) {
-            const int constraintIndex = solverIndex - 1;
-            if (constraintIndex > lastSketchConstraintIndex) {
-                removeIndices.push_back(constraintIndex - lastSketchConstraintIndex - 1);
+    // This can happen if OVP generated constraints and autoconstraints are conflicting
+    // For instance : https://github.com/FreeCAD/FreeCAD/issues/17722
+    if (sketchobject->getLastHasConflicts()) {
+        auto lastsketchconstraintindex = sketchobject->Constraints.getSize() - 1;
+
+        auto conflicting = sketchobject->getLastConflicting();
+
+        for (int index = conflicting.size() - 1; index >= 0; index--) {
+            int conflictingIndex = conflicting[index] - 1;
+            if (conflictingIndex > lastsketchconstraintindex) {
+                int removeindex = conflictingIndex - lastsketchconstraintindex - 1;
+                autoConstraints.erase(std::next(autoConstraints.begin(), removeindex));
             }
-        }
-    }
-
-    std::sort(removeIndices.rbegin(), removeIndices.rend());
-    removeIndices.erase(
-        std::unique(removeIndices.begin(), removeIndices.end()),
-        removeIndices.end()
-    );
-
-    for (int index : removeIndices) {
-        if (index >= 0 && static_cast<std::size_t>(index) < autoConstraints.size()) {
-            autoConstraints.erase(autoConstraints.begin() + index);
         }
     }
 
@@ -1376,15 +1377,13 @@ void DrawSketchHandler::addGeneratedAutoConstraints(
     const std::vector<std::unique_ptr<Sketcher::Constraint>>& autoConstraints
 )
 {
-    if (autoConstraints.empty()) {
-        return;
-    }
+    auto constraints = toPointerVector(autoConstraints);
 
     Gui::Command::doCommand(
         Gui::Command::Doc,
         Sketcher::PythonConverter::convert(
             Gui::Command::getObjectCmd(sketchgui->getObject()),
-            toPointerVector(autoConstraints)
+            constraints
         )
             .c_str()
     );

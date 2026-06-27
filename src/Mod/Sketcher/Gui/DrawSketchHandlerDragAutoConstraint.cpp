@@ -385,7 +385,6 @@ void DrawSketchHandlerDragAutoConstraint::create(const std::vector<GeoElementId>
     }
 
     std::vector<std::unique_ptr<Constraint>> autoConstraints;
-    autoConstraints.reserve(suggestedConstraints.size());
 
     for (const AutoConstraint& suggestion : suggestedConstraints) {
         if (!generateOneAutoConstraintFromSuggestion(
@@ -401,7 +400,7 @@ void DrawSketchHandlerDragAutoConstraint::create(const std::vector<GeoElementId>
     const bool valid = filterRedundantAutoConstraints(autoConstraints);
     obj->solve(false);
 
-    if (!valid || autoConstraints.empty()) {
+    if (!valid) {
         return;
     }
 
