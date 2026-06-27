@@ -1087,6 +1087,7 @@ int DrawSketchHandler::seekAutoConstraint(
     return suggestedConstraints.size();
 }
 
+// TODO: Figure out and explain what it actually returns
 bool DrawSketchHandler::generateOneAutoConstraintFromSuggestion(
     const AutoConstraint& ac,
     int geoId1,

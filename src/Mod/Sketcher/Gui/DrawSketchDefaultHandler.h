@@ -751,6 +751,10 @@ protected:
     void removeRedundantAutoConstraints()
     {
         if (!filterRedundantAutoConstraints(AutoConstraints)) {
+            // This exception stops the procedure here, which means that:
+            // 1) Geometry (and constraints of the geometry in case of a multicurve shape)
+            // are created 2) No autoconstrains are actually added 3) No widget mandated
+            // constraints are added
             THROWM(
                 Base::RuntimeError,
                 QT_TRANSLATE_NOOP(
