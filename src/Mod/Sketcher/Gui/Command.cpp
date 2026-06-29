@@ -1953,7 +1953,6 @@ public:
         sStatusTip = sToolTipText;
         sPixmap = AutoConstraintManager::commandIconName(data.mode);
         eType = ForEdit;
-        setCheckable(true);
     }
 
     const char* className() const override
@@ -1964,8 +1963,13 @@ public:
 protected:
     void activated(int iMsg) override
     {
-        Q_UNUSED(iMsg)
-        AutoConstraintManager::toggleMode(data.mode);
+        if (triggerSource() == TriggerAction) {
+            AutoConstraintManager::setModeActive(data.mode, iMsg != 0);
+        }
+        else {
+            AutoConstraintManager::toggleMode(data.mode);
+        }
+
         syncAction();
     }
 
@@ -1979,7 +1983,7 @@ protected:
     {
         auto* action = Command::createAction();
         action->setCheckable(true);
-        action->setChecked(AutoConstraintManager::isModeActive(data.mode));
+        action->setBlockedChecked(AutoConstraintManager::isModeActive(data.mode));
         return action;
     }
 
@@ -1987,7 +1991,7 @@ private:
     void syncAction()
     {
         if (_pcAction) {
-            _pcAction->setChecked(AutoConstraintManager::isModeActive(data.mode));
+            _pcAction->setBlockedChecked(AutoConstraintManager::isModeActive(data.mode));
         }
     }
 
