@@ -62,24 +62,9 @@ TYPE_CONTEXT_RULES = (
         internal_reason="Python console sys.stdin replacement; not exported from a FreeCAD module",
     ),
     TypeContextRule(
-        source="src/Gui/PythonDebugger.cpp",
-        context_name="PythonDebugStdout",
-        internal_reason="debugger sys.stdout replacement; not exported from a FreeCAD module",
-    ),
-    TypeContextRule(
-        source="src/Gui/PythonDebugger.cpp",
-        context_name="PythonDebugStderr",
-        internal_reason="debugger sys.stderr replacement; not exported from a FreeCAD module",
-    ),
-    TypeContextRule(
-        source="src/Gui/PythonDebugger.cpp",
-        context_name="PythonDebugExcept",
-        internal_reason="debugger excepthook replacement; not exported from a FreeCAD module",
-    ),
-    TypeContextRule(
         source="src/Base/ParameterPy.cpp",
         context_name="ParameterGrp",
-        public_targets=(PublicTypeTarget("FreeCAD", "_ParameterGrp"),),
+        public_targets=(PublicTypeTarget("FreeCAD", "ParameterGrp"),),
     ),
     TypeContextRule(
         source="src/Gui/MainWindowPy.cpp",
@@ -120,16 +105,6 @@ TYPE_CONTEXT_RULES = (
         source="src/Gui/WidgetFactory.cpp",
         context_name="PyResource",
         public_targets=(PublicTypeTarget("FreeCADGui", "_PyResource"),),
-    ),
-    TypeContextRule(
-        source="src/Mod/Sandbox/App/DocumentProtectorPy.cpp",
-        context_name="DocumentProtectorPy",
-        public_targets=(PublicTypeTarget("Sandbox", "_DocumentProtector"),),
-    ),
-    TypeContextRule(
-        source="src/Mod/Sandbox/App/DocumentProtectorPy.cpp",
-        context_name="DocumentObjectProtectorPy",
-        public_targets=(PublicTypeTarget("Sandbox", "_DocumentObjectProtector"),),
     ),
     TypeContextRule(
         source="src/Mod/Spreadsheet/Gui/SpreadsheetView.cpp",

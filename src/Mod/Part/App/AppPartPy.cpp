@@ -67,7 +67,7 @@
 #include <TopoDS_Face.hxx>
 #include <TopoDS_Shell.hxx>
 #include <TopoDS_Solid.hxx>
-#include <TopTools_ListIteratorOfListOfShape.hxx>
+#include <TopTools_ListOfShape.hxx>
 
 #include <BRepFill_Generator.hxx>
 
@@ -220,11 +220,14 @@ PartExport std::list<TopoDS_Edge> sort_Edges(double tol3d, std::list<TopoDS_Edge
             else if (pEI->v2.SquareDistance(last) <= tol3d) {
                 last = pEI->v1;
                 Standard_Real first, last;
+                BRepLib::BuildCurves3d(pEI->edge);
                 const Handle(Geom_Curve) & curve = BRep_Tool::Curve(pEI->edge, first, last);
-                first = curve->ReversedParameter(first);
-                last = curve->ReversedParameter(last);
-                TopoDS_Edge edgeReversed = BRepBuilderAPI_MakeEdge(curve->Reversed(), last, first);
-                sorted.push_back(edgeReversed);
+                if (!curve.IsNull()) {
+                    first = curve->ReversedParameter(first);
+                    last = curve->ReversedParameter(last);
+                    TopoDS_Edge edgeReversed = BRepBuilderAPI_MakeEdge(curve->Reversed(), last, first);
+                    sorted.push_back(edgeReversed);
+                }
                 edges.erase(pEI->it);
                 edge_points.erase(pEI);
                 pEI = edge_points.begin();
@@ -233,11 +236,14 @@ PartExport std::list<TopoDS_Edge> sort_Edges(double tol3d, std::list<TopoDS_Edge
             else if (pEI->v1.SquareDistance(first) <= tol3d) {
                 first = pEI->v2;
                 Standard_Real first, last;
+                BRepLib::BuildCurves3d(pEI->edge);
                 const Handle(Geom_Curve) & curve = BRep_Tool::Curve(pEI->edge, first, last);
-                first = curve->ReversedParameter(first);
-                last = curve->ReversedParameter(last);
-                TopoDS_Edge edgeReversed = BRepBuilderAPI_MakeEdge(curve->Reversed(), last, first);
-                sorted.push_front(edgeReversed);
+                if (!curve.IsNull()) {
+                    first = curve->ReversedParameter(first);
+                    last = curve->ReversedParameter(last);
+                    TopoDS_Edge edgeReversed = BRepBuilderAPI_MakeEdge(curve->Reversed(), last, first);
+                    sorted.push_front(edgeReversed);
+                }
                 edges.erase(pEI->it);
                 edge_points.erase(pEI);
                 pEI = edge_points.begin();
@@ -1588,7 +1594,7 @@ private:
             }
 
             if (!mkPoly.IsDone()) {
-                Standard_Failure::Raise(
+                throw Standard_Failure(
                     "Cannot create polygon because less than two vertices are given"
                 );
             }
