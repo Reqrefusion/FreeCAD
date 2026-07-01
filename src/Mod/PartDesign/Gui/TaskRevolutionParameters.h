@@ -116,7 +116,7 @@ private:
     void connectSignals();
     void updateUI(int index);
     void translateModeList(int index);
-    void syncDistanceLimits(bool secondSide);
+    void syncAngleLimits(bool secondSide);
     // TODO: This is common with extrude. Maybe send to superclass.
     void translateFaceName();
     void clearFaceName();

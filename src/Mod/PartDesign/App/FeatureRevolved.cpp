@@ -22,9 +22,6 @@
  *                                                                         *
  ***************************************************************************/
 
-#include <algorithm>
-#include <vector>
-
 #include <gp_Lin.hxx>
 #include <Precision.hxx>
 #include <TopExp_Explorer.hxx>
@@ -96,49 +93,46 @@ App::DocumentObjectExecReturn* Revolved::tryExecuteRevolved(Part::RevolMode revo
     const auto method = static_cast<RevolMethod>(Type.getValue());
 
     // Validate parameters
-    double startAngleDeg = StartAngle.getValue();
-    double startAngle2Deg = StartAngle2.getValue();
-    const bool angleFromStart = method != RevolMethod::AngleFromOrigin;
-    double angleDeg = angleFromStart ? startAngleDeg + Angle.getValue() : Angle.getValue();
-    double angle2Deg = startAngle2Deg + Angle2.getValue();
-    if (angleDeg > maxDegree || angle2Deg > maxDegree || startAngleDeg > maxDegree
-        || startAngle2Deg > maxDegree) {
+    double startAngleDeg = 0.0;
+    double startAngle2Deg = 0.0;
+    double angleDeg = Angle.getValue();
+    double angle2Deg = Angle2.getValue();
+
+    if (method == RevolMethod::Angle || method == RevolMethod::AngleFromOrigin
+        || method == RevolMethod::TwoAngles) {
+        startAngleDeg = StartAngle.getValue();
+        if (method != RevolMethod::AngleFromOrigin) {
+            angleDeg += startAngleDeg;
+        }
+    }
+    if (method == RevolMethod::TwoAngles) {
+        startAngle2Deg = StartAngle2.getValue();
+        angle2Deg += startAngle2Deg;
+    }
+
+    if (startAngleDeg > maxDegree || startAngle2Deg > maxDegree || angleDeg > maxDegree
+        || angle2Deg > maxDegree) {
         return new App::DocumentObjectExecReturn(
             QT_TRANSLATE_NOOP("Exception", "Angle of revolution too large")
         );
     }
 
     auto angle = Base::toRadians<double>(angleDeg);
-    auto startAngle = Base::toRadians<double>(startAngleDeg);
-    double angle2 = Base::toRadians(angle2Deg);
-    double startAngle2 = Base::toRadians(startAngle2Deg);
-
-    if (method == RevolMethod::AngleFromStart || method == RevolMethod::AngleFromOrigin) {
-        if (angle - startAngle < Precision::Angular()) {
-            return new App::DocumentObjectExecReturn(
-                QT_TRANSLATE_NOOP("Exception", "Revolution angle must be greater than zero")
-            );
-        }
+    const auto startAngle = Base::toRadians<double>(startAngleDeg);
+    if (angle - startAngle < Precision::Angular()
+        && (method == RevolMethod::Angle || method == RevolMethod::AngleFromOrigin)) {
+        return new App::DocumentObjectExecReturn(
+            QT_TRANSLATE_NOOP("Exception", "Angle of revolution too small")
+        );
     }
-    else if (method == RevolMethod::TwoAngles) {
-        if (angle - startAngle < -Precision::Angular()) {
-            return new App::DocumentObjectExecReturn(QT_TRANSLATE_NOOP(
-                "Exception",
-                "Revolution angle must not be negative on side 1"
-            ));
-        }
-        if (angle2 - startAngle2 < -Precision::Angular()) {
-            return new App::DocumentObjectExecReturn(QT_TRANSLATE_NOOP(
-                "Exception",
-                "Revolution angle must not be negative on side 2"
-            ));
-        }
-        if (std::fabs(angle - startAngle) + std::fabs(angle2 - startAngle2)
-            < Precision::Angular()) {
-            return new App::DocumentObjectExecReturn(
-                QT_TRANSLATE_NOOP("Exception", "Cannot create a revolution with zero angle")
-            );
-        }
+
+    double angle2 = Base::toRadians<double>(angle2Deg);
+    const auto startAngle2 = Base::toRadians<double>(startAngle2Deg);
+    if (std::fabs(angle - startAngle + angle2 - startAngle2) < Precision::Angular()
+        && method == RevolMethod::TwoAngles) {
+        return new App::DocumentObjectExecReturn(
+            QT_TRANSLATE_NOOP("Exception", "Angles of revolution nullify each other")
+        );
     }
 
     TopoShape sketchshape = getTopoShapeVerifiedFace();
@@ -364,82 +358,119 @@ void Revolved::generateRevolution(
     RevolMethod method
 )
 {
-    if (method == RevolMethod::AngleFromStart || method == RevolMethod::AngleFromOrigin
-        || method == RevolMethod::TwoAngles || method == RevolMethod::ThroughAll) {
+    const bool hasStart = std::fabs(startAngle) >= Precision::Angular();
+    const bool hasStart2 = std::fabs(startAngle2) >= Precision::Angular();
+    const bool needsSeparatedSegments = method == RevolMethod::TwoAngles
+        ? hasStart || hasStart2
+        : midplane && hasStart
+            && (method == RevolMethod::Angle || method == RevolMethod::AngleFromOrigin);
+
+    if (needsSeparatedSegments) {
         gp_Ax1 revolAx(axis);
         if (reversed) {
             revolAx.Reverse();
         }
 
         auto makeRevolutionSegment = [&](const gp_Ax1& segmentAxis, double start, double end) {
-            double angleTotal = end - start;
+            const double angleTotal = end - start;
             if (std::fabs(angleTotal) < Precision::Angular()) {
                 return TopoShape(0);
             }
 
             TopoShape from = sketchshape;
-            if (std::fabs(start) >= Precision::Angular()) {
-                gp_Trsf mov;
-                mov.SetRotation(segmentAxis, start);
-                TopLoc_Location loc(mov);
-                from.move(loc);
-            }
+            gp_Trsf movement;
+            movement.SetRotation(segmentAxis, start);
+            from.move(TopLoc_Location(movement));
 
-            // revolve the face to a solid
             // BRepPrimAPI is the only option that allows use of this shape for patterns.
             // See https://forum.freecad.org/viewtopic.php?f=8&t=70185&p=611673#p611673.
-            TopoShape segment = from;
-            segment = segment.makeElementRevolve(segmentAxis, angleTotal);
+            TopoShape segment = from.makeElementRevolve(segmentAxis, angleTotal);
             segment.Tag = -getID();
             return segment;
         };
 
-        std::vector<TopoShape> revolutions;
-        if (method == RevolMethod::ThroughAll) {
-            revolutions.push_back(makeRevolutionSegment(revolAx, 0.0, 2 * std::numbers::pi));
-        }
-        else if (method == RevolMethod::TwoAngles) {
-            revolutions.push_back(makeRevolutionSegment(revolAx, startAngle, angle));
+        auto combineSegments = [&](const TopoShape& first, const TopoShape& second) {
+            std::vector<TopoShape> segments;
+            if (!first.isNull() && !first.getShape().IsNull()) {
+                segments.push_back(first);
+            }
+            if (!second.isNull() && !second.getShape().IsNull()) {
+                segments.push_back(second);
+            }
 
-            gp_Ax1 revolAx2(revolAx);
-            revolAx2.Reverse();
-            revolutions.push_back(makeRevolutionSegment(revolAx2, startAngle2, angle2));
+            if (segments.empty()) {
+                throw Base::ValueError("Cannot create a revolution with zero angle.");
+            }
+            if (segments.size() == 1) {
+                revol = segments.front();
+            }
+            else {
+                revol.makeElementFuse(segments);
+                revol.Tag = -getID();
+            }
+        };
+
+        gp_Ax1 revolAx2(revolAx);
+        revolAx2.Reverse();
+        if (method == RevolMethod::TwoAngles) {
+            combineSegments(
+                makeRevolutionSegment(revolAx, startAngle, angle),
+                makeRevolutionSegment(revolAx2, startAngle2, angle2)
+            );
+        }
+        else {
+            combineSegments(
+                makeRevolutionSegment(revolAx, startAngle / 2.0, angle / 2.0),
+                makeRevolutionSegment(revolAx2, startAngle / 2.0, angle / 2.0)
+            );
+        }
+        return;
+    }
+
+    if (method == RevolMethod::Angle || method == RevolMethod::AngleFromOrigin
+        || method == RevolMethod::TwoAngles || method == RevolMethod::ThroughAll) {
+        double angleTotal = angle;
+        double angleOffset = 0.;
+
+        if (method == RevolMethod::TwoAngles) {
+            // Rotate the face by `angle2`/`angle` to get "second" angle
+            angleTotal += angle2;
+            angleOffset = angle2 * -1.0;
+        }
+        else if (method == RevolMethod::ThroughAll) {
+            angleTotal = 2 * std::numbers::pi;
         }
         else if (midplane) {
-            const double symmetricStart = startAngle / 2.0;
-            const double symmetricAngle = angle / 2.0;
-
-            revolutions.push_back(makeRevolutionSegment(revolAx, symmetricStart, symmetricAngle));
-
-            gp_Ax1 revolAx2(revolAx);
-            revolAx2.Reverse();
-            revolutions.push_back(makeRevolutionSegment(revolAx2, symmetricStart, symmetricAngle));
+            // Rotate the face by half the angle to get Revolution symmetric to sketch plane
+            angleOffset = -angle / 2;
         }
         else {
-            revolutions.push_back(makeRevolutionSegment(revolAx, startAngle, angle));
+            angleTotal -= startAngle;
+            angleOffset = startAngle;
         }
 
-        revolutions.erase(
-            std::remove_if(
-                revolutions.begin(),
-                revolutions.end(),
-                [](const TopoShape& shape) {
-                    return shape.isNull() || shape.getShape().IsNull();
-                }
-            ),
-            revolutions.end()
-        );
-
-        if (revolutions.empty()) {
+        if (std::fabs(angleTotal) < Precision::Angular()) {
             throw Base::ValueError("Cannot create a revolution with zero angle.");
         }
-        if (revolutions.size() == 1) {
-            revol = revolutions.front();
+
+        gp_Ax1 revolAx(axis);
+        if (reversed) {
+            revolAx.Reverse();
         }
-        else {
-            revol.makeElementFuse(revolutions);
-            revol.Tag = -getID();
+
+        TopoShape from = sketchshape;
+        if (std::fabs(angleOffset) >= Precision::Angular()) {
+            gp_Trsf mov;
+            mov.SetRotation(revolAx, angleOffset);
+            from.move(TopLoc_Location(mov));
         }
+
+        // revolve the face to a solid
+        // BRepPrimAPI is the only option that allows use of this shape for patterns.
+        // See https://forum.freecad.org/viewtopic.php?f=8&t=70185&p=611673#p611673.
+        revol = from;
+        revol = revol.makeElementRevolve(revolAx, angleTotal);
+        revol.Tag = -getID();
     }
     else {
         throw Base::RuntimeError(
@@ -493,7 +524,7 @@ void Revolved::updateProperties(RevolMethod method)
     bool isReversedEnabled = false;
     bool isUpToFaceEnabled = false;
     switch (method) {
-        case RevolMethod::AngleFromStart:
+        case RevolMethod::Angle:
         case RevolMethod::AngleFromOrigin:
             isStartAngleEnabled = true;
             isAngleEnabled = true;

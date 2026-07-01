@@ -42,16 +42,8 @@ using namespace PartDesign;
 // because the files store the enum index. So it is not possible to migrate files if the
 // enum entry is removed (see #23612). In the distant future, when all files are reasonably
 // migrated we can drop this.
-const char* Pad::TypeEnums[] = {
-    "Length",
-    "UpToLast",
-    "UpToFirst",
-    "UpToFace",
-    "?TwoLengths",
-    "UpToShape",
-    "LengthFromOrigin",
-    nullptr
-};
+const char* Pad::TypeEnums[]
+    = {"Length", "UpToLast", "UpToFirst", "UpToFace", "?TwoLengths", "UpToShape", "LengthFromOrigin", nullptr};
 
 PROPERTY_SOURCE(PartDesign::Pad, PartDesign::FeatureExtrude)
 
@@ -65,8 +57,8 @@ Pad::Pad()
     SideType.setEnums(SideTypesEnums);
     Type.setEnums(TypeEnums);
     Type2.setEnums(TypeEnums);
-    ADD_PROPERTY_TYPE(Length, (10.0), "Side1", App::Prop_None, "Pad distance");
-    ADD_PROPERTY_TYPE(Length2, (10.0), "Side2", App::Prop_None, "Pad distance in 2nd direction");
+    ADD_PROPERTY_TYPE(Length, (10.0), "Side1", App::Prop_None, "Pad length");
+    ADD_PROPERTY_TYPE(Length2, (10.0), "Side2", App::Prop_None, "Pad length in 2nd direction");
     ADD_PROPERTY_TYPE(UseCustomVector, (false), "Pad", App::Prop_None, "Use custom vector for pad direction");
     ADD_PROPERTY_TYPE(
         Direction,
@@ -93,19 +85,13 @@ Pad::Pad()
         App::Prop_None,
         "Faces or shape(s) where pad will end on side2"
     );
-    ADD_PROPERTY_TYPE(
-        Offset,
-        (0.0),
-        "Side1",
-        App::Prop_None,
-        "Pad start position for dimension modes; offset from end face for up-to modes"
-    );
+    ADD_PROPERTY_TYPE(Offset, (0.0), "Side1", App::Prop_None, "Offset from face in which pad will end");
     ADD_PROPERTY_TYPE(
         Offset2,
         (0.0),
         "Side2",
         App::Prop_None,
-        "Pad start position for dimension modes on side 2; offset from end face for up-to modes"
+        "Offset from face in which pad will end on side 2"
     );
     Offset.setConstraints(&signedLengthConstraint);
     Offset2.setConstraints(&signedLengthConstraint);
@@ -114,8 +100,10 @@ Pad::Pad()
     ADD_PROPERTY_TYPE(TaperAngle2, (0.0), "Side2", App::Prop_None, "Taper angle for 2nd direction");
     TaperAngle2.setConstraints(&floatAngle);
 
-    Length.setConstraints(&signedLengthConstraint);
-    Length2.setConstraints(&signedLengthConstraint);
+    // Remove the constraints and keep the type to allow one to accept negative values
+    // https://forum.freecad.org/viewtopic.php?f=3&t=52075&p=448410#p447636
+    Length.setConstraints(nullptr);
+    Length2.setConstraints(nullptr);
 }
 
 

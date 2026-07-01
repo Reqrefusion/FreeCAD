@@ -24,10 +24,10 @@
 
 #include <QSignalBlocker>
 #include <QAction>
-#include <QGridLayout>
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 #include <App/Document.h>
 #include <Base/Tools.h>
@@ -36,7 +36,6 @@
 #include <Gui/Tools.h>
 #include <Gui/Inventor/Draggers/Gizmo.h>
 #include <Gui/Inventor/Draggers/SoLinearDragger.h>
-#include <Gui/Inventor/Draggers/SoLinearDraggerGeometry.h>
 #include <Gui/Inventor/Draggers/SoRotationDragger.h>
 #include <Mod/PartDesign/App/FeatureExtrude.h>
 #include <Mod/Part/App/GizmoHelper.h>
@@ -52,33 +51,10 @@ using namespace Gui;
 
 /* TRANSLATOR PartDesignGui::TaskExtrudeParameters */
 
-namespace PartDesignGui
+namespace
 {
-static constexpr double minimumLinearDistance = 1.0e-6;
-static constexpr float startGizmoPointRadius = 1.15F;
-
-static void makeStartGizmoPointLike(Gui::LinearGizmo* gizmo)
-{
-    if (!gizmo) {
-        return;
-    }
-
-    auto* dragger = gizmo->getDraggerContainer()->getDragger();
-    auto* arrow = SO_GET_PART(dragger, "arrow", SoArrowGeometry);
-    arrow->cylinderHeight = 0.0F;
-    arrow->cylinderRadius = 0.0F;
-    arrow->coneHeight = 0.0F;
-    arrow->coneBottomRadius = 0.0F;
-    arrow->pointRadius = startGizmoPointRadius;
-    dragger->labelVisible = false;
-    dragger->baseGeomVisible = false;
-
-    auto* base = SO_GET_PART(dragger, "baseGeom", SoArrowBase);
-    base->cylinderHeight = 0.0F;
-    base->cylinderRadius = 0.0F;
-}
-
-}  // namespace PartDesignGui
+constexpr double minimumLinearDistance = 1.0e-6;
+}  // namespace
 
 TaskExtrudeParameters::TaskExtrudeParameters(
     ViewProviderExtrude* SketchBasedView,
@@ -105,12 +81,12 @@ TaskExtrudeParameters::TaskExtrudeParameters(
 
 bool TaskExtrudeParameters::isDimensionMode(Mode mode)
 {
-    return mode == Mode::DimensionFromStart || mode == Mode::DimensionFromOrigin;
+    return mode == Mode::Dimension || mode == Mode::DimensionFromOrigin;
 }
 
 bool TaskExtrudeParameters::isDimensionFromStartMode(Mode mode)
 {
-    return mode == Mode::DimensionFromStart;
+    return mode == Mode::Dimension;
 }
 
 TaskExtrudeParameters::Mode TaskExtrudeParameters::modeFromPropertyType(
@@ -133,13 +109,13 @@ TaskExtrudeParameters::Mode TaskExtrudeParameters::modeFromPropertyType(
     if (value == "UpToShape") {
         return Mode::ToShape;
     }
-    return Mode::DimensionFromStart;
+    return Mode::Dimension;
 }
 
 int TaskExtrudeParameters::propertyTypeIndexFromMode(Mode mode)
 {
     switch (mode) {
-        case Mode::DimensionFromStart:
+        case Mode::Dimension:
             return 0;
         case Mode::DimensionFromOrigin:
             return 6;
@@ -214,7 +190,10 @@ void TaskExtrudeParameters::setupSideDialog(SideController& side)
     Base::Quantity length = side.Length->getQuantityValue();
     Base::Quantity offset = side.Offset->getQuantityValue();
     Base::Quantity taper = side.TaperAngle->getQuantityValue();
-    const int typeIndex = static_cast<int>(modeFromPropertyType(*side.Type));
+    // The Type/Type2 properties are stuck with the deprecated 'TwoLength' mode.
+    // Because enums do not store text just an index. So this create
+    // a inconsistence between the UI and the property.
+    int typeIndex = static_cast<int>(modeFromPropertyType(*side.Type));
 
     // --- Set up UI widgets with initial values ---
     side.lengthEdit->setValue(length);
@@ -751,12 +730,13 @@ double TaskExtrudeParameters::sideEndPosition(const SideController& side) const
                                                                       : distance;
 }
 
+double TaskExtrudeParameters::sideSpan(const SideController& side) const
+{
+    return std::abs(sideEndPosition(side) - side.offsetEdit->value().getValue());
+}
+
 void TaskExtrudeParameters::syncDimensionLimits()
 {
-    if (!showOffsetInDimension()) {
-        return;
-    }
-
     auto syncSide = [this](SideController& side,
                            bool dimensionMode,
                            bool distanceFromStart,
@@ -767,7 +747,9 @@ void TaskExtrudeParameters::syncDimensionLimits()
 
         const double startPropertyMinimum = side.Offset->getMinimum();
         const double startPropertyMaximum = side.Offset->getMaximum();
-        const double distancePropertyMinimum = side.Length->getMinimum();
+        const double distancePropertyMinimum = side.Length->getConstraints()
+            ? side.Length->getMinimum()
+            : -std::numeric_limits<double>::max();
         const double distancePropertyMaximum = side.Length->getMaximum();
 
         side.offsetEdit->setMinimum(startPropertyMinimum);
@@ -937,7 +919,6 @@ void TaskExtrudeParameters::onTaperChanged(double angle, Side side)
 {
     getSideController(side).TaperAngle->setValue(angle);
     tryRecomputeFeature();
-    setGizmoPositions();
 }
 
 bool TaskExtrudeParameters::hasProfileFace(PartDesign::ProfileBased* profile) const
@@ -1049,36 +1030,6 @@ void TaskExtrudeParameters::addAxisToCombo(
     }
 }
 
-bool TaskExtrudeParameters::showOffsetInDimension() const
-{
-    return false;
-}
-
-void TaskExtrudeParameters::placeOffsetBeforeLength()
-{
-    auto* grid = ui->gridLayout;
-
-    grid->setVerticalSpacing(std::max(grid->verticalSpacing(), 6));
-
-    grid->removeWidget(ui->labelLength);
-    grid->removeWidget(ui->lengthEdit);
-    grid->removeWidget(ui->labelOffset);
-    grid->removeWidget(ui->offsetEdit);
-    grid->addWidget(ui->labelOffset, 3, 0);
-    grid->addWidget(ui->offsetEdit, 3, 1);
-    grid->addWidget(ui->labelLength, 4, 0);
-    grid->addWidget(ui->lengthEdit, 4, 1);
-
-    grid->removeWidget(ui->labelLength2);
-    grid->removeWidget(ui->lengthEdit2);
-    grid->removeWidget(ui->labelOffset2);
-    grid->removeWidget(ui->offsetEdit2);
-    grid->addWidget(ui->labelOffset2, 10, 0);
-    grid->addWidget(ui->offsetEdit2, 10, 1);
-    grid->addWidget(ui->labelLength2, 11, 0);
-    grid->addWidget(ui->lengthEdit2, 11, 1);
-}
-
 void TaskExtrudeParameters::updateWholeUI(Type type, Side side)
 {
     SidesMode sidesMode = static_cast<SidesMode>(ui->sidesMode->currentIndex());
@@ -1111,6 +1062,13 @@ void TaskExtrudeParameters::updateSideUI(
     bool setFocus
 )
 {
+    const bool dimensionMode = isDimensionMode(sideMode);
+
+    if (dimensionMode) {
+        s.labelOffset->setText(tr("Start"));
+        s.offsetEdit->setToolTip(tr("Start position"));
+    }
+
     // Default states for all controls for this side
     bool isLengthVisible = false;
     bool isOffsetVisible = false;
@@ -1118,9 +1076,10 @@ void TaskExtrudeParameters::updateSideUI(
     bool isFaceVisible = false;
     bool isShapeVisible = false;
 
-    if (isDimensionMode(sideMode)) {
+    // This logic block is a direct translation of the original 'if/else if' chain
+    if (dimensionMode) {
         isLengthVisible = true;
-        isOffsetVisible = showOffsetInDimension();
+        isOffsetVisible = true;
         isTaperVisible = true;
         if (setFocus) {
             s.lengthEdit->selectNumber();
@@ -1130,14 +1089,7 @@ void TaskExtrudeParameters::updateSideUI(
     else if (sideMode == Mode::ThroughAll && featureType == Type::Pocket) {
         isTaperVisible = true;
     }
-    else if (sideMode == Mode::ToLast && featureType == Type::Pad) {
-        isOffsetVisible = true;
-    }
-    else if (sideMode == Mode::ToFirst) {
-        isOffsetVisible = true;
-    }
     else if (sideMode == Mode::ToFace) {
-        isOffsetVisible = true;
         isFaceVisible = true;
         if (setFocus) {
             QMetaObject::invokeMethod(s.lineFaceName, "setFocus", Qt::QueuedConnection);
@@ -1162,6 +1114,7 @@ void TaskExtrudeParameters::updateSideUI(
     s.labelLength->setVisible(finalLengthVisible);
     s.lengthEdit->setVisible(finalLengthVisible);
     s.lengthEdit->setEnabled(finalLengthVisible);
+
     const bool finalOffsetVisible = isParentVisible && isOffsetVisible;
     s.labelOffset->setVisible(finalOffsetVisible);
     s.offsetEdit->setVisible(finalOffsetVisible);
@@ -1581,6 +1534,7 @@ void TaskExtrudeParameters::changeEvent(QEvent* e)
         translateModeList(ui->changeMode, ui->changeMode->currentIndex());
         translateModeList(ui->changeMode2, ui->changeMode2->currentIndex());
         translateSidesList(ui->sidesMode->currentIndex());
+
         translateFaceName(ui->lineFaceName);
         translateFaceName(ui->lineFaceName2);
     }
@@ -1612,8 +1566,9 @@ void TaskExtrudeParameters::applyParameters()
         facename2 = getFaceName(ui->lineFaceName2);
     }
 
-    const int type1 = propertyTypeIndexFromMode(static_cast<Mode>(getMode()));
-    const int type2 = propertyTypeIndexFromMode(static_cast<Mode>(getMode2()));
+    // Handle deprecated 'TwoLength' mode.
+    int type1 = propertyTypeIndexFromMode(static_cast<Mode>(getMode()));
+    int type2 = propertyTypeIndexFromMode(static_cast<Mode>(getMode2()));
 
     ui->lengthEdit->apply();
     ui->lengthEdit2->apply();
@@ -1656,7 +1611,6 @@ void TaskExtrudeParameters::onSidesModeChanged(int index)
 
     syncDimensionLimits();
     recomputeFeature();
-    setGizmoPositions();
 }
 
 void TaskExtrudeParameters::updateUI(Side)
@@ -1710,8 +1664,8 @@ void TaskExtrudeParameters::setupGizmos()
         vp
     );
 
-    makeStartGizmoPointLike(startGizmo1);
-    makeStartGizmoPointLike(startGizmo2);
+    startGizmo1->setPointStyle();
+    startGizmo2->setPointStyle();
 
     setGizmoPositions();
     showDraggerHints();
@@ -1739,9 +1693,8 @@ void TaskExtrudeParameters::setGizmoPositions()
 
     const bool isDimension1 = extrudeType == "Length" || extrudeType == "LengthFromOrigin";
     const bool isDimension2 = extrudeType2 == "Length" || extrudeType2 == "LengthFromOrigin";
-    const bool showStartGizmo1 = showOffsetInDimension() && isDimension1;
-    const bool showStartGizmo2 = showOffsetInDimension() && sideType == "Two sides"
-        && isDimension2;
+    const bool showStartGizmo1 = isDimension1;
+    const bool showStartGizmo2 = sideType == "Two sides" && isDimension2;
     const bool distanceFromStart1 = extrudeType == "Length";
     const bool distanceFromStart2 = extrudeType2 == "Length";
 
@@ -1749,15 +1702,23 @@ void TaskExtrudeParameters::setGizmoPositions()
     Base::Vector3d sketchDir = extrude->getProfileNormal().Normalized();
 
     double lengthFactor = padDir.Dot(sketchDir);
-    double multFactor = sideType == "Symmetric" ? 0.5 : 1.0;
-    if (extrude->AlongSketchNormal.getValue()) {
-        multFactor /= lengthFactor;
-    }
+    double multFactor = (sideType == "Symmetric") ? 0.5 : 1.0;
 
-    startGizmo1->setMultFactor(multFactor);
-    lengthGizmo1->setMultFactor(multFactor);
-    startGizmo2->setMultFactor(multFactor);
-    lengthGizmo2->setMultFactor(multFactor);
+    // Important note: This code assumes that nothing other than alongSketchNormal
+    // and symmetric option influence the multFactor. If some custom gizmos changes
+    // it then that also should be handled properly here
+    if (extrude->AlongSketchNormal.getValue()) {
+        startGizmo1->setMultFactor(multFactor / lengthFactor);
+        lengthGizmo1->setMultFactor(multFactor / lengthFactor);
+        startGizmo2->setMultFactor(multFactor / lengthFactor);
+        lengthGizmo2->setMultFactor(multFactor / lengthFactor);
+    }
+    else {
+        startGizmo1->setMultFactor(multFactor);
+        lengthGizmo1->setMultFactor(multFactor);
+        startGizmo2->setMultFactor(multFactor);
+        lengthGizmo2->setMultFactor(multFactor);
+    }
 
     auto setLinearGizmoRange = [](Gui::LinearGizmo* startGizmo,
                                   Gui::LinearGizmo* distanceGizmo,

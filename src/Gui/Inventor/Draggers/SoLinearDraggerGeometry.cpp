@@ -98,7 +98,6 @@ SoArrowGeometry::SoArrowGeometry()
 
     // forces the notify method to get called so that the initial translations and tipPostion are set
     cylinderHeight.touch();
-    pointRadius.touch();
 }
 
 void SoArrowGeometry::notify(SoNotList* notList)

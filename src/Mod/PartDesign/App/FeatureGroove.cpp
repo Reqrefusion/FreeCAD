@@ -31,15 +31,8 @@ namespace PartDesign
 
 /* TRANSLATOR PartDesign::Groove */
 
-const char* Groove::TypeEnums[] = {
-    "Angle",
-    "ThroughAll",
-    "UpToFirst",
-    "UpToFace",
-    "TwoAngles",
-    "AngleFromOrigin",
-    nullptr
-};
+const char* Groove::TypeEnums[]
+    = {"Angle", "ThroughAll", "UpToFirst", "UpToFace", "TwoAngles", "AngleFromOrigin", nullptr};
 
 PROPERTY_SOURCE(PartDesign::Groove, PartDesign::Revolved)
 
@@ -67,20 +60,8 @@ Groove::Groove()
     );
     ADD_PROPERTY_TYPE(StartAngle, (emptyAngle), "Groove", App::Prop_None, "Start angle");
     ADD_PROPERTY_TYPE(Angle, (fullAngle), "Groove", App::Prop_None, "Angle");
-    ADD_PROPERTY_TYPE(
-        StartAngle2,
-        (emptyAngle),
-        "Groove",
-        App::Prop_None,
-        "Start angle in 2nd direction"
-    );
-    ADD_PROPERTY_TYPE(
-        Angle2,
-        (emptyAngle),
-        "Groove",
-        App::Prop_None,
-        "Angle in 2nd direction"
-    );
+    ADD_PROPERTY_TYPE(StartAngle2, (emptyAngle), "Groove", App::Prop_None, "Start angle in 2nd direction");
+    ADD_PROPERTY_TYPE(Angle2, (emptyAngle), "Groove", App::Prop_None, "Groove length in 2nd direction");
     ADD_PROPERTY_TYPE(UpToFace, (nullptr), "Groove", App::Prop_None, "Face where groove will end");
     ADD_PROPERTY_TYPE(ReferenceAxis, (nullptr), "Groove", (App::Prop_None), "Reference axis of groove");
 }

@@ -115,6 +115,7 @@ public:
     void setMultFactor(const double val);
     void setAddFactor(const double val);
     void setBaseStart(const double val);
+    void setPointStyle();
     void setVisibility(bool visible);
 
 private:
@@ -163,7 +164,6 @@ public:
     void setProperty(QuantitySpinBox* property);
     void setMultFactor(const double val);
     void setAddFactor(const double val);
-    void setBaseAngleRange(const double start, const double end);
     void setVisibility(bool visible);
 
 private:
@@ -205,6 +205,8 @@ public:
     void updateColorTheme();
 
     void setRadius(float radius);
+    void setPointStyle();
+    void setBaseAngleRange(const double start, const double end);
     void flipArrow();
 
 private:

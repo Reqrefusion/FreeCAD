@@ -261,7 +261,6 @@ SoRotatorArrow::SoRotatorArrow()
 
     // forces the notify method to get called so that the initial dimensions are set
     cylinderHeight.touch();
-    pointRadius.touch();
     radius.touch();
 }
 
@@ -388,11 +387,11 @@ void SoRotatorBase::notify(SoNotList* notList)
         }
 
         const float sweep = end - start;
-        const float radius
+        float radius
             = std::max(minArcRadius.getValue() * geometryScale.getValue()[0], arcRadius.getValue());
 
         auto coordinates = SO_GET_ANY_PART(this, "arcCoords", SoCoordinate3);
-        const float angleIncrement = sweep / static_cast<float>(segments);
+        float angleIncrement = sweep / static_cast<float>(segments);
         SbRotation startRotation(axis, start);
         SbRotation stepRotation(axis, angleIncrement);
         SbVec3f point(0.0, radius, 0.0);

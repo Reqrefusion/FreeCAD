@@ -24,6 +24,7 @@
 
 #include <Precision.hxx>
 
+
 #include <Mod/PartDesign/App/FeaturePocket.h>
 
 #include "ui_TaskPadPocketParameters.h"
@@ -38,26 +39,13 @@ using namespace Gui;
 TaskPocketParameters::TaskPocketParameters(ViewProviderPocket* PocketView, QWidget* parent, bool newObj)
     : TaskExtrudeParameters(PocketView, parent, "PartDesign_Pocket", tr("Pocket Parameters"))
 {
-    ui->labelLength->setText(tr("Distance"));
-    ui->labelOffset->setText(tr("Start"));
-    ui->labelLength2->setText(tr("2nd distance"));
-    ui->labelOffset2->setText(tr("2nd start"));
-
-    ui->lengthEdit->setToolTip(
-        tr("Distance used to determine the end position of the pocket on side 1")
-    );
     ui->offsetEdit->setToolTip(
-        tr("Start position of the pocket measured from the sketch plane on side 1")
-    );
-    ui->lengthEdit2->setToolTip(
-        tr("Distance used to determine the end position of the pocket on side 2")
+        tr("Offset from the selected face at which the pocket will end on side 1")
     );
     ui->offsetEdit2->setToolTip(
-        tr("Start position of the pocket measured from the sketch plane on side 2")
+        tr("Offset from the selected face at which the pocket will end on side 2")
     );
     ui->checkBoxReversed->setToolTip(tr("Reverses pocket direction"));
-
-    placeOffsetBeforeLength();
 
     // set the history path
     ui->lengthEdit->setEntryName(QByteArray("Length"));
@@ -95,33 +83,12 @@ void TaskPocketParameters::translateModeList(QComboBox* box, int index)
     box->setCurrentIndex(index);
 }
 
-void TaskPocketParameters::updatePocketDistanceLabels()
-{
-    ui->labelLength->setText(tr("Distance"));
-    ui->labelLength2->setText(tr("2nd distance"));
-
-    const bool side1IsDimension = isDimensionMode(
-        static_cast<Mode>(ui->changeMode->currentIndex())
-    );
-    const bool side2IsDimension = isDimensionMode(
-        static_cast<Mode>(ui->changeMode2->currentIndex())
-    );
-    ui->labelOffset->setText(side1IsDimension ? tr("Start") : tr("Offset"));
-    ui->labelOffset2->setText(side2IsDimension ? tr("2nd start") : tr("Offset"));
-}
-
 void TaskPocketParameters::updateUI(Side side)
 {
     // update direction combobox
     fillDirectionCombo();
     // set and enable checkboxes
     updateWholeUI(Type::Pocket, side);
-    updatePocketDistanceLabels();
-}
-
-bool TaskPocketParameters::showOffsetInDimension() const
-{
-    return true;
 }
 
 void TaskPocketParameters::onModeChanged(int index, Side side)
@@ -129,25 +96,18 @@ void TaskPocketParameters::onModeChanged(int index, Side side)
     auto& sideCtrl = getSideController(side);
 
     switch (static_cast<Mode>(index)) {
-        case Mode::DimensionFromStart:
+        case Mode::Dimension:
         case Mode::DimensionFromOrigin:
             sideCtrl.Type->setValue(
                 isDimensionFromStartMode(static_cast<Mode>(index)) ? "Length" : "LengthFromOrigin"
             );
             if (side == Side::First) {
                 // Avoid error message
-                auto effectiveDistance = [](const auto& side) {
-                    const double start = side.offsetEdit->value().getValue();
-                    const double distance = side.lengthEdit->value().getValue();
-                    const bool fromStart = std::string(side.Type->getValueAsString()) == "Length";
-                    const double end = fromStart ? start + distance : distance;
-                    return std::abs(end - start);
-                };
-                const double L = effectiveDistance(sideCtrl);
+                double L = sideSpan(sideCtrl);
                 Side otherSide = side == Side::First ? Side::Second : Side::First;
                 auto& sideCtrl2 = getSideController(otherSide);
-                const double L2 = static_cast<SidesMode>(getSidesMode()) == SidesMode::TwoSides
-                    ? effectiveDistance(sideCtrl2)
+                double L2 = static_cast<SidesMode>(getSidesMode()) == SidesMode::TwoSides
+                    ? sideSpan(sideCtrl2)
                     : 0;
                 if (L + L2 < Precision::Confusion()) {
                     sideCtrl.lengthEdit->setValue(5.0);

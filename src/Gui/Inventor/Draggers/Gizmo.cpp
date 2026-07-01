@@ -25,6 +25,7 @@
 
 #include <cmath>
 #include <QApplication>
+#include <QLineEdit>
 
 #include <Inventor/nodes/SoOrthographicCamera.h>
 #include <Inventor/nodes/SoPerspectiveCamera.h>
@@ -93,6 +94,18 @@ double snapToStep(double value, double step)
     }
 
     return std::round(value / step) * step;
+}
+
+void focusPropertyEditor(QuantitySpinBox* property)
+{
+    if (auto* parent = property->parentWidget()) {
+        for (auto* editor : parent->findChildren<QLineEdit*>()) {
+            editor->deselect();
+        }
+    }
+
+    property->setFocus();
+    property->selectAll();
 }
 }  // namespace
 
@@ -271,6 +284,23 @@ void LinearGizmo::setBaseStart(const double val)
     base->startOffset = static_cast<float>(val);
 }
 
+void LinearGizmo::setPointStyle()
+{
+    auto* arrow = SO_GET_PART(dragger, "arrow", SoArrowGeometry);
+    arrow->cylinderHeight = 0.0F;
+    arrow->cylinderRadius = 0.0F;
+    arrow->coneHeight = 0.0F;
+    arrow->coneBottomRadius = 0.0F;
+    arrow->pointRadius = 1.15F;
+
+    dragger->labelVisible = false;
+    dragger->baseGeomVisible = false;
+
+    auto* base = SO_GET_PART(dragger, "baseGeom", SoArrowBase);
+    base->cylinderHeight = 0.0F;
+    base->cylinderRadius = 0.0F;
+}
+
 void LinearGizmo::setVisibility(bool visible)
 {
     this->visible = visible;
@@ -281,6 +311,8 @@ void LinearGizmo::draggingStarted()
 {
     initialValue = property->value().getValue();
     dragger->translationIncrementCount.setValue(0);
+
+    focusPropertyEditor(property);
 
     if (isDelayedUpdateEnabled()) {
         property->blockSignals(true);
@@ -294,8 +326,7 @@ void LinearGizmo::draggingFinished()
         property->valueChanged(property->value().getValue());
     }
 
-    property->setFocus();
-    property->selectAll();
+    focusPropertyEditor(property);
 }
 
 void LinearGizmo::draggingContinued()
@@ -485,6 +516,8 @@ void RotationGizmo::draggingStarted()
     initialValue = property->value().getValue();
     dragger->rotationIncrementCount.setValue(0);
 
+    focusPropertyEditor(property);
+
     if (isDelayedUpdateEnabled()) {
         property->blockSignals(true);
     }
@@ -497,8 +530,7 @@ void RotationGizmo::draggingFinished()
         property->valueChanged(property->value().getValue());
     }
 
-    property->setFocus();
-    property->selectAll();
+    focusPropertyEditor(property);
 }
 
 void RotationGizmo::draggingContinued()
@@ -581,14 +613,6 @@ void RotationGizmo::setAddFactor(const double val)
     setRotAngle(property->value().getValue());
 }
 
-void RotationGizmo::setBaseAngleRange(const double start, const double end)
-{
-    auto* base = SO_GET_PART(dragger, "baseGeom", SoRotatorBase);
-    base->startAngle = static_cast<float>(start);
-    base->endAngle = static_cast<float>(end);
-    base->useAngleRange = true;
-}
-
 void RotationGizmo::setVisibility(bool visible)
 {
     this->visible = visible;
@@ -651,6 +675,27 @@ void RadialGizmo::setRadius(float radius)
     auto baseGeom = SO_GET_PART(dragger, "baseGeom", SoRotatorBase);
 
     rotator->radius = baseGeom->arcRadius = radius;
+}
+
+void RadialGizmo::setPointStyle()
+{
+    auto* dragger = getDraggerContainer()->getDragger();
+    auto* arrow = SO_GET_PART(dragger, "rotator", SoRotatorArrow);
+    arrow->cylinderHeight = 0.0F;
+    arrow->cylinderRadius = 0.0F;
+    arrow->coneHeight = 0.0F;
+    arrow->coneBottomRadius = 0.0F;
+    arrow->pointRadius = 1.15F;
+    dragger->baseGeomVisible = false;
+}
+
+void RadialGizmo::setBaseAngleRange(const double start, const double end)
+{
+    auto* dragger = getDraggerContainer()->getDragger();
+    auto* base = SO_GET_PART(dragger, "baseGeom", SoRotatorBase);
+    base->startAngle = static_cast<float>(start);
+    base->endAngle = static_cast<float>(end);
+    base->useAngleRange = true;
 }
 
 void RadialGizmo::flipArrow()

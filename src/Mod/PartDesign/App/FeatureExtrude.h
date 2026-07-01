@@ -22,13 +22,11 @@
  *                                                                         *
  ***************************************************************************/
 
+
 #pragma once
 
+#include <App/PropertyStandard.h>
 #include <App/PropertyUnits.h>
-#include <Base/Bitmask.h>
-
-#include <string>
-
 #include "FeatureSketchBased.h"
 
 class gp_Dir;
@@ -68,6 +66,7 @@ public:
     //@{
     short mustExecute() const override;
     void setupObject() override;
+
     const char* getViewProviderName() const override
     {
         return "PartDesignGui::ViewProviderExtrude";
@@ -82,6 +81,7 @@ protected:
     bool hasTaperedAngle() const;
     void onChanged(const App::Property* prop) override;
 
+
     /// Options for buildExtrusion()
     enum class ExtrudeOption
     {
@@ -90,6 +90,7 @@ protected:
         LegacyPocket = 4,
         InverseDirection = 8,
     };
+
     using ExtrudeOptions = Base::Flags<ExtrudeOption>;
 
     App::DocumentObjectExecReturn* buildExtrusion(ExtrudeOptions options);
@@ -111,12 +112,12 @@ protected:
         const std::string& method,
         double length,
         double taperAngleDeg,
-        App::PropertyLinkSub& upToFacePropHandle,  // e.g., &UpToFace or &UpToFace2
+        App::PropertyLinkSub& upToFacePropHandle,       // e.g., &UpToFace or &UpToFace2
         App::PropertyLinkSubList& upToShapePropHandle,  // e.g., &UpToShape or &UpToShape2
         gp_Dir dir,
         double offsetVal,
         bool makeFace,
-        const TopoShape& base,  // The base shape for context (global CS)
+        const TopoShape& base,      // The base shape for context (global CS)
         TopLoc_Location& invObjLoc  // MUST be passed. Cannot be re-accessed, see #26677
     );
 };

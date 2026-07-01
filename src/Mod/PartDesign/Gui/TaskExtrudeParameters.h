@@ -97,7 +97,7 @@ public:
 
     enum class Mode
     {
-        DimensionFromStart,
+        Dimension,
         DimensionFromOrigin,
         ThroughAll,
         ToLast = ThroughAll,
@@ -212,6 +212,7 @@ private:
 protected:
     static bool isDimensionMode(Mode mode);
     static bool isDimensionFromStartMode(Mode mode);
+    double sideSpan(const SideController& side) const;
 
     void updateWholeUI(Type type, Side side);
     void updateSideUI(
@@ -244,8 +245,6 @@ protected:
     void translateSidesList(int index);
     virtual void translateModeList(QComboBox* box, int index);
     virtual void updateUI(Side side);
-    virtual bool showOffsetInDimension() const;
-    void placeOffsetBeforeLength();
     void updateDirectionEdits();
     void setDirectionMode(int index);
     void handleLineFaceNameClick(QLineEdit*);

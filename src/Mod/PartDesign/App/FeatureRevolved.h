@@ -65,8 +65,7 @@ public:
 
     enum class RevolMethod
     {
-        AngleFromStart,
-        Angle = AngleFromStart,
+        Angle,
         ThroughAll,
         ToLast = ThroughAll,
         ToFirst,
@@ -84,7 +83,6 @@ protected:
      * created material will be fused with the sketch support (if there is one)
      */
     App::DocumentObjectExecReturn* executeRevolved(Part::RevolMode revolMode);
-
 
 private:
     App::DocumentObjectExecReturn* tryExecuteRevolved(Part::RevolMode revolMode);
