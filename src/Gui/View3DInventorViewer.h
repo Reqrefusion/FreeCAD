@@ -92,6 +92,7 @@ class BoundBox2d;
 namespace Gui
 {
 class NavigationAnimation;
+class View3DInventor;
 class ViewProvider;
 class SoFCBackgroundGradient;
 class NavigationStyle;
@@ -484,6 +485,10 @@ public:
      */
     void scale(float factor);
     /**
+     * Move the camera to the configured home orientation and fit the scene.
+     */
+    void viewHome();
+    /**
      * Reposition the current camera so we can see the complete scene.
      */
     void viewAll() override;
@@ -595,6 +600,7 @@ private:
     void setCursorRepresentation(int mode);
     void aboutToDestroyGLContext();
     void createStandardCursors();
+    bool applyCameraState(const SoCamera& camera);
 
 private:
     NaviCube* naviCube;

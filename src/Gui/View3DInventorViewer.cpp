@@ -23,6 +23,9 @@
 
 #include <FCConfig.h>
 
+#include <algorithm>
+#include <cmath>
+
 #include <Inventor/SoFCPlacementIndicatorKit.h>
 
 #ifdef FC_OS_WIN32
@@ -85,6 +88,7 @@
 #include <Inventor/nodes/SoTextureCoordinate2.h>
 #include <Inventor/nodes/SoVertexProperty.h>
 #include <QBitmap>
+#include <QElapsedTimer>
 #include <QEventLoop>
 #if defined(Q_OS_LINUX) && QT_VERSION < QT_VERSION_CHECK(6, 6, 0)
 # include <QGuiApplication>
@@ -103,6 +107,7 @@
 #include <App/Document.h>
 #include <App/GeoFeatureGroupExtension.h>
 #include <Base/Console.h>
+#include <Base/Exception.h>
 #include <Base/FileInfo.h>
 #include <Base/Sequencer.h>
 #include <Base/Profiler.h>
@@ -115,6 +120,7 @@
 
 #include "View3DInventorViewer.h"
 #include "Application.h"
+#include "Camera.h"
 #include "Command.h"
 #include "Document.h"
 #include "GLPainter.h"
@@ -139,6 +145,7 @@
 #include "SoFCVectorizeU3DAction.h"
 #include "SoTouchEvents.h"
 #include "SpaceballEvent.h"
+#include "SpaceMouseParameter.h"
 #include "View3DInventorRiftViewer.h"
 #include "View3DViewerPy.h"
 #include "ViewParams.h"
@@ -180,6 +187,68 @@ private:
 
 namespace
 {
+constexpr qint64 DimensionPaneUpdateIntervalMs = 100;
+
+struct DimensionPaneState
+{
+    QString text;
+    QElapsedTimer updateTimer;
+};
+
+DimensionPaneState& dimensionPaneState()
+{
+    static DimensionPaneState state;
+    return state;
+}
+
+QString dimensionText(const View3DInventorViewer& viewer)
+{
+    float fHeight = -1.0;
+    float fWidth = -1.0;
+    viewer.getDimensions(fHeight, fWidth);
+
+    std::string dim;
+
+    if (fWidth >= 0.0 && fHeight >= 0.0) {
+        // Translate screen units into user's unit schema
+        Base::Quantity qWidth(Base::Quantity::MilliMetre);
+        Base::Quantity qHeight(Base::Quantity::MilliMetre);
+        qWidth.setValue(fWidth);
+        qHeight.setValue(fHeight);
+        auto wStr = Base::UnitsApi::schemaTranslate(qWidth);
+        auto hStr = Base::UnitsApi::schemaTranslate(qHeight);
+
+        // Create final string and update window
+        dim = fmt::format("{} x {}", wStr, hStr);
+    }
+
+    return QString::fromStdString(dim);
+}
+
+void updateDimensionPane(const View3DInventorViewer& viewer, bool forceUpdate)
+{
+    auto& state = dimensionPaneState();
+    if (!forceUpdate && state.updateTimer.isValid()
+        && state.updateTimer.elapsed() < DimensionPaneUpdateIntervalMs) {
+        return;
+    }
+
+    auto text = dimensionText(viewer);
+    if (text == state.text) {
+        state.updateTimer.restart();
+        return;
+    }
+
+    state.text = text;
+    state.updateTimer.restart();
+    getMainWindow()->setPaneText(2, text);
+}
+
+void clearDimensionPaneState()
+{
+    dimensionPaneState() = {};
+}
+
 int qImageByteCount(const QImage& image)
 {
 #if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
@@ -1157,11 +1226,8 @@ void View3DInventorViewer::init()
     // filter a few qt events
     viewerEventFilter = new ViewerEventFilter;
     installEventFilter(viewerEventFilter);
-    ParameterGrp::handle hViewGrp = App::GetApplication().GetParameterGroupByPath(
-        "User parameter:BaseApp/Preferences/View"
-    );
 #if defined(USE_3DCONNEXION_NAVLIB)
-    if (hViewGrp->GetBool("LegacySpaceMouseDevices", false)) {
+    if (SpaceMouseParameter::instance()->getLegacySpaceMouseDevices()) {
         getEventFilter()->registerInputDevice(new SpaceNavigatorDevice);
     }
 #else
@@ -1190,6 +1256,9 @@ void View3DInventorViewer::init()
     );
 
     naviCube = new NaviCube(this);
+    ParameterGrp::handle hViewGrp = App::GetApplication().GetParameterGroupByPath(
+        "User parameter:BaseApp/Preferences/View"
+    );
     naviCubeEnabled = hViewGrp->GetBool("ShowNaviCube", true);
     syncNaviCubeVisibility();
 
@@ -1263,6 +1332,7 @@ View3DInventorViewer::~View3DInventorViewer()
     if (getMainWindow()) {
         getMainWindow()->setPaneText(2, QLatin1String(""));
     }
+    clearDimensionPaneState();
 
     detachSelection();
 
@@ -2665,6 +2735,7 @@ void View3DInventorViewer::interactionFinishCB(void* ud, SoQTQuarterAdaptor* vie
     Q_UNUSED(ud)
     SoGLRenderAction* glra = viewer->getSoRenderManager()->getGLRenderAction();
     SoFCInteractiveElement::set(glra->getState(), viewer->getSceneGraph(), false);
+    updateDimensionPane(*static_cast<View3DInventorViewer*>(viewer), true);
     viewer->redraw();
 }
 
@@ -3332,26 +3403,7 @@ void View3DInventorViewer::getDimensions(float& fHeight, float& fWidth) const
 
 void View3DInventorViewer::printDimension() const
 {
-    float fHeight = -1.0;
-    float fWidth = -1.0;
-    getDimensions(fHeight, fWidth);
-
-    std::string dim;
-
-    if (fWidth >= 0.0 && fHeight >= 0.0) {
-        // Translate screen units into user's unit schema
-        Base::Quantity qWidth(Base::Quantity::MilliMetre);
-        Base::Quantity qHeight(Base::Quantity::MilliMetre);
-        qWidth.setValue(fWidth);
-        qHeight.setValue(fHeight);
-        auto wStr = Base::UnitsApi::schemaTranslate(qWidth);
-        auto hStr = Base::UnitsApi::schemaTranslate(qHeight);
-
-        // Create final string and update window
-        dim = fmt::format("{} x {}", wStr, hStr);
-    }
-
-    getMainWindow()->setPaneText(2, QString::fromStdString(dim));
+    updateDimensionPane(*this, false);
 }
 
 void View3DInventorViewer::selectAll()
@@ -3427,9 +3479,14 @@ SbVec3f View3DInventorViewer::getViewDirection() const
 
 void View3DInventorViewer::setViewDirection(SbVec3f dir)
 {
-    if (SoCamera* cam = this->getSoRenderManager()->getCamera()) {
-        cam->orientation.setValue(SbRotation(SbVec3f(0, 0, -1), dir));
+    if (!navigation) {
+        return;
     }
+    navigation->setCameraOrientationValue(
+        getCamera(),
+        SbRotation(SbVec3f(0, 0, -1), dir),
+        NavigationStyle::OrientationChangeSource::Programmatic
+    );
 }
 
 SbVec3f View3DInventorViewer::getUpDirection() const
@@ -3956,6 +4013,17 @@ std::shared_ptr<NavigationAnimation> View3DInventorViewer::setCameraOrientation(
     const bool moveToCenter
 ) const
 {
+    SoCamera* camera = getCamera();
+    if (!camera) {
+        return {};
+    }
+    if (!navigation->canChangeCameraOrientation(
+            camera->orientation.getValue(),
+            orientation,
+            NavigationStyle::OrientationChangeSource::Programmatic
+        )) {
+        return {};
+    }
     return navigation->setCameraOrientation(orientation, moveToCenter);
 }
 
@@ -3985,11 +4053,6 @@ void View3DInventorViewer::setCameraType(SoType type)
 
 bool View3DInventorViewer::setCamera(const char* pCamera)
 {
-    SoCamera* CamViewer = getSoRenderManager()->getCamera();
-    if (!CamViewer) {
-        throw Base::RuntimeError("No camera set so far…");
-    }
-
     SoInput in;
     in.setBuffer(pCamera, std::strlen(pCamera));
 
@@ -4002,38 +4065,65 @@ bool View3DInventorViewer::setCamera(const char* pCamera)
 
     // this is to make sure to reliably delete the node
     CoinPtr<SoNode> camPtr {Cam};
+    auto* parsedCamera = static_cast<SoCamera*>(Cam);  // safe downward cast, checked above
+    return applyCameraState(*parsedCamera);
+}
 
-    // toggle between perspective and orthographic camera
-    if (Cam->getTypeId() != CamViewer->getTypeId()) {
-        setCameraType(Cam->getTypeId());
-        CamViewer = getSoRenderManager()->getCamera();
-
-        assert(Cam->getTypeId() == CamViewer->getTypeId());
+bool View3DInventorViewer::applyCameraState(const SoCamera& sourceCamera)
+{
+    SoCamera* targetCamera = getCamera();
+    if (!targetCamera) {
+        throw Base::RuntimeError("No camera set so far…");
     }
 
-    // we just made sure the cameras are the same type, now we can safely downcast
-    if (Cam->getTypeId() == SoPerspectiveCamera::getClassTypeId()) {
-        auto CamViewerP = static_cast<SoPerspectiveCamera*>(CamViewer);
-        auto CamP = static_cast<SoPerspectiveCamera*>(Cam);
-
-        CamViewerP->position = CamP->position;
-        CamViewerP->orientation = CamP->orientation;
-        CamViewerP->nearDistance = CamP->nearDistance;
-        CamViewerP->farDistance = CamP->farDistance;
-        CamViewerP->focalDistance = CamP->focalDistance;
+    if (navigation
+        && !navigation->canChangeCameraOrientation(
+            targetCamera->orientation.getValue(),
+            sourceCamera.orientation.getValue(),
+            NavigationStyle::OrientationChangeSource::Programmatic
+        )) {
+        return false;
     }
-    else if (Cam->getTypeId() == SoOrthographicCamera::getClassTypeId()) {
-        auto CamViewerO = static_cast<SoOrthographicCamera*>(CamViewer);
-        auto CamO = static_cast<SoOrthographicCamera*>(Cam);
 
-        CamViewerO->viewportMapping = CamO->viewportMapping;
-        CamViewerO->position = CamO->position;
-        CamViewerO->orientation = CamO->orientation;
-        CamViewerO->nearDistance = CamO->nearDistance;
-        CamViewerO->farDistance = CamO->farDistance;
-        CamViewerO->focalDistance = CamO->focalDistance;
-        CamViewerO->aspectRatio = CamO->aspectRatio;
-        CamViewerO->height = CamO->height;
+    if (sourceCamera.getTypeId() != targetCamera->getTypeId()) {
+        setCameraType(sourceCamera.getTypeId());
+        targetCamera = getCamera();
+        if (!targetCamera) {
+            throw Base::RuntimeError("No camera set so far…");
+        }
+    }
+
+    if (targetCamera->getTypeId() == SoPerspectiveCamera::getClassTypeId()) {
+        auto* targetPerspective = static_cast<SoPerspectiveCamera*>(targetCamera);
+        if (sourceCamera.getTypeId() != SoPerspectiveCamera::getClassTypeId()) {
+            throw Base::TypeError("Camera type mismatch");
+        }
+
+        const auto& sourcePerspective = static_cast<const SoPerspectiveCamera&>(sourceCamera);
+        targetPerspective->position = sourcePerspective.position;
+        targetPerspective->orientation = sourcePerspective.orientation;
+        targetPerspective->nearDistance = sourcePerspective.nearDistance;
+        targetPerspective->farDistance = sourcePerspective.farDistance;
+        targetPerspective->focalDistance = sourcePerspective.focalDistance;
+    }
+    else if (targetCamera->getTypeId() == SoOrthographicCamera::getClassTypeId()) {
+        auto* targetOrthographic = static_cast<SoOrthographicCamera*>(targetCamera);
+        if (sourceCamera.getTypeId() != SoOrthographicCamera::getClassTypeId()) {
+            throw Base::TypeError("Camera type mismatch");
+        }
+
+        const auto& sourceOrthographic = static_cast<const SoOrthographicCamera&>(sourceCamera);
+        targetOrthographic->viewportMapping = sourceOrthographic.viewportMapping;
+        targetOrthographic->position = sourceOrthographic.position;
+        targetOrthographic->orientation = sourceOrthographic.orientation;
+        targetOrthographic->nearDistance = sourceOrthographic.nearDistance;
+        targetOrthographic->farDistance = sourceOrthographic.farDistance;
+        targetOrthographic->focalDistance = sourceOrthographic.focalDistance;
+        targetOrthographic->aspectRatio = sourceOrthographic.aspectRatio;
+        targetOrthographic->height = sourceOrthographic.height;
+    }
+    else {
+        throw Base::TypeError("Camera type mismatch");
     }
 
     return true;
@@ -4043,6 +4133,13 @@ void View3DInventorViewer::moveCameraTo(const SbRotation& orientation, const SbV
 {
     SoCamera* camera = getCamera();
     if (!camera) {
+        return;
+    }
+    if (!navigation->canChangeCameraOrientation(
+            camera->orientation.getValue(),
+            orientation,
+            NavigationStyle::OrientationChangeSource::Programmatic
+        )) {
         return;
     }
 
@@ -4056,7 +4153,11 @@ void View3DInventorViewer::moveCameraTo(const SbRotation& orientation, const SbV
         );
     }
 
-    camera->orientation.setValue(orientation);
+    navigation->setCameraOrientationValue(
+        camera,
+        orientation,
+        NavigationStyle::OrientationChangeSource::Programmatic
+    );
     camera->position.setValue(position);
 }
 
@@ -4166,6 +4267,35 @@ SbBox3f View3DInventorViewer::getBoundingBox() const
     SoGetBoundingBoxAction action(vp);
     action.apply(this->getSoRenderManager()->getSceneGraph());
     return action.getBoundingBox();
+}
+
+void View3DInventorViewer::viewHome()
+{
+    SoCamera* camera = getCamera();
+    if (!camera) {
+        return;
+    }
+
+    const SbRotation orientation = Camera::defaultOrientation("Top");
+    if (Camera::rotationsMatch(camera->orientation.getValue(), orientation)) {
+        viewAll();
+        return;
+    }
+
+    auto animation = setCameraOrientation(orientation, true);
+    if (animation && animation->state() == QAbstractAnimation::Running) {
+        QObject::connect(
+            animation.get(),
+            &NavigationAnimation::completed,
+            this,
+            [this]() { viewAll(); },
+            // Let NavigationAnimator finish its cleanup before fitting the scene.
+            Qt::QueuedConnection
+        );
+        return;
+    }
+
+    viewAll();
 }
 
 void View3DInventorViewer::viewAll()
@@ -4856,18 +4986,9 @@ void View3DInventorViewer::drawAxisCross()
     }
     overlay.axisTransform->rotation.setValue(inv);
     overlay.axisTransform->translation.setValue(0.0f, 0.0f, -3.5f);
-
-    const bool stereo = stereoMode() != Quarter::SoQTQuarterAdaptor::MONO;
-    if (stereo) {
-        overlay.xMaterial->diffuseColor.setValue(0.5f, 0.5f, 0.5f);
-        overlay.yMaterial->diffuseColor.setValue(0.4f, 0.4f, 0.4f);
-        overlay.zMaterial->diffuseColor.setValue(0.3f, 0.3f, 0.3f);
-    }
-    else {
-        overlay.xMaterial->diffuseColor.setValue(m_xColor.r, m_xColor.g, m_xColor.b);
-        overlay.yMaterial->diffuseColor.setValue(m_yColor.r, m_yColor.g, m_yColor.b);
-        overlay.zMaterial->diffuseColor.setValue(m_zColor.r, m_zColor.g, m_zColor.b);
-    }
+    overlay.xMaterial->diffuseColor.setValue(m_xColor.r, m_xColor.g, m_xColor.b);
+    overlay.yMaterial->diffuseColor.setValue(m_yColor.r, m_yColor.g, m_yColor.b);
+    overlay.zMaterial->diffuseColor.setValue(m_zColor.r, m_zColor.g, m_zColor.b);
 
     std::array<std::pair<float, SoNode*>, 3> axes = {
         std::pair<float, SoNode*> {xpos[2], overlay.xAxis},
