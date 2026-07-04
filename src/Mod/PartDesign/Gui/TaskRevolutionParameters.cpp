@@ -60,50 +60,50 @@ namespace
 {
 constexpr double minimumRevolveAngle = 1.0e-7;
 
-using RevolMethod = PartDesign::Revolution::RevolMethod;
-
-bool isSingleAngleMethod(RevolMethod mode)
+bool isSingleAngleMethod(PartDesign::Revolution::RevolMethod mode)
 {
-    return mode == RevolMethod::Angle || mode == RevolMethod::AngleFromOrigin;
+    return mode == PartDesign::Revolution::RevolMethod::Angle
+        || mode == PartDesign::Revolution::RevolMethod::AngleFromOrigin;
 }
 
-bool isAngleFromStartMethod(RevolMethod mode)
+bool isAngleFromStartMethod(PartDesign::Revolution::RevolMethod mode)
 {
-    return mode == RevolMethod::Angle || mode == RevolMethod::TwoAngles;
+    return mode == PartDesign::Revolution::RevolMethod::Angle
+        || mode == PartDesign::Revolution::RevolMethod::TwoAngles;
 }
 
-RevolMethod modeFromUiIndex(int index)
+PartDesign::Revolution::RevolMethod modeFromUiIndex(int index)
 {
     switch (index) {
         case 1:
-            return RevolMethod::AngleFromOrigin;
+            return PartDesign::Revolution::RevolMethod::AngleFromOrigin;
         case 2:
-            return RevolMethod::ThroughAll;
+            return PartDesign::Revolution::RevolMethod::ThroughAll;
         case 3:
-            return RevolMethod::ToFirst;
+            return PartDesign::Revolution::RevolMethod::ToFirst;
         case 4:
-            return RevolMethod::ToFace;
+            return PartDesign::Revolution::RevolMethod::ToFace;
         case 5:
-            return RevolMethod::TwoAngles;
+            return PartDesign::Revolution::RevolMethod::TwoAngles;
         default:
-            return RevolMethod::Angle;
+            return PartDesign::Revolution::RevolMethod::Angle;
     }
 }
 
-int uiIndexFromMode(RevolMethod mode)
+int uiIndexFromMode(PartDesign::Revolution::RevolMethod mode)
 {
     switch (mode) {
-        case RevolMethod::AngleFromOrigin:
+        case PartDesign::Revolution::RevolMethod::AngleFromOrigin:
             return 1;
-        case RevolMethod::ThroughAll:
+        case PartDesign::Revolution::RevolMethod::ThroughAll:
             return 2;
-        case RevolMethod::ToFirst:
+        case PartDesign::Revolution::RevolMethod::ToFirst:
             return 3;
-        case RevolMethod::ToFace:
+        case PartDesign::Revolution::RevolMethod::ToFace:
             return 4;
-        case RevolMethod::TwoAngles:
+        case PartDesign::Revolution::RevolMethod::TwoAngles:
             return 5;
-        case RevolMethod::Angle:
+        case PartDesign::Revolution::RevolMethod::Angle:
         default:
             return 0;
     }
@@ -237,7 +237,7 @@ void TaskRevolutionParameters::setupDialog()
     ui->revolveAngle2->setMaximum(propAngle2->getMaximum());
     ui->revolveAngle2->setMinimum(propAngle2->getMinimum());
 
-    index = uiIndexFromMode(static_cast<RevolMethod>(rev->Type.getValue()));
+    index = uiIndexFromMode(static_cast<PartDesign::Revolution::RevolMethod>(rev->Type.getValue()));
     translateModeList(index);
 
     syncAngleLimits(false);
@@ -482,14 +482,14 @@ void TaskRevolutionParameters::syncAngleLimits(bool secondSide)
     angleEdit->setMaximum(angleMaximum);
 
     const auto mode = modeFromUiIndex(ui->changeMode->currentIndex());
-    const bool active = secondSide ? mode == RevolMethod::TwoAngles
-                                   : isSingleAngleMethod(mode) || mode == RevolMethod::TwoAngles;
+    const bool active = secondSide ? mode == PartDesign::Revolution::RevolMethod::TwoAngles
+                                   : isSingleAngleMethod(mode) || mode == PartDesign::Revolution::RevolMethod::TwoAngles;
     if (!active) {
         return;
     }
 
     const bool angleFromStart = secondSide || isAngleFromStartMethod(mode);
-    const bool forceNonZero = mode != RevolMethod::TwoAngles;
+    const bool forceNonZero = mode != PartDesign::Revolution::RevolMethod::TwoAngles;
 
     double start = startEdit->value().getValue();
     double angle = angleEdit->value().getValue();
@@ -815,22 +815,22 @@ void TaskRevolutionParameters::onModeChanged(int index)
     const auto mode = modeFromUiIndex(index);
 
     switch (mode) {
-        case RevolMethod::Angle:
+        case PartDesign::Revolution::RevolMethod::Angle:
             propEnum->setValue("Angle");
             break;
-        case RevolMethod::AngleFromOrigin:
+        case PartDesign::Revolution::RevolMethod::AngleFromOrigin:
             propEnum->setValue("AngleFromOrigin");
             break;
-        case RevolMethod::ThroughAll:
+        case PartDesign::Revolution::RevolMethod::ThroughAll:
             propEnum->setValue(isGroove ? "ThroughAll" : "UpToLast");
             break;
-        case RevolMethod::ToFirst:
+        case PartDesign::Revolution::RevolMethod::ToFirst:
             propEnum->setValue("UpToFirst");
             break;
-        case RevolMethod::ToFace:
+        case PartDesign::Revolution::RevolMethod::ToFace:
             propEnum->setValue("UpToFace");
             break;
-        case RevolMethod::TwoAngles:
+        case PartDesign::Revolution::RevolMethod::TwoAngles:
             propEnum->setValue("TwoAngles");
             break;
         default:
@@ -921,7 +921,7 @@ void TaskRevolutionParameters::apply()
     const auto mode = modeFromUiIndex(ui->changeMode->currentIndex());
     FCMD_OBJ_CMD(tobj, "Type = " << static_cast<int>(mode));
     QString facename = QStringLiteral("None");
-    if (mode == RevolMethod::ToFace) {
+    if (mode == PartDesign::Revolution::RevolMethod::ToFace) {
         facename = getFaceName();
     }
     FCMD_OBJ_CMD(tobj, "UpToFace = " << facename.toLatin1().data());
@@ -964,7 +964,7 @@ void TaskRevolutionParameters::setGizmoPositions()
     Base::Vector3d axisDir;
     bool reversed = false;
     bool symmetric = false;
-    RevolMethod mode = RevolMethod::Angle;
+    PartDesign::Revolution::RevolMethod mode = PartDesign::Revolution::RevolMethod::Angle;
 
     auto getFeatureProps = [&](auto* feature) {
         if (!feature || feature->isError()) {
@@ -977,7 +977,7 @@ void TaskRevolutionParameters::setGizmoPositions()
         axisDir = feature->Axis.getValue();
         reversed = feature->Reversed.getValue();
         symmetric = feature->Midplane.getValue();
-        mode = static_cast<RevolMethod>(feature->Type.getValue());
+        mode = static_cast<PartDesign::Revolution::RevolMethod>(feature->Type.getValue());
         return true;
     };
 
@@ -1032,7 +1032,7 @@ void TaskRevolutionParameters::setGizmoPositions()
 
     startRotationGizmo->setDraggerPlacement(basePosition, baseDirection);
     startRotationGizmo->getDraggerContainer()->setArcNormalDirection(firstAxis);
-    startRotationGizmo->setVisibility(isSingleAngleMethod(mode) || mode == RevolMethod::TwoAngles);
+    startRotationGizmo->setVisibility(isSingleAngleMethod(mode) || mode == PartDesign::Revolution::RevolMethod::TwoAngles);
 
     rotationGizmo->setDraggerPlacement(basePosition, firstAngleDirection);
     rotationGizmo->getDraggerContainer()->setArcNormalDirection(firstAxis);
@@ -1040,16 +1040,16 @@ void TaskRevolutionParameters::setGizmoPositions()
         angleFromStart ? 0.0 : startAngleRad,
         angleRad
     );
-    rotationGizmo->setVisibility(isSingleAngleMethod(mode) || mode == RevolMethod::TwoAngles);
+    rotationGizmo->setVisibility(isSingleAngleMethod(mode) || mode == PartDesign::Revolution::RevolMethod::TwoAngles);
 
     startRotationGizmo2->setDraggerPlacement(basePosition, baseDirection);
     startRotationGizmo2->getDraggerContainer()->setArcNormalDirection(secondAxis);
-    startRotationGizmo2->setVisibility(mode == RevolMethod::TwoAngles);
+    startRotationGizmo2->setVisibility(mode == PartDesign::Revolution::RevolMethod::TwoAngles);
 
     rotationGizmo2->setDraggerPlacement(basePosition, secondAngleDirection);
     rotationGizmo2->getDraggerContainer()->setArcNormalDirection(secondAxis);
     rotationGizmo2->setBaseAngleRange(0.0, angle2Rad);
-    rotationGizmo2->setVisibility(mode == RevolMethod::TwoAngles);
+    rotationGizmo2->setVisibility(mode == PartDesign::Revolution::RevolMethod::TwoAngles);
 }
 
 //**************************************************************************
