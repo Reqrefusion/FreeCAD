@@ -95,6 +95,7 @@ private:
 
     static inline float getScaleFactor(const ViewProviderSketch& vp);
     static inline SbVec2f getScreenCoordinates(const ViewProviderSketch& vp, SbVec2f sketchcoordinates);
+    static inline SbVec2f getScreenCoordinates(const ViewProviderSketch& vp, SbVec3f sketchcoordinates);
 public:
     static inline QPoint projectSketchPointToScreen(
         const ViewProviderSketch& vp,
@@ -208,9 +209,6 @@ inline SbVec2f ViewProviderSketchCoinAttorney::getScreenCoordinates(
 )
 {
     return vp.getScreenCoordinates(sketchcoordinates);
-}
-{
-    return vp.projectSketchPointToScreen(p);
 }
 
 inline double ViewProviderSketchCoinAttorney::getRotation(
