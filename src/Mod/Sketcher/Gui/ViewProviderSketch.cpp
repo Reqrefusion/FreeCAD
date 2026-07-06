@@ -1887,8 +1887,9 @@ bool ViewProviderSketch::mouseMove(const SbVec2s& cursorPos, Gui::View3DInventor
         && Mode != STATUS_SELECT_Constraint && Mode != STATUS_SKETCH_Drag
         && Mode != STATUS_SKETCH_DragConstraint && Mode != STATUS_SKETCH_UseRubberBand) {
         Point.reset(this->getPointOnRay(cursorPos, viewer));
-
-        preselectChanged = detectAndShowPreselection(Point.get());
+        auto result = getPreselectionResultAtViewportPos(cursorPos, viewer);
+        cachePreselectionResult(cursorPos, result);
+        preselectChanged = detectAndShowPreselection(result);
     }
 
     if (!freezeDimensionOptionPreview && Mode != STATUS_NONE && Mode != STATUS_SKETCH_UseHandler) {
