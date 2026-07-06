@@ -1320,8 +1320,6 @@ void EditModeConstraintCoinManager::updateConstraintColor(
                 Gui::SoDatumLabel* l = static_cast<Gui::SoDatumLabel*>(
                     s->getChild(static_cast<int>(ConstraintNodePosition::DatumLabelIndex))
                 );
-                    s->getChild(static_cast<int>(ConstraintNodePosition::DatumLabelIndex))
-                );
                 l->textColor = SketcherGui::DrawingParameters::SelectColor;
             }
             else if (hasMaterial) {
@@ -1358,8 +1356,6 @@ void EditModeConstraintCoinManager::updateConstraintColor(
                 Gui::SoDatumLabel* l = static_cast<Gui::SoDatumLabel*>(
                     s->getChild(static_cast<int>(ConstraintNodePosition::DatumLabelIndex))
                 );
-                    s->getChild(static_cast<int>(ConstraintNodePosition::DatumLabelIndex))
-                );
                 l->textColor = SketcherGui::DrawingParameters::PreselectColor;
             }
             else if (hasMaterial) {
@@ -1373,8 +1369,6 @@ void EditModeConstraintCoinManager::updateConstraintColor(
             );
             if (hasDatumLabel) {
                 Gui::SoDatumLabel* l = static_cast<Gui::SoDatumLabel*>(
-                    s->getChild(static_cast<int>(ConstraintNodePosition::DatumLabelIndex))
-                );
                     s->getChild(static_cast<int>(ConstraintNodePosition::DatumLabelIndex))
                 );
 
@@ -1478,7 +1472,7 @@ void EditModeConstraintCoinManager::rebuildConstraintNodes(
             case Diameter:
             case Weight:
             case Angle: {
-                Gui::SoDatumLabel* text = createDimensionDatumLabel(**it, false, isActive);
+                Gui::SoDatumLabel* text = createDimensionDatumLabel(*it, false, isActive);
                 text->norm.setValue(norm);
                 sep->addChild(text);
                 editModeScenegraphNodes.constrGroup->addChild(sep);
@@ -3076,7 +3070,7 @@ bool EditModeConstraintCoinManager::configurePreviewDatumLabel(
     return configureDimensionDatumLabel(geolistfacade, constraint, datum, zConstrH);
 }
 
-SoSeparator* EditModeConstraintCoinManager::getConstraintIdSeparator(int i)
+SoSeparator* EditModeConstraintCoinManager::getConstraintIdSeparator(int i) const
 {
     return dynamic_cast<SoSeparator*>(editModeScenegraphNodes.constrGroup->getChild(i));
 }
