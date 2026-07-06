@@ -915,115 +915,6 @@ Restart:
                     if (!configureDimensionDatumLabel(geolistfacade, *Constr, *asciiText, zConstrH)) {
                         break;
                     }
-                    int index = static_cast<int>(ConstraintNodePosition::DatumLabelIndex);
-                    auto* asciiText = static_cast<SoDatumLabel*>(sep->getChild(index));  // NOLINT
-
-                    // Get presentation string (w/o units if option is set)
-                    asciiText->string = SbString(getPresentationString(Constr).toUtf8().constData());
-                    asciiText->strikethrough = !Constr->isActive;
-
-                    if (Constr->Type == Distance) {
-                        asciiText->datumtype = SoDatumLabel::DISTANCE;
-                    }
-                    else if (Constr->Type == DistanceX) {
-                        asciiText->datumtype = SoDatumLabel::DISTANCEX;
-                    }
-                    else if (Constr->Type == DistanceY) {
-                        asciiText->datumtype = SoDatumLabel::DISTANCEY;
-                    }
-
-                    // Check if arc helpers are needed
-                    if (Constr->Second != GeoEnum::GeoUndef) {
-                        auto geo1 = geolistfacade.getGeometryFromGeoId(Constr->First);
-                        auto geo2 = geolistfacade.getGeometryFromGeoId(Constr->Second);
-
-                        if (isArcOfCircle(*geo1) && Constr->FirstPos == Sketcher::PointPos::none) {
-                            auto arc = static_cast<const Part::GeomArcOfCircle*>(geo1);  // NOLINT
-                            radius1 = arc->getRadius();
-                            center1 = arc->getCenter();
-
-                            double angle = toVector2d(
-                                               isLineSegment(*geo2) ? pnt2 - center1 : pnt1 - center1
-                            )
-                                               .Angle();
-                            double startAngle, endAngle;
-                            arc->getRange(startAngle, endAngle, /*emulateCCW=*/true);
-
-                            findHelperAngles(helperStartAngle1, helperRange1, angle, startAngle, endAngle);
-
-                            if (helperRange1 != 0.) {
-                                // We override to draw the full helper as it does not look good
-                                // otherwise We still use findHelperAngles before to find if helper
-                                // is needed.
-                                helperStartAngle1 = endAngle;
-                                helperRange1 = 2 * pi - (endAngle - startAngle);
-
-                                numPoints++;
-                            }
-                        }
-                        if (isArcOfCircle(*geo2) && Constr->SecondPos == Sketcher::PointPos::none) {
-                            auto arc = static_cast<const Part::GeomArcOfCircle*>(geo2);  // NOLINT
-                            radius2 = arc->getRadius();
-                            center2 = arc->getCenter();
-
-                            double angle = toVector2d(pnt2 - center2).Angle();  // between -pi and pi
-                            double startAngle, endAngle;  // between 0 and 2*pi
-                            arc->getRange(startAngle, endAngle, /*emulateCCWXY=*/true);
-
-                            findHelperAngles(helperStartAngle2, helperRange2, angle, startAngle, endAngle);
-
-                            if (helperRange2 != 0.) {
-                                helperStartAngle2 = endAngle;
-                                helperRange2 = 2 * pi - (endAngle - startAngle);
-
-                                numPoints++;
-                            }
-                        }
-                    }
-
-                    // Assign the Datum Points
-                    asciiText->pnts.setNum(numPoints);
-                    SbVec3f* verts = asciiText->pnts.startEditing();
-
-                    verts[0] = SbVec3f(pnt1.x, pnt1.y, zConstrH);
-                    verts[1] = SbVec3f(pnt2.x, pnt2.y, zConstrH);
-
-                    if (numPoints > 2) {
-                        if (helperRange1 != 0.) {
-                            verts[2] = SbVec3f(center1.x, center1.y, zConstrH);
-                            asciiText->param3 = helperStartAngle1;
-                            asciiText->param4 = helperRange1;
-                            asciiText->param5 = radius1;
-                        }
-                        else {
-                            verts[2] = SbVec3f(center2.x, center2.y, zConstrH);
-                            asciiText->param3 = helperStartAngle2;
-                            asciiText->param4 = helperRange2;
-                            asciiText->param5 = radius2;
-                        }
-                        if (numPoints > 3) {
-                            verts[3] = SbVec3f(center2.x, center2.y, zConstrH);
-                            asciiText->param6 = helperStartAngle2;
-                            asciiText->param7 = helperRange2;
-                            asciiText->param8 = radius2;
-                        }
-                        else {
-                            asciiText->param6 = 0.;
-                            asciiText->param7 = 0.;
-                            asciiText->param8 = 0.;
-                        }
-                    }
-                    else {
-                        asciiText->param3 = 0.;
-                        asciiText->param4 = 0.;
-                        asciiText->param5 = 0.;
-                    }
-
-                    asciiText->pnts.finishEditing();
-
-                    // Assign the Label Distance
-                    asciiText->param1 = Constr->LabelDistance;
-                    asciiText->param2 = Constr->LabelPosition;
                 } break;
                 case PointOnObject:
                 case Tangent:
@@ -1233,8 +1124,6 @@ Restart:
                     Gui::SoDatumLabel* asciiText = static_cast<Gui::SoDatumLabel*>(
                         sep->getChild(static_cast<int>(ConstraintNodePosition::DatumLabelIndex))
                     );
-                        sep->getChild(static_cast<int>(ConstraintNodePosition::DatumLabelIndex))
-                    );
                     asciiText->datumtype = Gui::SoDatumLabel::SYMMETRIC;
 
                     asciiText->pnts.setNum(2);
@@ -1257,8 +1146,6 @@ Restart:
                 case Radius: {
                     assert(Constr->First >= -extGeoCount && Constr->First < intGeoCount);
                     auto* asciiText = static_cast<Gui::SoDatumLabel*>(
-                        sep->getChild(static_cast<int>(ConstraintNodePosition::DatumLabelIndex))
-                    );
                         sep->getChild(static_cast<int>(ConstraintNodePosition::DatumLabelIndex))
                     );
                     if (!configureDimensionDatumLabel(geolistfacade, *Constr, *asciiText, zConstrH)) {
