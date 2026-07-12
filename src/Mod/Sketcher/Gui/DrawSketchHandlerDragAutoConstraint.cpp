@@ -311,12 +311,14 @@ void DrawSketchHandlerDragAutoConstraint::update(
                 const double distance = (actualPos - projection).Length();
                 considerCurve(geoId, distance, isLineCenterAutoConstraint(geoId, actualPos));
             }
-            else if (isCircleOrArc(*geo)) {
+            else if (geo->isDerivedFrom<Part::GeomCurve>()) {
                 const auto* curve = static_cast<const Part::GeomCurve*>(geo);
+                const Base::Vector3d point(actualPos.x, actualPos.y, 0.0);
                 double parameter;
 
-                if (curve->closestParameter(toVector3d(actualPos), parameter)) {
-                    const Base::Vector2d closestPoint = toVector2d(curve->pointAtParameter(parameter));
+                if (curve->closestParameter(point, parameter)) {
+                    const Base::Vector2d closestPoint =
+                        toVector2d(curve->pointAtParameter(parameter));
                     considerCurve(geoId, (actualPos - closestPoint).Length());
                 }
             }
