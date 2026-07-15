@@ -145,8 +145,13 @@ bool DrawSketchHandlerDragAutoConstraint::isExistingConstraint(
                 break;
 
             case PointOnObject:
-                if (c->Type == PointOnObject && isDraggedPoint(c->First, c->FirstPos)
-                    && c->Second == constraint.GeoId) {
+                if ((c->Type == PointOnObject && isDraggedPoint(c->First, c->FirstPos)
+                     && c->Second == constraint.GeoId)
+                    || (c->Type == Tangent
+                        && ((isDraggedPoint(c->First, c->FirstPos)
+                             && c->Second == constraint.GeoId)
+                            || (isDraggedPoint(c->Second, c->SecondPos)
+                                && c->First == constraint.GeoId)))) {
                     return true;
                 }
                 break;
@@ -168,6 +173,14 @@ bool DrawSketchHandlerDragAutoConstraint::isExistingConstraint(
                 }
                 break;
             }
+
+            case Tangent:
+                if (c->Type == Tangent
+                    && ((c->First == dragged.GeoId && c->Second == constraint.GeoId)
+                        || (c->Second == dragged.GeoId && c->First == constraint.GeoId))) {
+                    return true;
+                }
+                break;
 
             case Horizontal:
             case Vertical: {
@@ -271,20 +284,27 @@ void DrawSketchHandlerDragAutoConstraint::update(
         {
             int geoId = GeoEnum::GeoUndef;
             double distance = std::numeric_limits<double>::max();
-            bool lineCenter = false;
+            ConstraintType type = None;
         };
 
         CurveCandidate bestCurve;
 
-        auto considerCurve = [&](int geoId, double distance, bool lineCenter = false) {
+        auto considerCurve = [&](int geoId, double distance, ConstraintType type) {
             if (geoId == dragged.GeoId || distance >= snapDistance || distance >= bestCurve.distance) {
                 return;
             }
 
             bestCurve.geoId = geoId;
             bestCurve.distance = distance;
-            bestCurve.lineCenter = lineCenter;
+            bestCurve.type = type;
         };
+
+        const Base::Vector2d draggedDirection = getDirection(dragged, actualPos);
+        const bool canSuggestTangent
+            = (dragged.Pos == PointPos::start || dragged.Pos == PointPos::end)
+            && draggedDirection.Sqr() > Precision::SquareConfusion();
+        constexpr double tangentAngleDevRad = Base::toRadians<double>(2);
+        const double tangentCos = std::cos(tangentAngleDevRad);
 
         for (int geoId = 0; geoId <= obj->getHighestCurveIndex(); ++geoId) {
             const Part::Geometry* geo = obj->getGeometry(geoId);
@@ -309,23 +329,44 @@ void DrawSketchHandlerDragAutoConstraint::update(
 
                 const Base::Vector2d projection = a + ab * t;
                 const double distance = (actualPos - projection).Length();
-                considerCurve(geoId, distance, isLineCenterAutoConstraint(geoId, actualPos));
+                considerCurve(
+                    geoId,
+                    distance,
+                    isLineCenterAutoConstraint(geoId, actualPos) ? Symmetric : PointOnObject
+                );
             }
             else if (geo->isDerivedFrom<Part::GeomCurve>()) {
                 const auto* curve = static_cast<const Part::GeomCurve*>(geo);
-                const Base::Vector3d point(actualPos.x, actualPos.y, 0.0);
-                double parameter;
+                double u;
 
-                if (curve->closestParameter(point, parameter)) {
-                    const Base::Vector2d closestPoint =
-                        toVector2d(curve->pointAtParameter(parameter));
-                    considerCurve(geoId, (actualPos - closestPoint).Length());
+                if (curve->closestParameter(toVector3d(actualPos), u)) {
+                    const Base::Vector2d closestPoint = toVector2d(curve->pointAtParameter(u));
+                    const double distance = (actualPos - closestPoint).Length();
+                    ConstraintType type = PointOnObject;
+
+                    if (canSuggestTangent) {
+                        Base::Vector3d curveTangent;
+                        if (curve->tangent(u, curveTangent)) {
+                            Base::Vector3d lineTangent = toVector3d(draggedDirection);
+                            lineTangent.Normalize();
+                            curveTangent.Normalize();
+
+                            if (std::abs(lineTangent * curveTangent) > tangentCos) {
+                                type = Tangent;
+                            }
+                        }
+                    }
+
+                    considerCurve(geoId, distance, type);
                 }
             }
         }
 
         if (bestCurve.geoId != GeoEnum::GeoUndef) {
-            addAutoConstraint(bestCurve.lineCenter ? Symmetric : PointOnObject, bestCurve.geoId);
+            if (bestCurve.type == Tangent) {
+                addAutoConstraint(PointOnObject, bestCurve.geoId);
+            }
+            addAutoConstraint(bestCurve.type, bestCurve.geoId);
         }
         else if (std::abs(actualPos.y) < snapDistance) {
             addAutoConstraint(PointOnObject, GeoEnum::HAxis);
@@ -374,5 +415,49 @@ void DrawSketchHandlerDragAutoConstraint::create(const std::vector<GeoElementId>
         return;
     }
 
-    createAutoConstraints(suggestedConstraints, dragged.front().GeoId, dragged.front().Pos, false);
+    SketchObject* obj = getSketchObject();
+    if (!obj) {
+        return;
+    }
+
+    const auto tangent = std::find_if(
+        suggestedConstraints.begin(),
+        suggestedConstraints.end(),
+        [](const AutoConstraint& constraint) {
+            return constraint.Type == Tangent;
+        }
+    );
+    if (tangent != suggestedConstraints.end()) {
+        const Part::Geometry* target = obj->getGeometry(tangent->GeoId);
+        if (target
+            && (target->is<Part::GeomEllipse>() || target->is<Part::GeomArcOfEllipse>())) {
+            createAutoConstraints(
+                suggestedConstraints,
+                dragged.front().GeoId,
+                dragged.front().Pos,
+                false
+            );
+            return;
+        }
+    }
+
+    std::vector<std::unique_ptr<Constraint>> autoConstraints;
+    for (const AutoConstraint& suggestion : suggestedConstraints) {
+        if (!generateOneAutoConstraintFromSuggestion(
+                suggestion,
+                dragged.front().GeoId,
+                dragged.front().Pos,
+                autoConstraints
+            )) {
+            break;
+        }
+    }
+
+    const bool valid = filterRedundantAutoConstraints(autoConstraints);
+    obj->solve(false);
+    if (!valid) {
+        return;
+    }
+
+    addGeneratedAutoConstraints(autoConstraints);
 }
