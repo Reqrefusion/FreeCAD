@@ -415,49 +415,5 @@ void DrawSketchHandlerDragAutoConstraint::create(const std::vector<GeoElementId>
         return;
     }
 
-    SketchObject* obj = getSketchObject();
-    if (!obj) {
-        return;
-    }
-
-    const auto tangent = std::find_if(
-        suggestedConstraints.begin(),
-        suggestedConstraints.end(),
-        [](const AutoConstraint& constraint) {
-            return constraint.Type == Tangent;
-        }
-    );
-    if (tangent != suggestedConstraints.end()) {
-        const Part::Geometry* target = obj->getGeometry(tangent->GeoId);
-        if (target
-            && (target->is<Part::GeomEllipse>() || target->is<Part::GeomArcOfEllipse>())) {
-            createAutoConstraints(
-                suggestedConstraints,
-                dragged.front().GeoId,
-                dragged.front().Pos,
-                false
-            );
-            return;
-        }
-    }
-
-    std::vector<std::unique_ptr<Constraint>> autoConstraints;
-    for (const AutoConstraint& suggestion : suggestedConstraints) {
-        if (!generateOneAutoConstraintFromSuggestion(
-                suggestion,
-                dragged.front().GeoId,
-                dragged.front().Pos,
-                autoConstraints
-            )) {
-            break;
-        }
-    }
-
-    const bool valid = filterRedundantAutoConstraints(autoConstraints);
-    obj->solve(false);
-    if (!valid) {
-        return;
-    }
-
-    addGeneratedAutoConstraints(autoConstraints);
+    createAutoConstraints(suggestedConstraints, dragged.front().GeoId, dragged.front().Pos, false);
 }
