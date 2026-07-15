@@ -32,6 +32,7 @@
 #include <Precision.hxx>
 #include <Base/Vector3D.h>
 #include <Gui/Command.h>
+#include <Gui/CommandT.h>
 #include <Mod/Part/App/Geometry.h>
 #include <Mod/Sketcher/App/SketchObject.h>
 
