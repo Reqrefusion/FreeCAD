@@ -180,6 +180,11 @@ Base::Vector2d SnapManager::snap(Base::Vector2d inputPos, SnapType mask)
         return inputPos;
     }
 
+    if (viewProvider.Autoconstraints.getValue()
+        && QApplication::keyboardModifiers().testFlag(Qt::ShiftModifier)) {
+        return inputPos;
+    }
+
     Base::Vector2d snapPos = inputPos;
 
     // In order of priority:

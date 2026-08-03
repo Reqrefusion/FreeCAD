@@ -1246,7 +1246,7 @@ int DrawSketchHandler::seekAutoConstraint(
     parallelPerpendicularActiveHintLine = -1;
 
     if (!areAutoConstraintsEnabled()) {
-        return 0;  // If auto-constraints are disabled, quit
+        return 0;  // If Autoconstraints property is not set quit
     }
 
     updateParallelPerpendicularEndpointHint();
@@ -1592,7 +1592,7 @@ void DrawSketchHandler::createAutoConstraints(
 )
 {
     if (!areAutoConstraintsEnabled()) {
-        return;  // If auto-constraints are disabled, quit
+        return;  // If Autoconstraints property is not set quit
     }
 
     if (autoConstrs.empty()) {

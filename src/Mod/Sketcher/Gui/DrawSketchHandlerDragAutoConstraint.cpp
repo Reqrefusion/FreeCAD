@@ -50,7 +50,7 @@ constexpr double DragAutoConstraintSnapDistanceFactor = 0.25;
 
 bool DrawSketchHandlerDragAutoConstraint::canSuggestFor(const std::vector<GeoElementId>& dragged) const
 {
-    return sketchgui && sketchgui->Autoconstraints.getValue() && dragged.size() == 1
+    return sketchgui && areAutoConstraintsEnabled() && dragged.size() == 1
         && dragged.front().Pos != PointPos::none;
 }
 
@@ -63,12 +63,14 @@ void DrawSketchHandlerDragAutoConstraint::initDragging(const std::vector<GeoElem
     }
 
     SketchObject* obj = getSketchObject();
-    if (!obj || !canSuggestFor(dragged)) {
+    if (!obj || dragged.size() != 1 || dragged.front().Pos == PointPos::none) {
         return;
     }
 
-    updateCursor();
     startPos = toVector2d(obj->getPoint(dragged.front().GeoId, dragged.front().Pos));
+    if (canSuggestFor(dragged)) {
+        updateCursor();
+    }
 }
 
 void DrawSketchHandlerDragAutoConstraint::addAutoConstraint(ConstraintType type, int geoId, PointPos posId)
