@@ -644,8 +644,7 @@ protected:
     /** @brief Minimal handle activation respecting avoid redundants and continuous mode.*/
     void activated() override
     {
-        avoidRedundants = sketchgui->AvoidRedundant.getValue()
-            && sketchgui->Autoconstraints.getValue();
+        avoidRedundants = sketchgui->AvoidRedundant.getValue();
 
         ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath(
             "User parameter:BaseApp/Preferences/Mod/Sketcher"
@@ -696,7 +695,7 @@ protected:
         Sketcher::PointPos posId1
     )
     {
-        if (!sketchgui->Autoconstraints.getValue()) {
+        if (!areAutoConstraintsEnabled()) {
             return;
         }
 

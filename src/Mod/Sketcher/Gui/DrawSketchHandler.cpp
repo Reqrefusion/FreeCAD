@@ -366,6 +366,14 @@ bool DrawSketchHandler::isConstructionMode() const
     return sketchgui->isConstructionMode();
 }
 
+bool DrawSketchHandler::areAutoConstraintsEnabled() const
+{
+    const bool shiftPressed
+        = QGuiApplication::keyboardModifiers().testFlag(Qt::ShiftModifier);
+
+    return sketchgui->Autoconstraints.getValue() != shiftPressed;
+}
+
 const char* DrawSketchHandler::constructionModeAsBooleanText()
 {
     return sketchgui->isConstructionMode() ? "True" : "False";
@@ -771,7 +779,7 @@ bool DrawSketchHandler::updateTangentAutoConstraintHint()
 {
     resetTangentAutoConstraintHint();
 
-    if (!sketchgui->Autoconstraints.getValue()) {
+    if (!areAutoConstraintsEnabled()) {
         return false;
     }
 
@@ -1237,8 +1245,8 @@ int DrawSketchHandler::seekAutoConstraint(
     updateTangentAutoConstraintHint();
     parallelPerpendicularActiveHintLine = -1;
 
-    if (!sketchgui->Autoconstraints.getValue()) {
-        return 0;  // If Autoconstraints property is not set quit
+    if (!areAutoConstraintsEnabled()) {
+        return 0;  // If auto-constraints are disabled, quit
     }
 
     updateParallelPerpendicularEndpointHint();
@@ -1583,8 +1591,8 @@ void DrawSketchHandler::createAutoConstraints(
     bool createowncommand /*= true*/
 )
 {
-    if (!sketchgui->Autoconstraints.getValue()) {
-        return;  // If Autoconstraints property is not set quit
+    if (!areAutoConstraintsEnabled()) {
+        return;  // If auto-constraints are disabled, quit
     }
 
     if (autoConstrs.empty()) {
@@ -1899,7 +1907,7 @@ void DrawSketchHandler::clearParallelPerpendicularHintDrawing() const
 
 bool DrawSketchHandler::updateParallelPerpendicularEndpointHint()
 {
-    if (!sketchgui->Autoconstraints.getValue()) {
+    if (!areAutoConstraintsEnabled()) {
         return false;
     }
 
@@ -1967,7 +1975,7 @@ bool DrawSketchHandler::snapToParallelPerpendicularHint(Base::Vector2d& point)
 {
     parallelPerpendicularActiveHintLine = -1;
 
-    if (!sketchgui->Autoconstraints.getValue()) {
+    if (!areAutoConstraintsEnabled()) {
         return false;
     }
 
