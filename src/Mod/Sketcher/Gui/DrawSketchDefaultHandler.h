@@ -432,6 +432,7 @@ public:
     //@{
     void mouseMove(SnapManager::SnapHandle snapHandle) override
     {
+        lastSnapHandle = snapHandle;
         updateDataAndDrawToPosition(snapHandle.compute());
     }
 
@@ -451,7 +452,12 @@ public:
 
     void registerPressedKey(bool pressed, int key) override
     {
-        if (key == SoKeyboardEvent::M && pressed && !this->isLastState()) {
+        if (key == SoKeyboardEvent::LEFT_SHIFT || key == SoKeyboardEvent::RIGHT_SHIFT) {
+            if (lastSnapHandle) {
+                updateDataAndDrawToPosition(lastSnapHandle->compute());
+            }
+        }
+        else if (key == SoKeyboardEvent::M && pressed && !this->isLastState()) {
             this->iterateToNextConstructionMethod();
         }
         else if (key == SoKeyboardEvent::ESCAPE && pressed) {
@@ -1086,6 +1092,7 @@ private:
     }
 
 protected:
+    std::optional<SnapManager::SnapHandle> lastSnapHandle;
     std::vector<std::vector<AutoConstraint>> sugConstraints;
 
     std::vector<std::unique_ptr<Part::Geometry>> ShapeGeometry;
