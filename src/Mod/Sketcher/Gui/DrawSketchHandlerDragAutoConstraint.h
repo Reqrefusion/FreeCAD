@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: LGPL-2.1-or-later
-
 /***************************************************************************
  *   Copyright (c) 2026 Turan Furkan Topak <furkan1795@gmail.com>          *
  *                                                                         *
@@ -21,13 +20,11 @@
  *   Suite 330, Boston, MA  02111-1307, USA                                *
  *                                                                         *
  ***************************************************************************/
-
 #pragma once
 
 #include <vector>
 
 #include <Mod/Sketcher/App/GeoEnum.h>
-
 #include "DrawSketchHandler.h"
 
 namespace Part
@@ -51,7 +48,7 @@ public:
     {
         return false;
     }
-
+    void registerPressedKey(bool pressed, int key) override;
     std::string getToolName() const override
     {
         return "DSH_DragAutoConstraint";
@@ -66,7 +63,6 @@ public:
     void update(const std::vector<Sketcher::GeoElementId>& dragged, const Base::Vector2d& pos);
     void create(const std::vector<Sketcher::GeoElementId>& dragged);
     void clear();
-
 private:
     bool canSuggestFor(const std::vector<Sketcher::GeoElementId>& dragged) const;
     void addAutoConstraint(
@@ -81,8 +77,8 @@ private:
         const AutoConstraint& constraint
     ) const;
     void removeInvalidConstraints(const Sketcher::GeoElementId& dragged);
-
 private:
+    std::vector<Sketcher::GeoElementId> lastDraggedElements;
     std::vector<AutoConstraint> suggestedConstraints;
     Base::Vector2d startPos {0.0, 0.0};
 };

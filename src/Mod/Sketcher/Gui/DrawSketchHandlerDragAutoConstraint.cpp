@@ -30,6 +30,8 @@
 
 #include <QWidget>
 
+#include <Inventor/events/SoKeyboardEvent.h>
+
 #include <Precision.hxx>
 #include <Base/Vector3D.h>
 #include <Mod/Part/App/Geometry.h>
@@ -54,8 +56,20 @@ bool DrawSketchHandlerDragAutoConstraint::canSuggestFor(const std::vector<GeoEle
         && dragged.front().Pos != PointPos::none;
 }
 
+void DrawSketchHandlerDragAutoConstraint::registerPressedKey(bool pressed, int key)
+{
+    if ((key == SoKeyboardEvent::LEFT_SHIFT || key == SoKeyboardEvent::RIGHT_SHIFT)
+        && !lastDraggedElements.empty()) {
+        update(lastDraggedElements, startPos);
+        return;
+    }
+
+    DrawSketchHandler::registerPressedKey(pressed, key);
+}
+
 void DrawSketchHandlerDragAutoConstraint::initDragging(const std::vector<GeoElementId>& dragged)
 {
+    lastDraggedElements = dragged;
     suggestedConstraints.clear();
 
     if (QWidget* widget = getCursorWidget()) {
@@ -84,6 +98,7 @@ void DrawSketchHandlerDragAutoConstraint::addAutoConstraint(ConstraintType type,
 
 void DrawSketchHandlerDragAutoConstraint::clear()
 {
+    lastDraggedElements.clear();
     suggestedConstraints.clear();
     unsetCursor();
 }
@@ -201,6 +216,11 @@ void DrawSketchHandlerDragAutoConstraint::update(
 )
 {
     suggestedConstraints.clear();
+
+    if (!areAutoConstraintsEnabled()) {
+        applyCursor();
+        return;
+    }
 
     SketchObject* obj = getSketchObject();
     if (!obj || !canSuggestFor(draggedElements)) {
