@@ -181,7 +181,7 @@ Base::Vector2d SnapManager::snap(Base::Vector2d inputPos, SnapType mask)
     }
 
     if (viewProvider.Autoconstraints.getValue()
-        && QApplication::keyboardModifiers().testFlag(Qt::ShiftModifier)) {
+        && QApplication::queryKeyboardModifiers().testFlag(Qt::ShiftModifier)) {
         return inputPos;
     }
 
