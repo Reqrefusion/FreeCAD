@@ -48,7 +48,6 @@ public:
     {
         return false;
     }
-    void registerPressedKey(bool pressed, int key) override;
     std::string getToolName() const override
     {
         return "DSH_DragAutoConstraint";
@@ -78,7 +77,6 @@ private:
     ) const;
     void removeInvalidConstraints(const Sketcher::GeoElementId& dragged);
 private:
-    std::vector<Sketcher::GeoElementId> lastDraggedElements;
     std::vector<AutoConstraint> suggestedConstraints;
     Base::Vector2d startPos {0.0, 0.0};
 };

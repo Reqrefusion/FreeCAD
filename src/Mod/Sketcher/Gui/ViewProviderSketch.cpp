@@ -1077,6 +1077,11 @@ bool ViewProviderSketch::keyPressed(bool pressed, int key)
             return false;
         } break;
         default: {
+            if (isInEditMode()
+                && (key == SoKeyboardEvent::LEFT_SHIFT || key == SoKeyboardEvent::RIGHT_SHIFT)
+                && Mode == STATUS_SKETCH_Drag && dragAutoConstraintHandler) {
+                dragAutoConstraintHandler->update(drag.Dragged, Base::Vector2d());
+            }
             if (isInEditMode() && sketchHandler)
                 sketchHandler->registerPressedKey(pressed, key);
         }
