@@ -561,6 +561,11 @@ public:
 
     bool isConstructionMode() const;
 
+    bool isShiftPressed() const
+    {
+        return leftShiftPressed || rightShiftPressed;
+    }
+
     // set the current GeometryCreationMode mode
     void setGeometryCreationMode(GeometryCreationMode geometryCreationMode);
 
@@ -1088,6 +1093,8 @@ private:
     int viewOrientationFactor;  // stores if sketch viewed from front or back
 
     bool blockContextMenu;
+    bool leftShiftPressed = false;
+    bool rightShiftPressed = false;
     std::stringstream sketchBackup;
 };
 

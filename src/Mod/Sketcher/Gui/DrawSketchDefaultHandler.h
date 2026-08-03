@@ -453,22 +453,13 @@ public:
     void registerPressedKey(bool pressed, int key) override
     {
         if (key == SoKeyboardEvent::LEFT_SHIFT || key == SoKeyboardEvent::RIGHT_SHIFT) {
-            if (areAutoConstraintsEnabled()) {
-                if (lastSnapHandle) {
-                    updateDataAndDrawToPosition(lastSnapHandle->compute());
-                }
+            if (lastSnapHandle) {
+                mouseMove(*lastSnapHandle);
             }
-            else {
-                for (auto& constraints : sugConstraints) {
-                    constraints.clear();
-                }
-                resetLineExtensionAutoConstraintHint();
-                clearLineExtensionAutoConstraintHintDrawing();
-                resetParallelPerpendicularHint();
-                applyCursor();
-            }
+            return;
         }
-        else if (key == SoKeyboardEvent::M && pressed && !this->isLastState()) {
+
+        if (key == SoKeyboardEvent::M && pressed && !this->isLastState()) {
             this->iterateToNextConstructionMethod();
         }
         else if (key == SoKeyboardEvent::ESCAPE && pressed) {

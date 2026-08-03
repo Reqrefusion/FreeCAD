@@ -593,7 +593,7 @@ public:
                 "User parameter:BaseApp/Preferences/Mod/Sketcher"
             );
             bool avoidredundant = sketchgui->AvoidRedundant.getValue()
-                && sketchgui->Autoconstraints.getValue();
+                && areAutoConstraintsEnabled();
 
             if (Mode == STATUS_Close) {
 

@@ -368,10 +368,7 @@ bool DrawSketchHandler::isConstructionMode() const
 
 bool DrawSketchHandler::areAutoConstraintsEnabled() const
 {
-    const bool shiftPressed
-        = QGuiApplication::queryKeyboardModifiers().testFlag(Qt::ShiftModifier);
-
-    return sketchgui->Autoconstraints.getValue() != shiftPressed;
+    return sketchgui->Autoconstraints.getValue() != sketchgui->isShiftPressed();
 }
 
 const char* DrawSketchHandler::constructionModeAsBooleanText()

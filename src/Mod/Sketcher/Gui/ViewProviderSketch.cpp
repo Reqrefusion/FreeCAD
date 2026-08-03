@@ -1038,6 +1038,16 @@ bool ViewProviderSketch::getPreselectionAtViewportPos(
 
 bool ViewProviderSketch::keyPressed(bool pressed, int key)
 {
+    const bool shiftKey = key == SoKeyboardEvent::LEFT_SHIFT
+        || key == SoKeyboardEvent::RIGHT_SHIFT;
+
+    if (key == SoKeyboardEvent::LEFT_SHIFT) {
+        leftShiftPressed = pressed;
+    }
+    else if (key == SoKeyboardEvent::RIGHT_SHIFT) {
+        rightShiftPressed = pressed;
+    }
+
     if (getEditingMode() != ViewProviderSketch::Default) {
         return ViewProvider2DObject::keyPressed(pressed, key);
     }
@@ -1077,13 +1087,13 @@ bool ViewProviderSketch::keyPressed(bool pressed, int key)
             return false;
         } break;
         default: {
-            if (isInEditMode()
-                && (key == SoKeyboardEvent::LEFT_SHIFT || key == SoKeyboardEvent::RIGHT_SHIFT)
-                && Mode == STATUS_SKETCH_Drag && dragAutoConstraintHandler) {
-                dragAutoConstraintHandler->update(drag.Dragged, Base::Vector2d());
-            }
             if (isInEditMode() && sketchHandler)
                 sketchHandler->registerPressedKey(pressed, key);
+
+            if (isInEditMode() && shiftKey && Mode == STATUS_SKETCH_Drag
+                && dragAutoConstraintHandler) {
+                dragAutoConstraintHandler->update(drag.Dragged, Base::Vector2d());
+            }
         }
     }
 
