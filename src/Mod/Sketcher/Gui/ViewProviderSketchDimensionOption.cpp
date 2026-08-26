@@ -2,6 +2,7 @@
 
 /***************************************************************************
  *   Copyright (c) 2009 Juergen Riegel <juergen.riegel@web.de>             *
+ *   Copyright (c) 2026 Reqrefusion                                        *
  *                                                                         *
  *   This file is part of the FreeCAD CAx development system.              *
  *                                                                         *
@@ -25,29 +26,67 @@
 #include <Inventor/SbLine.h>
 #include <Inventor/SoPickedPoint.h>
 
+#include <QApplication>
 #include <QCoreApplication>
 #include <QEvent>
 #include <QMouseEvent>
+#include <QScopedValueRollback>
+
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <optional>
+#include <string>
+#include <utility>
 
 #include <App/Application.h>
+#include <App/Document.h>
 #include <Base/Exception.h>
+#include <Gui/Selection/Selection.h>
+#include <Gui/Selection/SelectionObject.h>
 #include <Gui/View3DInventor.h>
 #include <Gui/View3DInventorViewer.h>
 #include <Mod/Sketcher/App/SketchObject.h>
 
-#include "ViewProviderSketch.h"
 #include "EditModeCoinManager.h"
+#include "Utils.h"
+#include "ViewProviderSketch.h"
 
-namespace SketcherGui {
+namespace SketcherGui
+{
 
-class DimensionOptionReleaseFilter : public QObject
+namespace DimensionOptionInteractionDetail
+{
+constexpr int viewportMarginPx = 20;
+
+std::optional<DimensionReference> dimensionReferenceFromSubName(
+    const Sketcher::SketchObject& sketch,
+    const std::string& subName
+)
+{
+    int geoId = Sketcher::GeoEnum::GeoUndef;
+    Sketcher::PointPos posId = Sketcher::PointPos::none;
+    getIdsFromName(subName, &sketch, geoId, posId);
+    if (geoId == Sketcher::GeoEnum::GeoUndef) {
+        return std::nullopt;
+    }
+
+    const bool isRootPoint = geoId == Sketcher::GeoEnum::RtPnt && posId == Sketcher::PointPos::start;
+    const bool isAxis = (geoId == Sketcher::GeoEnum::HAxis || geoId == Sketcher::GeoEnum::VAxis)
+        && posId == Sketcher::PointPos::none;
+    const bool isGeometry = posId != Sketcher::PointPos::none || sketch.getGeometry(geoId);
+    return isRootPoint || isAxis || isGeometry
+        ? std::optional<DimensionReference> {DimensionReference {geoId, posId}}
+        : std::nullopt;
+}
+}  // namespace DimensionOptionInteractionDetail
+
+class DimensionOptionReleaseFilter: public QObject
 {
 public:
     explicit DimensionOptionReleaseFilter(ViewProviderSketch* owner, QObject* parent = nullptr)
-        : QObject(parent), owner(owner)
+        : QObject(parent)
+        , owner(owner)
     {}
 
 protected:
@@ -67,8 +106,9 @@ protected:
                 return true;
             }
         }
-        else if (event->type() == QEvent::WindowDeactivate
-                 || event->type() == QEvent::ApplicationDeactivate) {
+        else if (
+            event->type() == QEvent::WindowDeactivate || event->type() == QEvent::ApplicationDeactivate
+        ) {
             owner->cancelDimensionOptionInteraction();
         }
 
@@ -79,33 +119,11 @@ private:
     ViewProviderSketch* owner;
 };
 
-class DimensionOptionFinalizingGuard
-{
-public:
-    explicit DimensionOptionFinalizingGuard(ViewProviderSketch& owner)
-        : owner(owner)
-    {
-        owner.dimensionOptionInteraction.finalizing = true;
-    }
-
-    ~DimensionOptionFinalizingGuard() noexcept
-    {
-        owner.dimensionOptionInteraction.finalizing = false;
-    }
-
-    DimensionOptionFinalizingGuard(const DimensionOptionFinalizingGuard&) = delete;
-    DimensionOptionFinalizingGuard& operator=(const DimensionOptionFinalizingGuard&) = delete;
-
-private:
-    ViewProviderSketch& owner;
-};
-
-
 std::vector<DimensionReference> ViewProviderSketch::getSelectedDimensionOptionRefs() const
 {
     std::vector<DimensionReference> items;
 
-    if (!isInEditMode()) {
+    if (!isInEditMode() || !selection.SelConstraintSet.empty()) {
         return items;
     }
 
@@ -113,45 +131,24 @@ std::vector<DimensionReference> ViewProviderSketch::getSelectedDimensionOptionRe
     if (!sketch) {
         return items;
     }
-    items.reserve(selection.SelOrder.size());
 
-    for (const auto& orderedItem : selection.SelOrder) {
-        if (orderedItem.kind == Selection::OrderedItem::Kind::Point) {
-            if (selection.SelPointSet.find(orderedItem.id) == selection.SelPointSet.end()) {
-                continue;
-            }
+    // SelectionObject::SubNames follows the global selection sequence, so no parallel order cache
+    // is needed in ViewProviderSketch.
+    const auto selectedSketches = Gui::Selection().getSelectionEx(
+        sketch->getDocument()->getName(),
+        Sketcher::SketchObject::getClassTypeId()
+    );
+    if (selectedSketches.size() != 1 || selectedSketches.front().getObject() != sketch) {
+        return items;
+    }
 
-            int geoId = Sketcher::GeoEnum::GeoUndef;
-            Sketcher::PointPos posId = Sketcher::PointPos::none;
-            if (orderedItem.id == Selection::RootPoint) {
-                geoId = Sketcher::GeoEnum::RtPnt;
-                posId = Sketcher::PointPos::start;
-            }
-            else {
-                sketch->getGeoVertexIndex(orderedItem.id, geoId, posId);
-            }
-
-            const bool validPointRef = geoId == Sketcher::GeoEnum::RtPnt
-                || (geoId == Sketcher::GeoEnum::HAxis || geoId == Sketcher::GeoEnum::VAxis)
-                || (geoId != Sketcher::GeoEnum::GeoUndef && sketch->getGeometry(geoId));
-            if (validPointRef) {
-                items.push_back({geoId, posId});
-            }
-            continue;
+    const auto& subNames = selectedSketches.front().getSubNames();
+    items.reserve(subNames.size());
+    for (const auto& subName : subNames) {
+        if (auto reference
+            = DimensionOptionInteractionDetail::dimensionReferenceFromSubName(*sketch, subName)) {
+            items.push_back(*reference);
         }
-
-        if (selection.SelCurvSet.find(orderedItem.id) == selection.SelCurvSet.end()
-            || orderedItem.id == Sketcher::GeoEnum::GeoUndef) {
-            continue;
-        }
-
-        const bool validGeometry = (orderedItem.id == Sketcher::GeoEnum::HAxis || orderedItem.id == Sketcher::GeoEnum::VAxis)
-            || sketch->getGeometry(orderedItem.id);
-        if (!validGeometry) {
-            continue;
-        }
-
-        items.push_back({orderedItem.id, Sketcher::PointPos::none});
     }
 
     return items;
@@ -159,36 +156,46 @@ std::vector<DimensionReference> ViewProviderSketch::getSelectedDimensionOptionRe
 
 QPoint ViewProviderSketch::projectSketchPointToScreen(const Base::Vector2d& p) const
 {
-    const SbVec2f screen = getScreenCoordinates(SbVec2f(static_cast<float>(p.x),
-                                                        static_cast<float>(p.y)));
-    return QPoint(static_cast<int>(std::lround(screen[0])),
-                  static_cast<int>(std::lround(screen[1])));
+    const SbVec2f screen = getScreenCoordinates(
+        SbVec2f(static_cast<float>(p.x), static_cast<float>(p.y))
+    );
+    return QPoint(static_cast<int>(std::lround(screen[0])), static_cast<int>(std::lround(screen[1])));
 }
 
-Base::Vector2d ViewProviderSketch::projectScreenPointToSketch(const QPoint& p) const
+std::optional<Base::Vector2d> ViewProviderSketch::projectScreenPointToSketch(const QPoint& p) const
 {
     auto* view = qobject_cast<Gui::View3DInventor*>(this->getActiveView());
     if (!view || !isInEditMode()) {
-        return Base::Vector2d();
+        return std::nullopt;
     }
 
     SbLine line;
-    getProjectingLine(SbVec2s(static_cast<short>(std::clamp(p.x(),
-                                                            static_cast<int>(std::numeric_limits<short>::min()),
-                                                            static_cast<int>(std::numeric_limits<short>::max()))),
-                              static_cast<short>(std::clamp(p.y(),
-                                                            static_cast<int>(std::numeric_limits<short>::min()),
-                                                            static_cast<int>(std::numeric_limits<short>::max())))),
-                      view->getViewer(),
-                      line);
+    const SbVec2s screenPoint(
+        static_cast<short>(std::clamp(
+            p.x(),
+            static_cast<int>(std::numeric_limits<short>::min()),
+            static_cast<int>(std::numeric_limits<short>::max())
+        )),
+        static_cast<short>(std::clamp(
+            p.y(),
+            static_cast<int>(std::numeric_limits<short>::min()),
+            static_cast<int>(std::numeric_limits<short>::max())
+        ))
+    );
+    if (!getProjectingLine(screenPoint, view->getViewer(), line)) {
+        return std::nullopt;
+    }
 
     double x = 0.0;
     double y = 0.0;
-    getCoordsOnSketchPlane(line.getPosition(), line.getDirection(), x, y);
+    if (!getCoordsOnSketchPlane(line.getPosition(), line.getDirection(), x, y)) {
+        return std::nullopt;
+    }
+
     return Base::Vector2d(x, y);
 }
 
-Base::Vector2d ViewProviderSketch::clampSketchPointToViewport(const Base::Vector2d& p, int marginPx) const
+Base::Vector2d ViewProviderSketch::clampSketchPointToViewport(const Base::Vector2d& p) const
 {
     auto* view = qobject_cast<Gui::View3DInventor*>(this->getActiveView());
     if (!view || !isInEditMode()) {
@@ -207,27 +214,30 @@ Base::Vector2d ViewProviderSketch::clampSketchPointToViewport(const Base::Vector
         return p;
     }
 
-    const int safeMarginX = std::clamp(marginPx, 0, std::max(0, width / 2));
-    const int safeMarginY = std::clamp(marginPx, 0, std::max(0, height / 2));
+    const int safeMarginX
+        = std::clamp(DimensionOptionInteractionDetail::viewportMarginPx, 0, std::max(0, width / 2));
+    const int safeMarginY
+        = std::clamp(DimensionOptionInteractionDetail::viewportMarginPx, 0, std::max(0, height / 2));
 
     const QPoint screen = projectSketchPointToScreen(p);
-    const QPoint clamped(std::clamp(screen.x(), safeMarginX, std::max(safeMarginX, width - safeMarginX)),
-                         std::clamp(screen.y(), safeMarginY, std::max(safeMarginY, height - safeMarginY)));
+    const QPoint clamped(
+        std::clamp(screen.x(), safeMarginX, std::max(safeMarginX, width - safeMarginX)),
+        std::clamp(screen.y(), safeMarginY, std::max(safeMarginY, height - safeMarginY))
+    );
 
     if (clamped == screen) {
         return p;
     }
 
     try {
-        return projectScreenPointToSketch(clamped);
+        return projectScreenPointToSketch(clamped).value_or(p);
     }
     catch (const Base::ZeroDivisionError&) {
         return p;
     }
 }
 
-void ViewProviderSketch::setDimensionOptions(
-    const std::vector<DimensionOption>& options)
+void ViewProviderSketch::setDimensionOptions(const std::vector<DimensionOption>& options)
 {
     dimensionOptions = options;
     if (editCoinManager) {
@@ -235,7 +245,7 @@ void ViewProviderSketch::setDimensionOptions(
     }
     if (auto* view = qobject_cast<Gui::View3DInventor*>(this->getActiveView())) {
         if (auto* viewer = view->getViewer()) {
-            const_cast<Gui::View3DInventorViewer*>(viewer)->redraw();
+            viewer->redraw();
         }
     }
 }
@@ -268,7 +278,7 @@ void ViewProviderSketch::removeDimensionOptionReleaseFilter()
     }
 
     dimensionOptionReleaseFilter = nullptr;
-    delete filter;
+    filter->deleteLater();
 }
 
 void ViewProviderSketch::clearDimensionOptions()
@@ -284,7 +294,8 @@ void ViewProviderSketch::clearDimensionOptions()
 bool ViewProviderSketch::isDimensionOptionPreviewEnabled() const
 {
     ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath(
-        "User parameter:BaseApp/Preferences/Mod/Sketcher");
+        "User parameter:BaseApp/Preferences/Mod/Sketcher"
+    );
     return hGrp->GetBool("EnableDimensionOptionPreview", true);
 }
 
@@ -322,7 +333,10 @@ bool ViewProviderSketch::refreshDimensionOptionPreview()
     return true;
 }
 
-bool ViewProviderSketch::beginDimensionOptionInteraction(const QPoint& screenPos, const SoPickedPoint* point)
+bool ViewProviderSketch::beginDimensionOptionInteraction(
+    const QPoint& screenPos,
+    const SoPickedPoint* point
+)
 {
     if (!isDimensionOptionPreviewEnabled() || !isInEditMode() || Mode != STATUS_NONE
         || getSolvedSketch().hasConflicts() || dimensionOptions.empty()) {
@@ -343,27 +357,21 @@ bool ViewProviderSketch::beginDimensionOptionInteraction(const QPoint& screenPos
         return false;
     }
 
-    DimensionOption resolvedOption = dimensionOptions[idx];
-    if (editCoinManager) {
-        editCoinManager->resolveDimensionOption(idx, resolvedOption);
-    }
-
     dimensionOptionInteraction.active = true;
     dimensionOptionInteraction.dragged = false;
     dimensionOptionInteraction.finalizing = false;
     dimensionOptionInteraction.optionIndex = idx;
     dimensionOptionInteraction.pressScreenPos = screenPos;
-    dimensionOptionInteraction.pressedOption = resolvedOption;
     installDimensionOptionReleaseFilter();
 
-    if (editCoinManager) {
-        editCoinManager->setActiveDimensionOption(idx);
-    }
+    editCoinManager->setActiveDimensionOption(idx);
     return true;
 }
 
-bool ViewProviderSketch::updateDimensionOptionInteraction(const QPoint& screenPos,
-                                                       const Base::Vector2d& onSketchPos)
+bool ViewProviderSketch::updateDimensionOptionInteraction(
+    const QPoint& screenPos,
+    const Base::Vector2d& onSketchPos
+)
 {
     if (!dimensionOptionInteraction.active || dimensionOptionInteraction.finalizing) {
         return false;
@@ -376,15 +384,13 @@ bool ViewProviderSketch::updateDimensionOptionInteraction(const QPoint& screenPo
     }
 
     const int dragDistance = (screenPos - dimensionOptionInteraction.pressScreenPos).manhattanLength();
-    if (!dimensionOptionInteraction.dragged && dragDistance < 4) {
+    if (!dimensionOptionInteraction.dragged && dragDistance < QApplication::startDragDistance()) {
         return false;
     }
 
     DimensionOption updated = dimensionOptions[idx];
-    updated.labelPos = clampSketchPointToViewport(onSketchPos);
-    updated.hasCustomLabelPos = true;
+    updated.customLabelPosition = clampSketchPointToViewport(onSketchPos);
     dimensionOptions[idx] = updated;
-    dimensionOptionInteraction.pressedOption = updated;
     dimensionOptionInteraction.dragged = true;
     setDimensionOptions(dimensionOptions);
     if (editCoinManager) {
@@ -415,17 +421,14 @@ bool ViewProviderSketch::finalizeDimensionOptionInteraction()
         return false;
     }
 
-    DimensionOption option = dimensionOptionInteraction.dragged
-        ? dimensionOptions[idx]
-        : dimensionOptionInteraction.pressedOption;
+    DimensionOption option = dimensionOptions[idx];
     if (editCoinManager) {
-        DimensionOption resolvedOption = option;
-        if (editCoinManager->resolveDimensionOption(idx, resolvedOption)) {
-            option = resolvedOption;
+        if (auto resolvedOption = editCoinManager->resolveDimensionOption(idx)) {
+            option = std::move(*resolvedOption);
         }
     }
 
-    DimensionOptionFinalizingGuard finalizingGuard(*this);
+    QScopedValueRollback<bool> finalizingGuard(dimensionOptionInteraction.finalizing, true);
     removeDimensionOptionReleaseFilter();
     dimensionOptionInteraction.active = false;
     if (editCoinManager) {
@@ -449,11 +452,18 @@ void ViewProviderSketch::cancelDimensionOptionInteraction()
         return;
     }
 
+    const int index = dimensionOptionInteraction.optionIndex;
+    const bool restoreDefaultPlacement = dimensionOptionInteraction.dragged && index >= 0
+        && index < static_cast<int>(dimensionOptions.size());
     removeDimensionOptionReleaseFilter();
     dimensionOptionInteraction = DimensionOptionInteraction();
+    if (restoreDefaultPlacement) {
+        dimensionOptions[index].customLabelPosition.reset();
+        setDimensionOptions(dimensionOptions);
+    }
     if (editCoinManager) {
         editCoinManager->setActiveDimensionOption(-1);
     }
 }
 
-} // namespace SketcherGui
+}  // namespace SketcherGui

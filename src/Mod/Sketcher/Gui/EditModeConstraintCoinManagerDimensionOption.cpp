@@ -2,6 +2,7 @@
 
 /***************************************************************************
  *   Copyright (c) 2021 Abdullah Tahiri <abdullah.tahiri.yo@gmail.com>     *
+ *   Copyright (c) 2026 Reqrefusion                                        *
  *                                                                         *
  *   This file is part of the FreeCAD CAx development system.              *
  *                                                                         *
@@ -25,6 +26,7 @@
 #include <FCConfig.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <QString>
@@ -43,44 +45,50 @@
 #include <Mod/Sketcher/App/SketchObject.h>
 
 #include "EditModeConstraintCoinManager.h"
-#include "CommandConstraints.h"
+#include "DimensionDatumPlacement.h"
 #include "ViewProviderSketch.h"
 #include "ViewProviderSketchCoinAttorney.h"
 
-namespace SketcherGui {
-namespace {
+namespace SketcherGui::DimensionOptionPreviewDetail
+{
 
 std::unique_ptr<Sketcher::Constraint> buildPreparedPreviewConstraint(
     const Sketcher::SketchObject& sketch,
-    const DimensionOption& option)
+    const DimensionOption& option
+)
 {
     auto constraint = buildDimensionConstraint(sketch, option);
     if (!constraint) {
         return nullptr;
     }
 
-    if (option.hasCustomLabelPos) {
-        prepareConstraintForLatestDatumPlacement(sketch, *constraint, option.labelPos);
+    const bool hasBuiltInRadialPlacement = !option.customLabelPosition
+        && (constraint->Type == Sketcher::Radius || constraint->Type == Sketcher::Diameter);
+    const bool placementPrepared = hasBuiltInRadialPlacement
+        || (option.customLabelPosition
+                ? prepareDimensionDatumPlacement(sketch, *constraint, *option.customLabelPosition)
+                : prepareDimensionDatumPlacement(sketch, *constraint));
+    if (!placementPrepared) {
+        return nullptr;
     }
-    else {
-        prepareConstraintForLatestDatumPlacement(sketch, *constraint);
-    }
+
     constraint->isActive = true;
     return constraint;
 }
 
-} // namespace
+}  // namespace SketcherGui::DimensionOptionPreviewDetail
+
+namespace SketcherGui
+{
 
 const std::vector<DimensionOption>& EditModeConstraintCoinManager::currentDimensionOptions() const
 {
-    static const std::vector<DimensionOption> emptyOptions;
-    return dimensionOptionList ? *dimensionOptionList : emptyOptions;
+    return dimensionOptionList;
 }
 
-void EditModeConstraintCoinManager::setDimensionOptions(
-    const std::vector<DimensionOption>& options)
+void EditModeConstraintCoinManager::setDimensionOptions(const std::vector<DimensionOption>& options)
 {
-    dimensionOptionList = &options;
+    dimensionOptionList = options;
 
     if (dimensionOptionActive >= static_cast<int>(currentDimensionOptions().size())) {
         dimensionOptionActive = -1;
@@ -104,69 +112,56 @@ bool EditModeConstraintCoinManager::setActiveDimensionOption(int index)
     return true;
 }
 
-bool EditModeConstraintCoinManager::preparePreviewDatum(
-    const DimensionOption& option,
-    std::unique_ptr<Sketcher::Constraint>& constraint,
-    Gui::SoDatumLabel*& datum) const
+std::optional<EditModeConstraintCoinManager::PreparedPreviewDatum> EditModeConstraintCoinManager::preparePreviewDatum(
+    const DimensionOption& option
+) const
 {
-    datum = nullptr;
-    constraint.reset();
-
     auto* sketch = viewProvider.getSketchObject();
     if (!sketch) {
-        return false;
+        return std::nullopt;
     }
 
-    constraint = buildPreparedPreviewConstraint(*sketch, option);
+    auto constraint = DimensionOptionPreviewDetail::buildPreparedPreviewConstraint(*sketch, option);
     if (!constraint) {
-        return false;
+        return std::nullopt;
     }
 
-    datum = createDimensionDatumLabel(*constraint, true, constraint->isActive);
-    datum->ref();
+    auto datum = createDimensionDatumLabel(*constraint, DatumLabelKind::Preview);
     if (!configurePreviewDatumLabel(*constraint, *datum)) {
-        datum->unref();
-        datum = nullptr;
-        constraint.reset();
-        return false;
+        return std::nullopt;
     }
 
-    return true;
+    return PreparedPreviewDatum {std::move(constraint), std::move(datum)};
 }
 
-bool EditModeConstraintCoinManager::resolveDimensionOption(
-    int index,
-    DimensionOption& option) const
+std::optional<DimensionOption> EditModeConstraintCoinManager::resolveDimensionOption(int index) const
 {
     const auto& options = currentDimensionOptions();
     if (index < 0 || index >= static_cast<int>(options.size())) {
-        return false;
+        return std::nullopt;
     }
 
-    option = options[index];
+    DimensionOption option = options[index];
 
-    std::unique_ptr<Sketcher::Constraint> constraint;
-    Gui::SoDatumLabel* preview = nullptr;
-    if (!preparePreviewDatum(option, constraint, preview)) {
-        return false;
+    const auto preview = preparePreviewDatum(option);
+    if (!preview) {
+        return std::nullopt;
     }
 
-    option.hasPreparedDatumPlacement = true;
-    option.preparedLabelDistance = constraint->LabelDistance;
-    option.preparedLabelPosition = constraint->LabelPosition;
-
-    const SbVec3f center = preview->getLabelTextCenter();
-    preview->unref();
-    option.labelPos = Base::Vector2d(center[0], center[1]);
-    return true;
+    option.preparedDatumPlacement = DimensionOption::DatumPlacement {
+        preview->constraint->LabelDistance,
+        preview->constraint->LabelPosition,
+    };
+    return option;
 }
 
-Gui::SoDatumLabel* EditModeConstraintCoinManager::createDimensionDatumLabel(
+Gui::CoinPtr<Gui::SoDatumLabel> EditModeConstraintCoinManager::createDimensionDatumLabel(
     const Sketcher::Constraint& constraint,
-    bool preview,
-    bool isActive) const
+    DatumLabelKind kind
+) const
 {
-    auto* datum = new Gui::SoDatumLabel();
+    Gui::CoinPtr<Gui::SoDatumLabel> datum {new Gui::SoDatumLabel};
+    const bool preview = kind == DatumLabelKind::Preview;
 
     Base::Vector3d sketchNormal(0.0, 0.0, 1.0);
     Base::Placement placement = ViewProviderSketchCoinAttorney::getEditingPlacement(viewProvider);
@@ -174,24 +169,24 @@ Gui::SoDatumLabel* EditModeConstraintCoinManager::createDimensionDatumLabel(
     rotation.multVec(sketchNormal, sketchNormal);
 
     datum->norm.setValue(SbVec3f(sketchNormal.x, sketchNormal.y, sketchNormal.z));
-    datum->string = preview
-        ? SbString(const_cast<EditModeConstraintCoinManager*>(this)
-                       ->getPresentationString(&constraint)
-                       .toUtf8()
-                       .constData())
-        : SbString("");
-    datum->textColor = !isActive ? drawingParameters.DeactivatedConstrDimColor
+    datum->string = preview ? SbString(getPresentationString(&constraint).toUtf8().constData())
+                            : SbString("");
+    datum->textColor = kind == DatumLabelKind::DeactivatedConstraint
+        ? drawingParameters.DeactivatedConstrDimColor
         : preview ? drawingParameters.CursorTextColor
-        : (constraint.isDriving ? drawingParameters.ConstrDimColor
-                                : drawingParameters.NonDrivingConstrDimColor);
+                  : (constraint.isDriving ? drawingParameters.ConstrDimColor
+                                          : drawingParameters.NonDrivingConstrDimColor);
 
-    if (!preview && !drawingParameters.labelFontName.isEmpty()) {
+    if (!drawingParameters.labelFontName.isEmpty()) {
         datum->name.setValue(drawingParameters.labelFontName.toStdString().c_str());
     }
     datum->size.setValue(drawingParameters.labelFontSize);
-    datum->lineWidth = (preview ? 1 : 2) * drawingParameters.pixelScalingFactor;
+    constexpr float previewLineWidth = 1.0F;
+    constexpr float constraintLineWidth = 2.0F;
+    datum->lineWidth = (preview ? previewLineWidth : constraintLineWidth)
+        * drawingParameters.pixelScalingFactor;
     datum->useAntialiasing = false;
-    datum->strikethrough = preview && !isActive;
+    datum->strikethrough = false;
     return datum;
 }
 
@@ -223,9 +218,8 @@ int EditModeConstraintCoinManager::pickedDimensionOption(const SoPickedPoint* po
             }
 
             bool ok = false;
-            const int optionIndex = QString::fromLatin1(
-                                           optionIdNode->string.getValue().getString())
-                                           .toInt(&ok);
+            const int optionIndex
+                = QString::fromLatin1(optionIdNode->string.getValue().getString()).toInt(&ok);
             if (ok && optionIndex >= 0
                 && optionIndex < static_cast<int>(currentDimensionOptions().size())) {
                 return optionIndex;
@@ -278,13 +272,12 @@ void EditModeConstraintCoinManager::rebuildDimensionOptionNodes()
         return;
     }
 
-    dimensionOptionRoot->removeAllChildren();
+    Gui::coinRemoveAllChildren(dimensionOptionRoot);
 
     const auto& options = currentDimensionOptions();
     for (int i = 0; i < static_cast<int>(options.size()); ++i) {
-        std::unique_ptr<Sketcher::Constraint> constraint;
-        Gui::SoDatumLabel* preview = nullptr;
-        if (!preparePreviewDatum(options[i], constraint, preview)) {
+        auto preview = preparePreviewDatum(options[i]);
+        if (!preview) {
             continue;
         }
 
@@ -298,10 +291,9 @@ void EditModeConstraintCoinManager::rebuildDimensionOptionNodes()
         sep->addChild(editModeScenegraphNodes.ConstraintDrawStyle);
 
         if (i == dimensionOptionActive) {
-            preview->textColor = drawingParameters.PreselectColor;
+            preview->datum->textColor = drawingParameters.PreselectColor;
         }
-        sep->addChild(preview);
-        preview->unref();
+        sep->addChild(preview->datum.get());
 
         auto* optionIdNode = new SoInfo;
         optionIdNode->string = SbString(std::to_string(i).c_str());
@@ -311,4 +303,4 @@ void EditModeConstraintCoinManager::rebuildDimensionOptionNodes()
     }
 }
 
-} // namespace SketcherGui
+}  // namespace SketcherGui

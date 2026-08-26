@@ -2162,8 +2162,7 @@ void EditModeCoinManager::drawConstraintIcons(const GeoListFacade& geolistfacade
     pEditModeConstraintCoinManager->drawConstraintIcons(geolistfacade);
 }
 
-void EditModeCoinManager::setDimensionOptions(
-    const std::vector<DimensionOption>& options)
+void EditModeCoinManager::setDimensionOptions(const std::vector<DimensionOption>& options)
 {
     pEditModeConstraintCoinManager->setDimensionOptions(options);
 }
@@ -2178,9 +2177,9 @@ int EditModeCoinManager::pickDimensionOption(const SoPickedPoint* point) const
     return pEditModeConstraintCoinManager->pickDimensionOption(point);
 }
 
-bool EditModeCoinManager::resolveDimensionOption(int index, DimensionOption& option) const
+std::optional<DimensionOption> EditModeCoinManager::resolveDimensionOption(int index) const
 {
-    return pEditModeConstraintCoinManager->resolveDimensionOption(index, option);
+    return pEditModeConstraintCoinManager->resolveDimensionOption(index);
 }
 
 void EditModeCoinManager::updateVirtualSpace()

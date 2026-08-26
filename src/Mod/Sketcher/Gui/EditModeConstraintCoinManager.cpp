@@ -24,11 +24,7 @@
 
 #include <FCConfig.h>
 
-#include <QApplication>
 #include <QPainter>
-#include <QFontInfo>
-#include <QLocale>
-#include <algorithm>
 #include <QRegularExpression>
 #include <Bnd_Box.hxx>
 #include <algorithm>
@@ -46,7 +42,6 @@
 #include <Inventor/SoPath.h>
 #include <Inventor/nodes/SoAnnotation.h>
 #include <Inventor/nodes/SoCoordinate3.h>
-#include <Inventor/nodes/SoDepthBuffer.h>
 #include <Inventor/nodes/SoDrawStyle.h>
 #include <Inventor/nodes/SoGroup.h>
 #include <Inventor/nodes/SoImage.h>
@@ -62,6 +57,7 @@
 
 #include <Base/Converter.h>
 #include <Base/Exception.h>
+#include <Base/Precision.h>
 #include <Base/Tools.h>
 #include <Base/UnitsApi.h>
 #include <Base/Vector3D.h>
@@ -74,12 +70,10 @@
 #include <Mod/Sketcher/App/Constraint.h>
 #include <Mod/Sketcher/App/GeoEnum.h>
 #include <Mod/Sketcher/App/GeoList.h>
-#include <Mod/Sketcher/App/SketchObject.h>
 #include <Mod/Sketcher/App/GeometryFacade.h>
 #include <Mod/Sketcher/App/SolverGeometryExtension.h>
 
 #include "EditModeConstraintCoinManager.h"
-#include "CommandConstraints.h"
 #include "DimensionOption.h"
 #include "SoZoomTranslation.h"
 #include "Utils.h"
@@ -90,29 +84,10 @@ using namespace Gui;
 using namespace SketcherGui;
 using namespace Sketcher;
 
-namespace SketcherGui::EditModeConstraintPreviewDetail {
-
-QFont previewFont(const DrawingParameters& drawingParameters)
+namespace SketcherGui::ConstraintDatumDetail
 {
-    QFont font = QApplication::font();
-    int defaultPx = QFontInfo(font).pixelSize();
-    if (defaultPx <= 0) {
-        defaultPx = QFontMetrics(font).height();
-    }
-    font.setPixelSize(static_cast<int>(std::max(defaultPx,
-        static_cast<int>(std::lround(drawingParameters.constraintIconSize)))));
-    font.setBold(true);
-    return font;
-}
 
-} // namespace SketcherGui::EditModeConstraintPreviewDetail
-
-namespace {
-
-Base::Vector3d getNormal(
-    const GeoListFacade& geolistfacade,
-    int geoid,
-    const Base::Vector3d& pointoncurve)
+Base::Vector3d getNormal(const GeoListFacade& geolistfacade, int geoid, const Base::Vector3d& pointoncurve)
 {
     auto geom = geolistfacade.getGeometryFromGeoId(geoid);
     auto curve = dynamic_cast<const Part::GeomCurve*>(geom);
@@ -137,7 +112,9 @@ Base::Vector3d getNormal(
     return normal;
 }
 
-} // namespace
+}  // namespace SketcherGui::ConstraintDatumDetail
+
+using SketcherGui::ConstraintDatumDetail::getNormal;
 
 //**************************** EditModeConstraintCoinManager class ******************************
 
@@ -214,30 +191,6 @@ Restart:
     // update the virtual space
     updateVirtualSpace();
 
-    auto getNormal =
-        [](const GeoListFacade& geolistfacade, const int geoid, const Base::Vector3d& pointoncurve) {
-            auto geom = geolistfacade.getGeometryFromGeoId(geoid);
-            auto curve = dynamic_cast<const Part::GeomCurve*>(geom);
-
-            auto line = dynamic_cast<const Part::GeomLineSegment*>(curve);
-
-            if (line) {
-                Base::Vector3d linedir = line->getEndPoint() - line->getStartPoint();
-                return Base::Vector3d(-linedir.y, linedir.x, 0);
-            }
-
-            Base::Vector3d normal;
-            try {
-                if (!(curve && curve->normalAt(pointoncurve, normal))) {
-                    normal = Base::Vector3d(1, 0, 0);
-                }
-            }
-            catch (const Base::CADKernelError&) {
-                normal = Base::Vector3d(1, 0, 0);
-            }
-
-            return normal;
-        };
     // go through the constraints and update the position
     int i = 0;
     for (auto it = constrlist.begin(); it != constrlist.end(); ++it, i++) {
@@ -1472,7 +1425,10 @@ void EditModeConstraintCoinManager::rebuildConstraintNodes(
             case Diameter:
             case Weight:
             case Angle: {
-                Gui::SoDatumLabel* text = createDimensionDatumLabel(*it, false, isActive);
+                auto text = createDimensionDatumLabel(
+                    *it,
+                    isActive ? DatumLabelKind::Constraint : DatumLabelKind::DeactivatedConstraint
+                );
                 text->norm.setValue(norm);
                 text->string = "";
                 text->textColor = isActive
@@ -1488,7 +1444,7 @@ void EditModeConstraintCoinManager::rebuildConstraintNodes(
                 text->linePattern = drawingParameters.DimensionalConstraintLinePattern;
                 text->useAntialiasing = false;
 
-                sep->addChild(text);
+                sep->addChild(text.get());
                 editModeScenegraphNodes.constrGroup->addChild(sep);
                 vConstrType.push_back(it->Type);
                 // nodes not needed
@@ -1634,7 +1590,7 @@ void EditModeConstraintCoinManager::rebuildConstraintNodes(
 QString EditModeConstraintCoinManager::getPresentationString(
     const Constraint* constraint,
     std::string prefix
-)
+) const
 {
     /**
      * Hide units if
@@ -1667,41 +1623,9 @@ QString EditModeConstraintCoinManager::getPresentationString(
     // Get the current value string including units
     double factor {};
     std::string unitStr;  // the actual unit string
-    auto presentationValue = constraint->getPresentationValue();
-    auto quantityFormat = presentationValue.getFormat();
-    quantityFormat.setPrecision(std::max(0, Base::UnitsApi::getDecimals()));
-    presentationValue.setFormat(quantityFormat);
-    const auto constrPresValue {presentationValue.getUserString(factor, unitStr)};
+    const auto constrPresValue {constraint->getPresentationValue().getUserString(factor, unitStr)};
     auto valueStr = QString::fromStdString(constrPresValue);
 
-    auto normalizeScientificNotation = [](const QString& input, int decimals) -> QString {
-        static const QRegularExpression rx {
-            QString::fromUtf8(R"(^\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)(.*)$)")
-        };
-
-        const auto match = rx.match(input);
-        if (!match.hasMatch()) {
-            return input;
-        }
-
-        const QString numericPart = match.captured(1);
-        if (!numericPart.contains(QRegularExpression(QString::fromUtf8("[eE]")))) {
-            return input;
-        }
-
-        bool ok = false;
-        const double numericValue = QLocale::c().toDouble(numericPart, &ok);
-        if (!ok) {
-            return input;
-        }
-
-        QString formatted = QString::number(numericValue, 'f', std::max(0, decimals));
-        formatted.remove(QRegularExpression(QString::fromUtf8("0+$")));
-        formatted.remove(QRegularExpression(QString::fromUtf8("\\.$")));
-        return formatted + match.captured(2);
-    };
-
-    valueStr = normalizeScientificNotation(valueStr, Base::UnitsApi::getDecimals());
     auto fixedValueStr = fixValueStr(valueStr, unitStr).value_or(valueStr);
     if (!prefix.empty()) {
         fixedValueStr.prepend(QString::fromStdString(prefix));
@@ -2422,7 +2346,9 @@ QImage EditModeConstraintCoinManager::renderConstrIcon(
     // The pixmap was already scaled so we don't need to scale the image
     icon.setDevicePixelRatio(1.0F);
 
-    QFont font = EditModeConstraintPreviewDetail::previewFont(drawingParameters);
+    QFont font = ViewProviderSketchCoinAttorney::getApplicationFont(viewProvider);
+    font.setPixelSize(static_cast<int>(1.0 * drawingParameters.constraintIconSize));
+    font.setBold(true);
     QFontMetrics qfm = QFontMetrics(font);
 
     int labelWidth = qfm.boundingRect(labels.join(joinStr)).width();
@@ -2592,483 +2518,504 @@ int EditModeConstraintCoinManager::constrColorPriority(int constraintId)
     return 1;
 }
 
+bool EditModeConstraintCoinManager::configureLinearDatumLabel(
+    const GeoListFacade& geolistfacade,
+    const Sketcher::Constraint& constraint,
+    Gui::SoDatumLabel& datum,
+    double zConstrH
+) const
+{
+    double helperStartAngle1 = 0.;  // for arc helpers
+    double helperStartAngle2 = 0.;
+    double helperRange1 = 0.;
+    double helperRange2 = 0.;
+    double radius1 = 0.;
+    double radius2 = 0.;
+    Base::Vector3d center1(0., 0., 0.);
+    Base::Vector3d center2(0., 0., 0.);
+    int numPoints = 2;
+
+    // pnt1 will be initialized to (0,0,0) if only one point is given
+    Base::Vector3d pnt1 = geolistfacade.getPoint(constraint.First, constraint.FirstPos);
+    Base::Vector3d pnt2(0., 0., 0.);
+
+    if (constraint.SecondPos != Sketcher::PointPos::none) {
+        // point to point distance
+        pnt2 = geolistfacade.getPoint(constraint.Second, constraint.SecondPos);
+    }
+    else if (constraint.Second != GeoEnum::GeoUndef) {
+        auto* geo1 = geolistfacade.getGeometryFromGeoId(constraint.First);
+        auto* geo2 = geolistfacade.getGeometryFromGeoId(constraint.Second);
+        if (!geo1 || !geo2) {
+            return false;
+        }
+
+        if (isLineSegment(*geo2)) {
+            // NOLINTNEXTLINE
+            auto* lineSeg = static_cast<const Part::GeomLineSegment*>(geo2);
+            Base::Vector3d l2p1 = lineSeg->getStartPoint();
+            Base::Vector3d l2p2 = lineSeg->getEndPoint();
+
+            if (constraint.FirstPos != Sketcher::PointPos::none) {
+                // point to line distance
+                // calculate the projection of p1 onto lineSeg
+                pnt2.ProjectToLine(pnt1 - l2p1, l2p2 - l2p1);
+                pnt2 += pnt1;
+            }
+            else if (isCircleOrArc(*geo1)) {
+                // circular to line distance
+                auto [radius, ct] = getRadiusCenterCircleArc(geo1);
+                // project the center on the line (translated to origin)
+                pnt1.ProjectToLine(ct - l2p1, l2p2 - l2p1);
+                Base::Vector3d dir = pnt1;
+                dir.Normalize();
+                pnt1 += ct;
+                pnt2 = ct + dir * radius;
+            }
+            else {
+                return false;
+            }
+        }
+        else if (isCircleOrArc(*geo2)) {
+            if (constraint.FirstPos != Sketcher::PointPos::none) {
+                // point to circular distance
+                auto [rad, ct] = getRadiusCenterCircleArc(geo2);
+                Base::Vector3d v = pnt1 - ct;
+                v = v.Normalize();
+                pnt2 = ct + rad * v;
+            }
+            else if (isCircleOrArc(*geo1)) {
+                // circular to circular distance
+                GetCirclesMinimalDistance(geo1, geo2, pnt1, pnt2);
+            }
+            else {
+                return false;
+            }
+        }
+        else {
+            return false;
+        }
+    }
+    else if (constraint.FirstPos != Sketcher::PointPos::none) {
+        // one point distance
+        pnt1 = Base::Vector3d(0., 0., 0.);
+        pnt2 = geolistfacade.getPoint(constraint.First, constraint.FirstPos);
+    }
+    else if (constraint.First != GeoEnum::GeoUndef) {
+        auto* geo = geolistfacade.getGeometryFromGeoId(constraint.First);
+        if (!geo) {
+            return false;
+        }
+
+        if (isLineSegment(*geo)) {
+            // segment distance
+            auto* lineSeg = static_cast<const Part::GeomLineSegment*>(geo);
+            pnt1 = lineSeg->getStartPoint();
+            pnt2 = lineSeg->getEndPoint();
+        }
+        else if (isArcOfCircle(*geo)) {
+            // arc length
+            auto* arc = static_cast<const Part::GeomArcOfCircle*>(geo);
+            center1 = arc->getCenter();
+            pnt1 = arc->getStartPoint();
+            pnt2 = arc->getEndPoint();
+
+            datum.datumtype = Gui::SoDatumLabel::ARCLENGTH;
+            datum.param1 = constraint.LabelDistance;
+            datum.string = SbString(getPresentationString(&constraint, "◠ ").toUtf8().constData());
+            datum.strikethrough = !constraint.isActive;
+
+            datum.pnts.setNum(3);
+            SbVec3f* verts = datum.pnts.startEditing();
+            verts[0] = SbVec3f(center1.x, center1.y, center1.z);
+            verts[1] = SbVec3f(pnt1.x, pnt1.y, pnt1.z);
+            verts[2] = SbVec3f(pnt2.x, pnt2.y, pnt2.z);
+            datum.pnts.finishEditing();
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+    else {
+        return false;
+    }
+
+    // Get presentation string (w/o units if option is set)
+    datum.string = SbString(getPresentationString(&constraint).toUtf8().constData());
+    datum.strikethrough = !constraint.isActive;
+    if (constraint.Type == Sketcher::Distance) {
+        datum.datumtype = Gui::SoDatumLabel::DISTANCE;
+    }
+    else if (constraint.Type == Sketcher::DistanceX) {
+        datum.datumtype = Gui::SoDatumLabel::DISTANCEX;
+    }
+    else {
+        datum.datumtype = Gui::SoDatumLabel::DISTANCEY;
+    }
+
+    // Check if arc helpers are needed
+    if (constraint.Second != GeoEnum::GeoUndef) {
+        auto* geo1 = geolistfacade.getGeometryFromGeoId(constraint.First);
+        auto* geo2 = geolistfacade.getGeometryFromGeoId(constraint.Second);
+        if (!geo1 || !geo2) {
+            return false;
+        }
+
+        if (isArcOfCircle(*geo1) && constraint.FirstPos == Sketcher::PointPos::none) {
+            auto* arc = static_cast<const Part::GeomArcOfCircle*>(geo1);
+            radius1 = arc->getRadius();
+            center1 = arc->getCenter();
+
+            double angle = Base::Vector2d(
+                               (isLineSegment(*geo2) ? pnt2 : pnt1).x - center1.x,
+                               (isLineSegment(*geo2) ? pnt2 : pnt1).y - center1.y
+            )
+                               .Angle();
+            double startAngle, endAngle;
+            arc->getRange(startAngle, endAngle, /*emulateCCW=*/true);
+            findHelperAngles(helperStartAngle1, helperRange1, angle, startAngle, endAngle);
+
+            if (helperRange1 != 0.) {
+                // We override to draw the full helper as it does not look good
+                // otherwise We still use findHelperAngles before to find if helper
+                // is needed.
+                helperStartAngle1 = endAngle;
+                helperRange1 = 2 * std::numbers::pi - (endAngle - startAngle);
+                numPoints++;
+            }
+        }
+        if (isArcOfCircle(*geo2) && constraint.SecondPos == Sketcher::PointPos::none) {
+            auto* arc = static_cast<const Part::GeomArcOfCircle*>(geo2);
+            radius2 = arc->getRadius();
+            center2 = arc->getCenter();
+
+            double angle = Base::Vector2d(pnt2.x - center2.x, pnt2.y - center2.y).Angle();
+            double startAngle, endAngle;
+            arc->getRange(startAngle, endAngle, /*emulateCCW=*/true);
+            findHelperAngles(helperStartAngle2, helperRange2, angle, startAngle, endAngle);
+
+            if (helperRange2 != 0.) {
+                helperStartAngle2 = endAngle;
+                helperRange2 = 2 * std::numbers::pi - (endAngle - startAngle);
+                numPoints++;
+            }
+        }
+    }
+
+    // Assign the Datum Points
+    datum.pnts.setNum(numPoints);
+    SbVec3f* verts = datum.pnts.startEditing();
+    verts[0] = SbVec3f(pnt1.x, pnt1.y, zConstrH);
+    verts[1] = SbVec3f(pnt2.x, pnt2.y, zConstrH);
+    if (numPoints > 2) {
+        if (helperRange1 != 0.) {
+            verts[2] = SbVec3f(center1.x, center1.y, zConstrH);
+            datum.param3 = helperStartAngle1;
+            datum.param4 = helperRange1;
+            datum.param5 = radius1;
+        }
+        else {
+            verts[2] = SbVec3f(center2.x, center2.y, zConstrH);
+            datum.param3 = helperStartAngle2;
+            datum.param4 = helperRange2;
+            datum.param5 = radius2;
+        }
+        if (numPoints > 3) {
+            verts[3] = SbVec3f(center2.x, center2.y, zConstrH);
+            datum.param6 = helperStartAngle2;
+            datum.param7 = helperRange2;
+            datum.param8 = radius2;
+        }
+        else {
+            datum.param6 = 0.;
+            datum.param7 = 0.;
+            datum.param8 = 0.;
+        }
+    }
+    else {
+        datum.param3 = 0.;
+        datum.param4 = 0.;
+        datum.param5 = 0.;
+        datum.param6 = 0.;
+        datum.param7 = 0.;
+        datum.param8 = 0.;
+    }
+    datum.pnts.finishEditing();
+    // Assign the Label Distance
+    datum.param1 = constraint.LabelDistance;
+    datum.param2 = constraint.LabelPosition;
+    return true;
+}
+
+bool EditModeConstraintCoinManager::configureAngularDatumLabel(
+    const GeoListFacade& geolistfacade,
+    const Sketcher::Constraint& constraint,
+    Gui::SoDatumLabel& datum,
+    double zConstrH
+) const
+{
+    using std::numbers::pi;
+
+    SbVec3f p0;
+    double distance = constraint.LabelDistance;
+    double startAngle = 0.0;
+    double range = 0.0;
+    double endLineLength1 = 0.0;
+    double endLineLength2 = 0.0;
+    if (constraint.Second != GeoEnum::GeoUndef) {
+        Base::Vector3d dir1, dir2;
+        if (constraint.Third == GeoEnum::GeoUndef) {  // angle between two lines
+            const Part::Geometry* geo1 = geolistfacade.getGeometryFromGeoId(constraint.First);
+            const Part::Geometry* geo2 = geolistfacade.getGeometryFromGeoId(constraint.Second);
+            if (!geo1 || !geo2 || !isLineSegment(*geo1) || !isLineSegment(*geo2)) {
+                return false;
+            }
+            auto* line1 = static_cast<const Part::GeomLineSegment*>(geo1);
+            auto* line2 = static_cast<const Part::GeomLineSegment*>(geo2);
+
+            bool flip1 = (constraint.FirstPos == PointPos::end);
+            bool flip2 = (constraint.SecondPos == PointPos::end);
+            dir1 = (flip1 ? -1. : 1.) * (line1->getEndPoint() - line1->getStartPoint()).Normalize();
+            dir2 = (flip2 ? -1. : 1.) * (line2->getEndPoint() - line2->getStartPoint()).Normalize();
+            Base::Vector3d pnt1 = flip1 ? line1->getEndPoint() : line1->getStartPoint();
+            Base::Vector3d pnt2 = flip2 ? line2->getEndPoint() : line2->getStartPoint();
+            Base::Vector3d pnt12 = flip1 ? line1->getStartPoint() : line1->getEndPoint();
+            Base::Vector3d pnt22 = flip2 ? line2->getStartPoint() : line2->getEndPoint();
+
+            // line-line intersection
+            Base::Vector3d intersection;
+            double det = dir1.x * dir2.y - dir1.y * dir2.x;
+            if (std::abs(det) < Base::Precision::Confusion()) {
+                // lines are coincident (or parallel) and in this case the
+                // center of the point pairs with the shortest distance is
+                // used
+                Base::Vector3d p1[2], p2[2];
+                p1[0] = line1->getStartPoint();
+                p1[1] = line1->getEndPoint();
+                p2[0] = line2->getStartPoint();
+                p2[1] = line2->getEndPoint();
+                double length = std::numeric_limits<double>::max();
+                for (int i = 0; i <= 1; i++) {
+                    for (int j = 0; j <= 1; j++) {
+                        double tmp = (p2[j] - p1[i]).Length();
+                        if (tmp < length) {
+                            length = tmp;
+                            double x = (p2[j].x + p1[i].x) / 2;
+                            double y = (p2[j].y + p1[i].y) / 2;
+                            intersection = Base::Vector3d(x, y, 0.);
+                        }
+                    }
+                }
+            }
+            else {
+                double c1 = dir1.y * pnt1.x - dir1.x * pnt1.y;
+                double c2 = dir2.y * pnt2.x - dir2.x * pnt2.y;
+                double x = (dir1.x * c2 - dir2.x * c1) / det;
+                double y = (dir1.y * c2 - dir2.y * c1) / det;
+                intersection = Base::Vector3d(x, y, 0.);
+            }
+            p0.setValue(intersection.x, intersection.y, zConstrH);
+
+            range = constraint.getValue();  // WYSIWYG
+            startAngle = std::atan2(dir1.y, dir1.x);
+            Base::Vector3d vl1 = dir1 * 2 * distance - (pnt1 - intersection);
+            Base::Vector3d vl2 = dir2 * 2 * distance - (pnt2 - intersection);
+            Base::Vector3d vl12 = dir1 * 2 * distance - (pnt12 - intersection);
+            Base::Vector3d vl22 = dir2 * 2 * distance - (pnt22 - intersection);
+
+            endLineLength1 = vl12.Dot(dir1) > 0 ? vl12.Length()
+                : vl1.Dot(dir1) < 0             ? -vl1.Length()
+                                                : 0.0;
+            endLineLength2 = vl22.Dot(dir2) > 0 ? vl22.Length()
+                : vl2.Dot(dir2) < 0             ? -vl2.Length()
+                                                : 0.0;
+        }
+        else {  // angle-via-point
+            Base::Vector3d p = geolistfacade.getPoint(constraint.Third, constraint.ThirdPos);
+            p0 = SbVec3f(p.x, p.y, zConstrH);
+            dir1 = getNormal(geolistfacade, constraint.First, p);
+            dir1.RotateZ(-pi / 2);  // Convert the normal to a tangent.
+            dir2 = getNormal(geolistfacade, constraint.Second, p);
+            dir2.RotateZ(-pi / 2);
+
+            startAngle = std::atan2(dir1.y, dir1.x);
+            range = std::atan2(dir1.x * dir2.y - dir1.y * dir2.x, dir1.x * dir2.x + dir1.y * dir2.y);
+        }
+    }
+    else if (constraint.First != GeoEnum::GeoUndef) {
+        const Part::Geometry* geo = geolistfacade.getGeometryFromGeoId(constraint.First);
+        if (!geo) {
+            return false;
+        }
+        if (geo->is<Part::GeomLineSegment>()) {
+            auto* lineSeg = static_cast<const Part::GeomLineSegment*>(geo);
+            p0 = Base::convertTo<SbVec3f>((lineSeg->getEndPoint() + lineSeg->getStartPoint()) / 2);
+            p0[2] = zConstrH;
+            double l1 = 2 * distance
+                - (lineSeg->getEndPoint() - lineSeg->getStartPoint()).Length() / 2;
+            endLineLength1 = 2 * distance;
+            endLineLength2 = l1 > 0. ? l1 : 0.;
+
+            Base::Vector3d dir = lineSeg->getEndPoint() - lineSeg->getStartPoint();
+            startAngle = 0.;
+            range = std::atan2(dir.y, dir.x);
+        }
+        else if (geo->is<Part::GeomArcOfCircle>()) {
+            auto* arc = static_cast<const Part::GeomArcOfCircle*>(geo);
+            p0 = Base::convertTo<SbVec3f>(arc->getCenter());
+            p0[2] = zConstrH;
+            endLineLength1 = 2 * distance - arc->getRadius();
+            endLineLength2 = endLineLength1;
+
+            double endAngle;
+            arc->getRange(startAngle, endAngle, /*emulateCCWXY=*/true);
+            range = endAngle - startAngle;
+        }
+        else {
+            return false;
+        }
+    }
+    else {
+        return false;
+    }
+
+    datum.string = SbString(getPresentationString(&constraint).toUtf8().constData());
+    datum.strikethrough = !constraint.isActive;
+    datum.datumtype = Gui::SoDatumLabel::ANGLE;
+    datum.param1 = distance;
+    datum.param2 = startAngle;
+    datum.param3 = range;
+    datum.param4 = endLineLength1;
+    datum.param5 = endLineLength2;
+    datum.pnts.setNum(2);
+    SbVec3f* verts = datum.pnts.startEditing();
+    verts[0] = p0;
+    datum.pnts.finishEditing();
+    return true;
+}
+
+bool EditModeConstraintCoinManager::configureRadialDatumLabel(
+    const GeoListFacade& geolistfacade,
+    const Sketcher::Constraint& constraint,
+    Gui::SoDatumLabel& datum,
+    double zConstrH
+) const
+{
+    using std::numbers::pi;
+
+    Base::Vector3d pnt1(0., 0., 0.), pnt2(0., 0., 0.);
+    double helperStartAngle = 0.;
+    double helperRange = 0.;
+    double startHelperAngle = 0.;
+    double startHelperRange = 0.;
+    double endHelperAngle = 0.;
+    double endHelperRange = 0.;
+
+    if (constraint.First == GeoEnum::GeoUndef) {
+        return false;
+    }
+    const Part::Geometry* geo = geolistfacade.getGeometryFromGeoId(constraint.First);
+    if (!geo) {
+        return false;
+    }
+
+    const bool isDiameter = constraint.Type == Sketcher::Diameter;
+    if (geo->is<Part::GeomArcOfCircle>()) {
+        auto* arc = static_cast<const Part::GeomArcOfCircle*>(geo);
+        double radius = arc->getRadius();
+        double angle = static_cast<double>(constraint.LabelPosition);
+        double startAngle, endAngle;
+        arc->getRange(startAngle, endAngle, /*emulateCCW=*/true);
+
+        if (isAutoDatumLabelPosition(angle)) {
+            angle = (startAngle + endAngle) / 2;
+        }
+
+        if (isDiameter) {
+            findHelperAngles(startHelperAngle, startHelperRange, angle, startAngle, endAngle);
+            findHelperAngles(endHelperAngle, endHelperRange, angle + pi, startAngle, endAngle);
+            Base::Vector3d center = arc->getCenter();
+            pnt1 = center - radius * Base::Vector3d(std::cos(angle), std::sin(angle), 0.);
+            pnt2 = center + radius * Base::Vector3d(std::cos(angle), std::sin(angle), 0.);
+        }
+        else {
+            findHelperAngles(helperStartAngle, helperRange, angle, startAngle, endAngle);
+            pnt1 = arc->getCenter();
+            pnt2 = pnt1 + radius * Base::Vector3d(std::cos(angle), std::sin(angle), 0.);
+        }
+    }
+    else if (geo->is<Part::GeomCircle>()) {
+        auto* circle = static_cast<const Part::GeomCircle*>(geo);
+        double radius = circle->getRadius();
+        double angle = static_cast<double>(constraint.LabelPosition);
+        if (isAutoDatumLabelPosition(angle)) {
+            angle = 0;
+        }
+        Base::Vector3d center = circle->getCenter();
+        if (isDiameter) {
+            pnt1 = center - radius * Base::Vector3d(std::cos(angle), std::sin(angle), 0.);
+            pnt2 = center + radius * Base::Vector3d(std::cos(angle), std::sin(angle), 0.);
+        }
+        else {
+            pnt1 = center;
+            pnt2 = pnt1 + radius * Base::Vector3d(std::cos(angle), std::sin(angle), 0.);
+        }
+    }
+    else {
+        return false;
+    }
+
+    if (constraint.Type == Sketcher::Weight) {
+        datum.string = SbString(QString::number(constraint.getValue()).toStdString().c_str());
+    }
+    else {
+        datum.string = isDiameter
+            ? SbString(getPresentationString(&constraint, "⌀").toUtf8().constData())
+            : SbString(getPresentationString(&constraint, "R").toUtf8().constData());
+        datum.strikethrough = !constraint.isActive;
+    }
+
+    datum.datumtype = isDiameter ? Gui::SoDatumLabel::DIAMETER : Gui::SoDatumLabel::RADIUS;
+    datum.param1 = constraint.LabelDistance;
+    datum.param2 = constraint.LabelPosition;
+    if (isDiameter) {
+        datum.param3 = static_cast<float>(startHelperAngle);
+        datum.param4 = static_cast<float>(startHelperRange);
+        datum.param5 = static_cast<float>(endHelperAngle);
+        datum.param6 = static_cast<float>(endHelperRange);
+    }
+    else {
+        datum.param3 = helperStartAngle;
+        datum.param4 = helperRange;
+    }
+
+    datum.pnts.setNum(2);
+    SbVec3f* verts = datum.pnts.startEditing();
+    verts[0] = SbVec3f(pnt1.x, pnt1.y, zConstrH);
+    verts[1] = SbVec3f(pnt2.x, pnt2.y, zConstrH);
+    datum.pnts.finishEditing();
+    return true;
+}
+
 bool EditModeConstraintCoinManager::configureDimensionDatumLabel(
     const GeoListFacade& geolistfacade,
     const Sketcher::Constraint& constraint,
     Gui::SoDatumLabel& datum,
-    double zConstrH) const
+    double zConstrH
+) const
 {
-    using std::numbers::pi;
-
     switch (constraint.Type) {
         case Sketcher::Distance:
         case Sketcher::DistanceX:
-        case Sketcher::DistanceY: {
-            double helperStartAngle1 = 0.;  // for arc helpers
-            double helperStartAngle2 = 0.;
-            double helperRange1 = 0.;
-            double helperRange2 = 0.;
-            double radius1 = 0.;
-            double radius2 = 0.;
-            Base::Vector3d center1(0., 0., 0.);
-            Base::Vector3d center2(0., 0., 0.);
-            int numPoints = 2;
-
-            // pnt1 will be initialized to (0,0,0) if only one point is given
-            Base::Vector3d pnt1 = geolistfacade.getPoint(constraint.First, constraint.FirstPos);
-            Base::Vector3d pnt2(0., 0., 0.);
-
-            if (constraint.SecondPos != Sketcher::PointPos::none) {
-                // point to point distance
-                pnt2 = geolistfacade.getPoint(constraint.Second, constraint.SecondPos);
-            }
-            else if (constraint.Second != GeoEnum::GeoUndef) {
-                auto geo1 = geolistfacade.getGeometryFromGeoId(constraint.First);
-                auto geo2 = geolistfacade.getGeometryFromGeoId(constraint.Second);
-                if (!geo1 || !geo2) {
-                    return false;
-                }
-
-                if (isLineSegment(*geo2)) {
-                    // NOLINTNEXTLINE
-                    auto lineSeg = static_cast<const Part::GeomLineSegment*>(geo2);
-                    Base::Vector3d l2p1 = lineSeg->getStartPoint();
-                    Base::Vector3d l2p2 = lineSeg->getEndPoint();
-
-                    if (constraint.FirstPos != Sketcher::PointPos::none) {
-                        // point to line distance
-                        // calculate the projection of p1 onto lineSeg
-                        pnt2.ProjectToLine(pnt1 - l2p1, l2p2 - l2p1);
-                        pnt2 += pnt1;
-                    }
-                    else if (isCircleOrArc(*geo1)) {
-                        // circular to line distance
-                        auto [radius, ct] = getRadiusCenterCircleArc(geo1);
-                        // project the center on the line (translated to origin)
-                        pnt1.ProjectToLine(ct - l2p1, l2p2 - l2p1);
-                        Base::Vector3d dir = pnt1;
-                        dir.Normalize();
-                        pnt1 += ct;
-                        pnt2 = ct + dir * radius;
-                    }
-                    else {
-                        return false;
-                    }
-                }
-                else if (isCircleOrArc(*geo2)) {
-                    if (constraint.FirstPos != Sketcher::PointPos::none) {
-                        // point to circular distance
-                        auto [rad, ct] = getRadiusCenterCircleArc(geo2);
-                        Base::Vector3d v = pnt1 - ct;
-                        v = v.Normalize();
-                        pnt2 = ct + rad * v;
-                    }
-                    else if (isCircleOrArc(*geo1)) {
-                        // circular to circular distance
-                        GetCirclesMinimalDistance(geo1, geo2, pnt1, pnt2);
-                    }
-                    else {
-                        return false;
-                    }
-                }
-                else {
-                    return false;
-                }
-            }
-            else if (constraint.FirstPos != Sketcher::PointPos::none) {
-                // one point distance
-                pnt1 = Base::Vector3d(0., 0., 0.);
-                pnt2 = geolistfacade.getPoint(constraint.First, constraint.FirstPos);
-            }
-            else if (constraint.First != GeoEnum::GeoUndef) {
-                auto geo = geolistfacade.getGeometryFromGeoId(constraint.First);
-                if (!geo) {
-                    return false;
-                }
-
-                if (isLineSegment(*geo)) {
-                    // segment distance
-                    auto lineSeg = static_cast<const Part::GeomLineSegment*>(geo);
-                    pnt1 = lineSeg->getStartPoint();
-                    pnt2 = lineSeg->getEndPoint();
-                }
-                else if (isArcOfCircle(*geo)) {
-                    // arc length
-                    auto arc = static_cast<const Part::GeomArcOfCircle*>(geo);
-                    center1 = arc->getCenter();
-                    pnt1 = arc->getStartPoint();
-                    pnt2 = arc->getEndPoint();
-
-                    datum.datumtype = Gui::SoDatumLabel::ARCLENGTH;
-                    datum.param1 = constraint.LabelDistance;
-                    datum.string = SbString(
-                        const_cast<EditModeConstraintCoinManager*>(this)->getPresentationString(&constraint, "◠ ").toUtf8().constData());
-                    datum.strikethrough = !constraint.isActive;
-
-                    datum.pnts.setNum(3);
-                    SbVec3f* verts = datum.pnts.startEditing();
-                    verts[0] = SbVec3f(center1.x, center1.y, center1.z);
-                    verts[1] = SbVec3f(pnt1.x, pnt1.y, pnt1.z);
-                    verts[2] = SbVec3f(pnt2.x, pnt2.y, pnt2.z);
-                    datum.pnts.finishEditing();
-                    return true;
-                }
-                else {
-                    return false;
-                }
-            }
-            else {
-                return false;
-            }
-
-            // Get presentation string (w/o units if option is set)
-            datum.string = SbString(const_cast<EditModeConstraintCoinManager*>(this)->getPresentationString(&constraint).toUtf8().constData());
-            datum.strikethrough = !constraint.isActive;
-            if (constraint.Type == Sketcher::Distance) {
-                datum.datumtype = Gui::SoDatumLabel::DISTANCE;
-            }
-            else if (constraint.Type == Sketcher::DistanceX) {
-                datum.datumtype = Gui::SoDatumLabel::DISTANCEX;
-            }
-            else {
-                datum.datumtype = Gui::SoDatumLabel::DISTANCEY;
-            }
-
-            // Check if arc helpers are needed
-            if (constraint.Second != GeoEnum::GeoUndef) {
-                auto geo1 = geolistfacade.getGeometryFromGeoId(constraint.First);
-                auto geo2 = geolistfacade.getGeometryFromGeoId(constraint.Second);
-                if (!geo1 || !geo2) {
-                    return false;
-                }
-
-                if (isArcOfCircle(*geo1) && constraint.FirstPos == Sketcher::PointPos::none) {
-                    auto arc = static_cast<const Part::GeomArcOfCircle*>(geo1);
-                    radius1 = arc->getRadius();
-                    center1 = arc->getCenter();
-
-                    double angle = Base::Vector2d(
-                        (isLineSegment(*geo2) ? pnt2 : pnt1).x - center1.x,
-                        (isLineSegment(*geo2) ? pnt2 : pnt1).y - center1.y).Angle();
-                    double startAngle, endAngle;
-                    arc->getRange(startAngle, endAngle, /*emulateCCW=*/true);
-                    findHelperAngles(helperStartAngle1, helperRange1, angle, startAngle, endAngle);
-
-                    if (helperRange1 != 0.) {
-                        // We override to draw the full helper as it does not look good
-                        // otherwise We still use findHelperAngles before to find if helper
-                        // is needed.
-                        helperStartAngle1 = endAngle;
-                        helperRange1 = 2 * std::numbers::pi - (endAngle - startAngle);
-                        numPoints++;
-                    }
-                }
-                if (isArcOfCircle(*geo2) && constraint.SecondPos == Sketcher::PointPos::none) {
-                    auto arc = static_cast<const Part::GeomArcOfCircle*>(geo2);
-                    radius2 = arc->getRadius();
-                    center2 = arc->getCenter();
-
-                    double angle = Base::Vector2d(pnt2.x - center2.x, pnt2.y - center2.y).Angle();
-                    double startAngle, endAngle;
-                    arc->getRange(startAngle, endAngle, /*emulateCCW=*/true);
-                    findHelperAngles(helperStartAngle2, helperRange2, angle, startAngle, endAngle);
-
-                    if (helperRange2 != 0.) {
-                        helperStartAngle2 = endAngle;
-                        helperRange2 = 2 * std::numbers::pi - (endAngle - startAngle);
-                        numPoints++;
-                    }
-                }
-            }
-
-            // Assign the Datum Points
-            datum.pnts.setNum(numPoints);
-            SbVec3f* verts = datum.pnts.startEditing();
-            verts[0] = SbVec3f(pnt1.x, pnt1.y, zConstrH);
-            verts[1] = SbVec3f(pnt2.x, pnt2.y, zConstrH);
-            if (numPoints > 2) {
-                if (helperRange1 != 0.) {
-                    verts[2] = SbVec3f(center1.x, center1.y, zConstrH);
-                    datum.param3 = helperStartAngle1;
-                    datum.param4 = helperRange1;
-                    datum.param5 = radius1;
-                }
-                else {
-                    verts[2] = SbVec3f(center2.x, center2.y, zConstrH);
-                    datum.param3 = helperStartAngle2;
-                    datum.param4 = helperRange2;
-                    datum.param5 = radius2;
-                }
-                if (numPoints > 3) {
-                    verts[3] = SbVec3f(center2.x, center2.y, zConstrH);
-                    datum.param6 = helperStartAngle2;
-                    datum.param7 = helperRange2;
-                    datum.param8 = radius2;
-                }
-                else {
-                    datum.param6 = 0.;
-                    datum.param7 = 0.;
-                    datum.param8 = 0.;
-                }
-            }
-            else {
-                datum.param3 = 0.;
-                datum.param4 = 0.;
-                datum.param5 = 0.;
-                datum.param6 = 0.;
-                datum.param7 = 0.;
-                datum.param8 = 0.;
-            }
-            datum.pnts.finishEditing();
-            // Assign the Label Distance
-            datum.param1 = constraint.LabelDistance;
-            datum.param2 = constraint.LabelPosition;
-            return true;
-        }
-        case Sketcher::Angle: {
-            SbVec3f p0;
-            double distance = constraint.LabelDistance;
-            double startangle = 0.0;
-            double range = 0.0;
-            double endLineLength1 = 0.0;
-            double endLineLength2 = 0.0;
-            if (constraint.Second != GeoEnum::GeoUndef) {
-                Base::Vector3d dir1, dir2;
-                if (constraint.Third == GeoEnum::GeoUndef) {  // angle between two lines
-                    const Part::Geometry* geo1 = geolistfacade.getGeometryFromGeoId(constraint.First);
-                    const Part::Geometry* geo2 = geolistfacade.getGeometryFromGeoId(constraint.Second);
-                    if (!geo1 || !geo2 || !isLineSegment(*geo1) || !isLineSegment(*geo2)) {
-                        return false;
-                    }
-                    auto* line1 = static_cast<const Part::GeomLineSegment*>(geo1);
-                    auto* line2 = static_cast<const Part::GeomLineSegment*>(geo2);
-
-                    bool flip1 = (constraint.FirstPos == PointPos::end);
-                    bool flip2 = (constraint.SecondPos == PointPos::end);
-                    dir1 = (flip1 ? -1. : 1.)
-                        * (line1->getEndPoint() - line1->getStartPoint()).Normalize();
-                    dir2 = (flip2 ? -1. : 1.)
-                        * (line2->getEndPoint() - line2->getStartPoint()).Normalize();
-                    Base::Vector3d pnt1 = flip1 ? line1->getEndPoint() : line1->getStartPoint();
-                    Base::Vector3d pnt2 = flip2 ? line2->getEndPoint() : line2->getStartPoint();
-                    Base::Vector3d pnt12 = flip1 ? line1->getStartPoint() : line1->getEndPoint();
-                    Base::Vector3d pnt22 = flip2 ? line2->getStartPoint() : line2->getEndPoint();
-
-                    // line-line intersection
-                    Base::Vector3d intersection;
-                    double det = dir1.x * dir2.y - dir1.y * dir2.x;
-                    if ((det > 0 ? det : -det) < 1e-10) {
-                        // lines are coincident (or parallel) and in this case the
-                        // center of the point pairs with the shortest distance is
-                        // used
-                        Base::Vector3d p1[2], p2[2];
-                        p1[0] = line1->getStartPoint();
-                        p1[1] = line1->getEndPoint();
-                        p2[0] = line2->getStartPoint();
-                        p2[1] = line2->getEndPoint();
-                        double length = std::numeric_limits<double>::max();
-                        for (int i = 0; i <= 1; i++) {
-                            for (int j = 0; j <= 1; j++) {
-                                double tmp = (p2[j] - p1[i]).Length();
-                                if (tmp < length) {
-                                    length = tmp;
-                                    double x = (p2[j].x + p1[i].x) / 2;
-                                    double y = (p2[j].y + p1[i].y) / 2;
-                                    intersection = Base::Vector3d(x, y, 0.);
-                                }
-                            }
-                        }
-                    }
-                    else {
-                        double c1 = dir1.y * pnt1.x - dir1.x * pnt1.y;
-                        double c2 = dir2.y * pnt2.x - dir2.x * pnt2.y;
-                        double x = (dir1.x * c2 - dir2.x * c1) / det;
-                        double y = (dir1.y * c2 - dir2.y * c1) / det;
-                        intersection = Base::Vector3d(x, y, 0.);
-                    }
-                    p0.setValue(intersection.x, intersection.y, zConstrH);
-
-                    range = constraint.getValue();  // WYSIWYG
-                    startangle = atan2(dir1.y, dir1.x);
-                    Base::Vector3d vl1 = dir1 * 2 * distance - (pnt1 - intersection);
-                    Base::Vector3d vl2 = dir2 * 2 * distance - (pnt2 - intersection);
-                    Base::Vector3d vl12 = dir1 * 2 * distance - (pnt12 - intersection);
-                    Base::Vector3d vl22 = dir2 * 2 * distance - (pnt22 - intersection);
-
-                    endLineLength1 = vl12.Dot(dir1) > 0 ? vl12.Length()
-                        : vl1.Dot(dir1) < 0             ? -vl1.Length()
-                                                        : 0.0;
-                    endLineLength2 = vl22.Dot(dir2) > 0 ? vl22.Length()
-                        : vl2.Dot(dir2) < 0             ? -vl2.Length()
-                                                        : 0.0;
-                }
-                else {  // angle-via-point
-                    Base::Vector3d p = geolistfacade.getPoint(constraint.Third, constraint.ThirdPos);
-                    p0 = SbVec3f(p.x, p.y, zConstrH);
-                    // TODO: Check
-                    // dir1 = getSolvedSketch().calculateNormalAtPoint(Constr->First,
-                    // p.x, p.y);
-                    dir1 = getNormal(geolistfacade, constraint.First, p);
-                    dir1.RotateZ(-pi / 2);  // convert to vector of tangency by rotating
-                    // TODO: Check
-                    // dir2 = getSolvedSketch().calculateNormalAtPoint(Constr->Second,
-                    // p.x, p.y);
-                    dir2 = getNormal(geolistfacade, constraint.Second, p);
-                    dir2.RotateZ(-pi / 2);
-
-                    startangle = atan2(dir1.y, dir1.x);
-                    range = atan2(dir1.x * dir2.y - dir1.y * dir2.x,
-                                  dir1.x * dir2.x + dir1.y * dir2.y);
-                }
-            }
-            else if (constraint.First != GeoEnum::GeoUndef) {
-                const Part::Geometry* geo = geolistfacade.getGeometryFromGeoId(constraint.First);
-                if (!geo) {
-                    return false;
-                }
-                if (geo->is<Part::GeomLineSegment>()) {
-                    auto* lineSeg = static_cast<const Part::GeomLineSegment*>(geo);
-                    p0 = Base::convertTo<SbVec3f>(
-                        (lineSeg->getEndPoint() + lineSeg->getStartPoint()) / 2);
-                    p0[2] = zConstrH;
-                    double l1 = 2 * distance
-                        - (lineSeg->getEndPoint() - lineSeg->getStartPoint()).Length() / 2;
-                    endLineLength1 = 2 * distance;
-                    endLineLength2 = l1 > 0. ? l1 : 0.;
-
-                    Base::Vector3d dir = lineSeg->getEndPoint() - lineSeg->getStartPoint();
-                    startangle = 0.;
-                    range = atan2(dir.y, dir.x);
-                }
-                else if (geo->is<Part::GeomArcOfCircle>()) {
-                    auto* arc = static_cast<const Part::GeomArcOfCircle*>(geo);
-                    p0 = Base::convertTo<SbVec3f>(arc->getCenter());
-                    p0[2] = zConstrH;
-                    endLineLength1 = 2 * distance - arc->getRadius();
-                    endLineLength2 = endLineLength1;
-
-                    double endangle;
-                    arc->getRange(startangle, endangle, /*emulateCCWXY=*/true);
-                    range = endangle - startangle;
-                }
-                else {
-                    return false;
-                }
-            }
-            else {
-                return false;
-            }
-
-            datum.string = SbString(const_cast<EditModeConstraintCoinManager*>(this)->getPresentationString(&constraint).toUtf8().constData());
-            datum.strikethrough = !constraint.isActive;
-            datum.datumtype = Gui::SoDatumLabel::ANGLE;
-            datum.param1 = distance;
-            datum.param2 = startangle;
-            datum.param3 = range;
-            datum.param4 = endLineLength1;
-            datum.param5 = endLineLength2;
-            datum.pnts.setNum(2);
-            SbVec3f* verts = datum.pnts.startEditing();
-            verts[0] = p0;
-            datum.pnts.finishEditing();
-            return true;
-        }
+        case Sketcher::DistanceY:
+            return configureLinearDatumLabel(geolistfacade, constraint, datum, zConstrH);
+        case Sketcher::Angle:
+            return configureAngularDatumLabel(geolistfacade, constraint, datum, zConstrH);
         case Sketcher::Diameter:
         case Sketcher::Radius:
-        case Sketcher::Weight: {
-            Base::Vector3d pnt1(0., 0., 0.), pnt2(0., 0., 0.);
-            double helperStartAngle = 0.;
-            double helperRange = 0.;
-            double startHelperAngle = 0.;
-            double startHelperRange = 0.;
-            double endHelperAngle = 0.;
-            double endHelperRange = 0.;
-
-            if (constraint.First == GeoEnum::GeoUndef) {
-                return false;
-            }
-            const Part::Geometry* geo = geolistfacade.getGeometryFromGeoId(constraint.First);
-            if (!geo) {
-                return false;
-            }
-
-            const bool isDiameter = constraint.Type == Sketcher::Diameter;
-            if (geo->is<Part::GeomArcOfCircle>()) {
-                auto* arc = static_cast<const Part::GeomArcOfCircle*>(geo);
-                double radius = arc->getRadius();
-                double angle = static_cast<double>(constraint.LabelPosition);
-                double startAngle, endAngle;
-                arc->getRange(startAngle, endAngle, /*emulateCCW=*/true);
-
-                if (isAutoDatumLabelPosition(angle)) {
-                    angle = (startAngle + endAngle) / 2;
-                }
-
-                if (isDiameter) {
-                    findHelperAngles(startHelperAngle, startHelperRange, angle, startAngle, endAngle);
-                    findHelperAngles(endHelperAngle, endHelperRange, angle + pi, startAngle, endAngle);
-                    Base::Vector3d center = arc->getCenter();
-                    pnt1 = center - radius * Base::Vector3d(cos(angle), sin(angle), 0.);
-                    pnt2 = center + radius * Base::Vector3d(cos(angle), sin(angle), 0.);
-                }
-                else {
-                    findHelperAngles(helperStartAngle, helperRange, angle, startAngle, endAngle);
-                    pnt1 = arc->getCenter();
-                    pnt2 = pnt1 + radius * Base::Vector3d(cos(angle), sin(angle), 0.);
-                }
-            }
-            else if (geo->is<Part::GeomCircle>()) {
-                auto* circle = static_cast<const Part::GeomCircle*>(geo);
-                double radius = circle->getRadius();
-                double angle = static_cast<double>(constraint.LabelPosition);
-                if (isAutoDatumLabelPosition(angle)) {
-                    angle = 0;
-                }
-                Base::Vector3d center = circle->getCenter();
-                if (isDiameter) {
-                    pnt1 = center - radius * Base::Vector3d(cos(angle), sin(angle), 0.);
-                    pnt2 = center + radius * Base::Vector3d(cos(angle), sin(angle), 0.);
-                }
-                else {
-                    pnt1 = center;
-                    pnt2 = pnt1 + radius * Base::Vector3d(cos(angle), sin(angle), 0.);
-                }
-            }
-            else {
-                return false;
-            }
-
-            if (constraint.Type == Sketcher::Weight) {
-                datum.string = SbString(QString::number(constraint.getValue()).toStdString().c_str());
-            }
-            else {
-                datum.string = isDiameter
-                    ? SbString(const_cast<EditModeConstraintCoinManager*>(this)->getPresentationString(&constraint, "⌀").toUtf8().constData())
-                    : SbString(const_cast<EditModeConstraintCoinManager*>(this)->getPresentationString(&constraint, "R").toUtf8().constData());
-                datum.strikethrough = !constraint.isActive;
-            }
-
-            datum.datumtype = isDiameter ? Gui::SoDatumLabel::DIAMETER : Gui::SoDatumLabel::RADIUS;
-            datum.param1 = constraint.LabelDistance;
-            datum.param2 = constraint.LabelPosition;
-            if (isDiameter) {
-                datum.param3 = static_cast<float>(startHelperAngle);
-                datum.param4 = static_cast<float>(startHelperRange);
-                datum.param5 = static_cast<float>(endHelperAngle);
-                datum.param6 = static_cast<float>(endHelperRange);
-            }
-            else {
-                datum.param3 = helperStartAngle;
-                datum.param4 = helperRange;
-            }
-
-            datum.pnts.setNum(2);
-            SbVec3f* verts = datum.pnts.startEditing();
-            verts[0] = SbVec3f(pnt1.x, pnt1.y, zConstrH);
-            verts[1] = SbVec3f(pnt2.x, pnt2.y, zConstrH);
-            datum.pnts.finishEditing();
-            return true;
-        }
+        case Sketcher::Weight:
+            return configureRadialDatumLabel(geolistfacade, constraint, datum, zConstrH);
         default:
             return false;
     }
@@ -3076,7 +3023,8 @@ bool EditModeConstraintCoinManager::configureDimensionDatumLabel(
 
 bool EditModeConstraintCoinManager::configurePreviewDatumLabel(
     const Sketcher::Constraint& constraint,
-    Gui::SoDatumLabel& datum) const
+    Gui::SoDatumLabel& datum
+) const
 {
     auto geolistfacade = ViewProviderSketchCoinAttorney::getGeoListFacade(viewProvider);
     const auto zConstrH = ViewProviderSketchCoinAttorney::getViewOrientationFactor(viewProvider)

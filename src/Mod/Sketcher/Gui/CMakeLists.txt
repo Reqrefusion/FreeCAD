@@ -75,10 +75,14 @@ SET(SketcherGui_SRCS
     DrawSketchHandlerRotate.h
     DrawSketchHandlerScale.h
     DrawSketchHandlerSymmetry.h
+    DimensionDatumPlacement.h
+    DimensionDatumPlacement.cpp
     DimensionOption.h
     DimensionOption.cpp
+    DimensionOptionCommand.cpp
     CommandCreateGeo.cpp
     CommandConstraints.h
+    CommandConstraintsInternal.h
     CommandConstraints.cpp
     CommandSketcherTools.h
     CommandSketcherTools.cpp

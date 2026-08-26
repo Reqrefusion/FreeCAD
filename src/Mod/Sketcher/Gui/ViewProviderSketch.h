@@ -35,6 +35,7 @@
 #include <QPointer>
 #include <fastsignals/signal.h>
 #include <memory>
+#include <optional>
 
 #include <Base/Parameter.h>
 #include <Base/Placement.h>
@@ -111,7 +112,6 @@ class DrawSketchHandler;
 class DrawSketchHandlerDragAutoConstraint;
 class ViewProviderSketchCommandConstraintsAttorney;
 class DimensionOptionReleaseFilter;
-class DimensionOptionFinalizingGuard;
 
 using GeoList = Sketcher::GeoList;
 using GeoListFacade = Sketcher::GeoListFacade;
@@ -449,17 +449,6 @@ private:
             VerticalAxis = -2
         };
 
-        struct OrderedItem
-        {
-            enum class Kind
-            {
-                Point,
-                Geometry,
-            };
-            Kind kind {Kind::Geometry};
-            int id {0};
-        };
-
         Selection()
         {
             reset();
@@ -470,13 +459,11 @@ private:
             SelPointSet.clear();
             SelCurvSet.clear();
             SelConstraintSet.clear();
-            SelOrder.clear();
         }
 
         std::set<int> SelPointSet;       // Indices as PreselectPoint (and -1 for rootpoint)
         std::set<int> SelCurvSet;        // also holds cross axes at -1 and -2
         std::set<int> SelConstraintSet;  // ConstraintN, N = index + 1.
-        std::vector<OrderedItem> SelOrder;
         bool selectionBuffering {false};
     };
     //@}
@@ -778,7 +765,6 @@ public:
     friend class ViewProviderSketchSnapAttorney;
     friend class ViewProviderSketchCommandConstraintsAttorney;
     friend class DimensionOptionReleaseFilter;
-    friend class DimensionOptionFinalizingGuard;
     //@}
 
     bool editingCancelled;
@@ -934,9 +920,9 @@ private:
     /// moves a selected constraint
     void moveConstraint(int constNum, const Base::Vector2d& toPos, OffsetMode offset = NoOffset);
     void moveConstraint(
-        Sketcher::Constraint*,
-        int constNum,
-        const Base::Vector2d& toPos,
+        Sketcher::Constraint* constraint,
+        int constraintIndex,
+        const Base::Vector2d& labelPosition,
         OffsetMode offset = NoOffset
     );
     void moveAngleConstraint(Sketcher::Constraint*, int constNum, const Base::Vector2d& toPos);
@@ -944,8 +930,8 @@ private:
 
     std::vector<DimensionReference> getSelectedDimensionOptionRefs() const;
     QPoint projectSketchPointToScreen(const Base::Vector2d& p) const;
-    Base::Vector2d projectScreenPointToSketch(const QPoint& p) const;
-    Base::Vector2d clampSketchPointToViewport(const Base::Vector2d& p, int marginPx = 20) const;
+    [[nodiscard]] std::optional<Base::Vector2d> projectScreenPointToSketch(const QPoint& p) const;
+    Base::Vector2d clampSketchPointToViewport(const Base::Vector2d& p) const;
     void setDimensionOptions(const std::vector<DimensionOption>& options);
     void clearDimensionOptions();
     bool isDimensionOptionPreviewEnabled() const;
@@ -956,11 +942,6 @@ private:
     void cancelDimensionOptionInteraction();
     void installDimensionOptionReleaseFilter();
     void removeDimensionOptionReleaseFilter();
-    void updateOrderedSelectionItem(Selection& selection,
-                                    Selection::OrderedItem::Kind kind,
-                                    int id,
-                                    bool isSelected);
-
     void setupActiveAndInEdit();
     void unsetupActiveAndInEdit();
 
@@ -1001,6 +982,7 @@ private:
 
     Base::Placement getEditingPlacement() const;
 
+    std::unique_ptr<SoRayPickAction> getRayPickAction() const;
 
     SbVec2f getScreenCoordinates(SbVec2f sketchcoordinates) const;
     SbVec2f getScreenCoordinates(SbVec3f sketchcoordinates) const;
@@ -1087,7 +1069,6 @@ private:
         bool finalizing {false};
         int optionIndex {-1};
         QPoint pressScreenPos;
-        DimensionOption pressedOption;
     };
 
     fastsignals::connection connectUndoDocument;

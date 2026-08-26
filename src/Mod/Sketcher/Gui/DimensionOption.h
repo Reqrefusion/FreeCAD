@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
 /***************************************************************************
+ *   Copyright (c) 2026 Reqrefusion                                        *
  *                                                                         *
  *   This file is part of the FreeCAD CAx development system.              *
  *                                                                         *
@@ -25,16 +26,21 @@
 
 #include <Base/Tools2D.h>
 #include <Mod/Sketcher/App/GeoEnum.h>
+#include <Mod/Sketcher/SketcherGlobal.h>
 
 #include <memory>
+#include <optional>
 #include <vector>
 
-namespace Sketcher {
+namespace Sketcher
+{
 class SketchObject;
 class Constraint;
-}
+enum ConstraintType : int;
+}  // namespace Sketcher
 
-namespace SketcherGui {
+namespace SketcherGui
+{
 
 /// Legacy datum label-position sentinel used to request automatic placement.
 inline constexpr double kAutoDatumLabelPosition = 10.0;
@@ -44,50 +50,57 @@ inline constexpr double kAutoDatumLabelPosition = 10.0;
     return labelPosition == kAutoDatumLabelPosition;
 }
 
-enum class DimensionSemantic
-{
-    Unknown,
-    DirectLength,
-    DirectDistance,
-    ProjectedX,
-    ProjectedY,
-    Radius,
-    Diameter,
-    Angle,
-};
+/// Existing Sketcher identifier for a geometry and one of its optional points.
+using DimensionReference = Sketcher::GeoElementId;
 
-struct DimensionReference
-{
-    int geoId {-1};
-    Sketcher::PointPos posId {Sketcher::PointPos::none};
-};
-
+/// Complete, UI-independent description of one dimension candidate.
 struct DimensionOption
 {
-    DimensionSemantic semantic {DimensionSemantic::Unknown};
+    struct DatumPlacement
+    {
+        double labelDistance {0.0};
+        double labelPosition {0.0};
+    };
+
+    Sketcher::ConstraintType constraintType {};
     double previewValue {0.0};
 
     std::vector<DimensionReference> refs;
-
-    Base::Vector2d labelPos;
-
-    bool hasCustomLabelPos {false};
-
-    bool hasPreparedDatumPlacement {false};
-
-    double preparedLabelDistance {0.0};
-    double preparedLabelPosition {0.0};
+    std::optional<Base::Vector2d> customLabelPosition;
+    std::optional<DatumPlacement> preparedDatumPlacement;
 };
 
-[[nodiscard]] std::unique_ptr<Sketcher::Constraint> buildDimensionConstraint(
+/**
+ * @brief Build the Sketcher constraint represented by a dimension candidate.
+ * @param sketch Sketch containing the referenced geometry.
+ * @param option Candidate to convert.
+ * @return A constraint, or `nullptr` when the candidate is invalid.
+ */
+[[nodiscard]] SketcherGuiExport std::unique_ptr<Sketcher::Constraint> buildDimensionConstraint(
     const Sketcher::SketchObject& sketch,
-    const DimensionOption& option);
+    const DimensionOption& option
+);
 
-[[nodiscard]] std::vector<DimensionOption> buildDimensionOptions(
+/**
+ * @brief Return the valid, non-duplicate dimension candidates for an ordered selection.
+ * @param sketch Sketch containing the selection.
+ * @param selectionRefs Geometry references in selection order.
+ * @return Candidate dimensions not already present in the sketch.
+ */
+[[nodiscard]] SketcherGuiExport std::vector<DimensionOption> buildDimensionOptions(
     Sketcher::SketchObject* sketch,
-    const std::vector<DimensionReference>& selectionRefs);
+    const std::vector<DimensionReference>& selectionRefs
+);
 
-bool commitDimensionOption(Sketcher::SketchObject& sketch,
-                           const DimensionOption& option);
+/**
+ * @brief Add a dimension candidate to the sketch in one undoable command.
+ * @param sketch Sketch to modify.
+ * @param option Candidate to commit.
+ * @return `true` when the constraint was created successfully.
+ */
+SketcherGuiExport bool commitDimensionOption(
+    Sketcher::SketchObject& sketch,
+    const DimensionOption& option
+);
 
-} // namespace SketcherGui
+}  // namespace SketcherGui

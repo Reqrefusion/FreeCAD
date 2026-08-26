@@ -33,9 +33,8 @@
 #include <Base/Vector3D.h>
 #include <Mod/Sketcher/App/GeoList.h>
 #include "GeometryCreationMode.h"
-#include <QPoint>
-#include "DimensionOption.h"
 
+#include "DimensionOption.h"
 #include "EditModeCoinManagerParameters.h"
 
 
@@ -304,7 +303,7 @@ public:
     void setDimensionOptions(const std::vector<DimensionOption>& options);
     bool setActiveDimensionOption(int index);
     int pickDimensionOption(const SoPickedPoint* point) const;
-    bool resolveDimensionOption(int index, DimensionOption& option) const;
+    [[nodiscard]] std::optional<DimensionOption> resolveDimensionOption(int index) const;
 
     void updateGeometryLayersConfiguration();
     //@}
