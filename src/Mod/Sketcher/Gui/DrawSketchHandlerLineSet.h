@@ -943,32 +943,15 @@ public:
 private:
     void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override
     {
+        prevCursorPos = onSketchPos;
+
         switch (state()) {
             case SelectMode::SeekFirst: {
-                seekAndRenderAutoConstraint(sugConstraints[0], onSketchPos, Base::Vector2d(0.F, 0.F));
-
-                Base::Vector2d snapPoint;
-                if (getLineExtensionAutoConstraintSnapPoint(snapPoint)) {
-                    onSketchPos = snapPoint;
-                }
-
-                prevCursorPos = onSketchPos;
                 toolWidgetManager.drawPositionAtCursor(onSketchPos);
+
+                seekAndRenderAutoConstraint(sugConstraints[0], onSketchPos, Base::Vector2d(0.F, 0.F));
             } break;
             case SelectMode::SeekSecond: {
-                Base::Vector2d vec;
-                if (constructionMethod() == ConstructionMethod::Line) {
-                    vec = onSketchPos - getLastPoint();
-                }
-
-                seekAndRenderAutoConstraint(sugConstraints[1], onSketchPos, vec);
-
-                Base::Vector2d snapPoint;
-                if (getLineExtensionAutoConstraintSnapPoint(snapPoint)) {
-                    onSketchPos = snapPoint;
-                }
-
-                prevCursorPos = onSketchPos;
                 toolWidgetManager.drawDirectionAtCursor(onSketchPos, getLastPoint());
 
                 double angle1 = (onSketchPos - getLastPoint()).Angle() - previousDirectionAngle;
@@ -982,6 +965,13 @@ private:
                 }
                 catch (const Base::ValueError&) {
                 }  // equal points while hovering raise an objection that can be safely ignored
+
+                Base::Vector2d vec;
+                if (constructionMethod() == ConstructionMethod::Line) {
+                    vec = onSketchPos - getLastPoint();
+                }
+
+                seekAndRenderAutoConstraint(sugConstraints[1], onSketchPos, vec);
             } break;
             default:
                 break;
