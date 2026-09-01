@@ -24,12 +24,15 @@
 
 #pragma once
 
+#include <Precision.hxx>
+
 #include <Gui/Notifications.h>
 #include <Gui/Selection/SelectionFilter.h>
 #include <Gui/Command.h>
 #include <Gui/CommandT.h>
 
 #include <Mod/Sketcher/App/SketchObject.h>
+#include <Mod/Sketcher/App/PythonConverter.h>
 
 #include "DrawSketchHandler.h"
 #include "Utils.h"
@@ -287,15 +290,27 @@ public:
         }
         else if (Mode == STATUS_SEEK_Second) {
             try {
-                openCommand(QT_TRANSLATE_NOOP("Command", "Extend edge"));
-                Gui::cmdAppObjectArgs(
-                    sketchgui->getObject(),
-                    "extend(%d, %f, %d)\n",  // GeoId, increment, PointPos
+                ExtensionTarget autoConstraintTarget {
                     BaseGeoId,
-                    Increment,
-                    ExtendFromStart ? static_cast<int>(Sketcher::PointPos::start)
-                                    : static_cast<int>(Sketcher::PointPos::end)
-                );
+                    ExtendFromStart ? Sketcher::PointPos::start : Sketcher::PointPos::end
+                };
+                if (isConstructionMode()) {
+                    openCommand(
+                        QT_TRANSLATE_NOOP("Command", "Extend edge with construction geometry")
+                    );
+                    autoConstraintTarget = extendWithConstruction();
+                }
+                else {
+                    openCommand(QT_TRANSLATE_NOOP("Command", "Extend edge"));
+                    Gui::cmdAppObjectArgs(
+                        sketchgui->getObject(),
+                        "extend(%d, %f, %d)\n",  // GeoId, increment, PointPos
+                        BaseGeoId,
+                        Increment,
+                        ExtendFromStart ? static_cast<int>(Sketcher::PointPos::start)
+                                        : static_cast<int>(Sketcher::PointPos::end)
+                    );
+                }
                 commitCommand();
 
                 ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath(
@@ -310,8 +325,8 @@ public:
                 if (!SugConstr.empty()) {
                     createAutoConstraints(
                         SugConstr,
-                        BaseGeoId,
-                        (ExtendFromStart) ? Sketcher::PointPos::start : Sketcher::PointPos::end
+                        autoConstraintTarget.geoId,
+                        autoConstraintTarget.point
                     );
                     SugConstr.clear();
                 }
@@ -399,6 +414,204 @@ public:
     }
 
 private:
+    struct ExtensionTarget
+    {
+        int geoId;
+        Sketcher::PointPos point;
+    };
+
+    int addConstructionGeometry(std::unique_ptr<Part::Geometry> geometry)
+    {
+        Sketcher::GeometryFacade::setConstruction(geometry.get(), true);
+        std::vector<Part::Geometry*> geometries {geometry.get()};
+        const std::string sketchObject = Gui::Command::getObjectCmd(sketchgui->getObject());
+        Gui::Command::doCommand(
+            Gui::Command::Doc,
+            Sketcher::PythonConverter::convert(
+                sketchObject,
+                geometries,
+                Sketcher::PythonConverter::Mode::OmitInternalGeometry
+            )
+                .c_str()
+        );
+        return sketchgui->getSketchObject()->getHighestCurveIndex();
+    }
+
+    void addCoincidentConstraint(
+        int firstGeoId,
+        Sketcher::PointPos firstPoint,
+        int secondGeoId,
+        Sketcher::PointPos secondPoint
+    )
+    {
+        Gui::cmdAppObjectArgs(
+            sketchgui->getObject(),
+            "addConstraint(Sketcher.Constraint('Coincident',%d,%d,%d,%d))",
+            firstGeoId,
+            static_cast<int>(firstPoint),
+            secondGeoId,
+            static_cast<int>(secondPoint)
+        );
+    }
+
+    void setConstruction(int geoId)
+    {
+        Gui::cmdAppObjectArgs(sketchgui->getObject(), "setConstruction(%d,True)", geoId);
+    }
+
+    ExtensionTarget createConstructionExtension()
+    {
+        const Part::Geometry* geometry = sketchgui->getSketchObject()->getGeometry(BaseGeoId);
+        if (geometry->is<Part::GeomLineSegment>()) {
+            const auto* segment = static_cast<const Part::GeomLineSegment*>(geometry);
+            const Base::Vector3d startPoint = segment->getStartPoint();
+            const Base::Vector3d endPoint = segment->getEndPoint();
+            Base::Vector3d direction = ExtendFromStart ? startPoint - endPoint : endPoint - startPoint;
+            direction.Normalize();
+
+            auto extension = std::make_unique<Part::GeomLineSegment>();
+            Sketcher::PointPos extensionSharedPoint;
+            Sketcher::PointPos extensionFreePoint;
+            Sketcher::PointPos originalPoint;
+            if (ExtendFromStart) {
+                extension->setPoints(startPoint + direction * Increment, startPoint);
+                extensionSharedPoint = Sketcher::PointPos::end;
+                extensionFreePoint = Sketcher::PointPos::start;
+                originalPoint = Sketcher::PointPos::start;
+            }
+            else {
+                extension->setPoints(endPoint, endPoint + direction * Increment);
+                extensionSharedPoint = Sketcher::PointPos::start;
+                extensionFreePoint = Sketcher::PointPos::end;
+                originalPoint = Sketcher::PointPos::end;
+            }
+
+            const int extensionGeoId = addConstructionGeometry(std::move(extension));
+            addCoincidentConstraint(
+                extensionGeoId,
+                extensionSharedPoint,
+                BaseGeoId,
+                originalPoint
+            );
+            Gui::cmdAppObjectArgs(
+                sketchgui->getObject(),
+                "addConstraint(Sketcher.Constraint('Parallel',%d,%d))",
+                extensionGeoId,
+                BaseGeoId
+            );
+            return {extensionGeoId, extensionFreePoint};
+        }
+
+        const auto* arc = static_cast<const Part::GeomArcOfCircle*>(geometry);
+        double startParameter;
+        double endParameter;
+        arc->getRange(startParameter, endParameter, true);
+        std::unique_ptr<Part::Geometry> extension(
+            ExtendFromStart ? arc->createArc(startParameter - Increment, startParameter)
+                            : arc->createArc(endParameter, endParameter + Increment)
+        );
+        const int extensionGeoId = addConstructionGeometry(std::move(extension));
+        const Sketcher::PointPos extensionSharedPoint
+            = ExtendFromStart ? Sketcher::PointPos::end : Sketcher::PointPos::start;
+        const Sketcher::PointPos extensionFreePoint
+            = ExtendFromStart ? Sketcher::PointPos::start : Sketcher::PointPos::end;
+        const Sketcher::PointPos originalPoint
+            = ExtendFromStart ? Sketcher::PointPos::start : Sketcher::PointPos::end;
+
+        addCoincidentConstraint(extensionGeoId, extensionSharedPoint, BaseGeoId, originalPoint);
+        addCoincidentConstraint(
+            extensionGeoId,
+            Sketcher::PointPos::mid,
+            BaseGeoId,
+            Sketcher::PointPos::mid
+        );
+        Gui::cmdAppObjectArgs(
+            sketchgui->getObject(),
+            "addConstraint(Sketcher.Constraint('Equal',%d,%d))",
+            extensionGeoId,
+            BaseGeoId
+        );
+        return {extensionGeoId, extensionFreePoint};
+    }
+
+    ExtensionTarget convertShortenedPartToConstruction()
+    {
+        auto* sketch = sketchgui->getSketchObject();
+        const Part::Geometry* geometry = sketch->getGeometry(BaseGeoId);
+        Base::Vector3d cutPoint;
+
+        if (geometry->is<Part::GeomLineSegment>()) {
+            const auto* segment = static_cast<const Part::GeomLineSegment*>(geometry);
+            const Base::Vector3d startPoint = segment->getStartPoint();
+            const Base::Vector3d endPoint = segment->getEndPoint();
+            Base::Vector3d direction = endPoint - startPoint;
+            const double newLength = direction.Length() + Increment;
+            if (newLength <= Precision::Confusion()) {
+                setConstruction(BaseGeoId);
+                return {
+                    BaseGeoId,
+                    ExtendFromStart ? Sketcher::PointPos::start : Sketcher::PointPos::end
+                };
+            }
+            direction.Normalize();
+            cutPoint = ExtendFromStart ? endPoint - direction * newLength
+                                       : startPoint + direction * newLength;
+        }
+        else {
+            const auto* arc = static_cast<const Part::GeomArcOfCircle*>(geometry);
+            double startParameter;
+            double endParameter;
+            arc->getRange(startParameter, endParameter, true);
+            if (endParameter - startParameter + Increment <= Precision::Confusion()) {
+                setConstruction(BaseGeoId);
+                return {
+                    BaseGeoId,
+                    ExtendFromStart ? Sketcher::PointPos::start : Sketcher::PointPos::end
+                };
+            }
+
+            const double cutParameter = ExtendFromStart ? startParameter - Increment
+                                                        : endParameter + Increment;
+            const Base::Vector3d center = arc->getCenter();
+            const double radius = arc->getRadius();
+            cutPoint = Base::Vector3d(
+                center.x + radius * cos(cutParameter),
+                center.y + radius * sin(cutParameter),
+                center.z
+            );
+        }
+
+        Gui::cmdAppObjectArgs(
+            sketchgui->getObject(),
+            "split(%d,App.Vector(%f,%f,0))",
+            BaseGeoId,
+            cutPoint.x,
+            cutPoint.y
+        );
+
+        const int constructionGeoId
+            = ExtendFromStart ? BaseGeoId : sketch->getHighestCurveIndex();
+        setConstruction(constructionGeoId);
+        return {
+            constructionGeoId,
+            ExtendFromStart ? Sketcher::PointPos::end : Sketcher::PointPos::start
+        };
+    }
+
+    ExtensionTarget extendWithConstruction()
+    {
+        if (Increment > Precision::Confusion()) {
+            return createConstructionExtension();
+        }
+        if (Increment < -Precision::Confusion()) {
+            return convertShortenedPartToConstruction();
+        }
+        return {
+            BaseGeoId,
+            ExtendFromStart ? Sketcher::PointPos::start : Sketcher::PointPos::end
+        };
+    }
+
     int crossProduct(Base::Vector2d& vec1, Base::Vector2d& vec2)
     {
         return vec1.x * vec2.y - vec1.y * vec2.x;

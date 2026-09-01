@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- SPDX-License-Identifier: LGPL-2.1-or-later -->
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#729fcf"/>
+      <stop offset="1" stop-color="#3465a4"/>
+    </linearGradient>
+  </defs>
+  <path d="M8 48 L34 30" fill="none" stroke="#17212b" stroke-width="8" stroke-linecap="round"/>
+  <path d="M8 48 L34 30" fill="none" stroke="#d3d7cf" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="8" cy="48" r="4" fill="#d3d7cf" stroke="#17212b" stroke-width="2"/>
+  <circle cx="34" cy="30" r="4" fill="#729fcf" stroke="#0b2d4d" stroke-width="2"/>
+  <path d="M34 30 L56 15" fill="none" stroke="#0b2d4d" stroke-width="8" stroke-linecap="round" stroke-dasharray="8 5"/>
+  <path d="M34 30 L56 15" fill="none" stroke="url(#blue)" stroke-width="4" stroke-linecap="round" stroke-dasharray="8 5"/>
+  <path d="M46 11 L58 14 L55 26" fill="none" stroke="#0b2d4d" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M46 11 L58 14 L55 26" fill="none" stroke="#729fcf" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1700,6 +1700,28 @@ public:
         addCommand("Sketcher_Extend");
     }
 
+    void updateAction(int mode) override
+    {
+        Gui::ActionGroup* pcAction = qobject_cast<Gui::ActionGroup*>(getAction());
+        if (!pcAction) {
+            return;
+        }
+
+        QList<QAction*> actions = pcAction->actions();
+        int index = pcAction->property("defaultAction").toInt();
+        switch (static_cast<GeometryCreationMode>(mode)) {
+            case GeometryCreationMode::Normal:
+                actions[0]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_Trimming"));
+                actions[2]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_Extend"));
+                break;
+            case GeometryCreationMode::Construction:
+                actions[0]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_Trimming_Constr"));
+                actions[2]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_Extend_Constr"));
+                break;
+        }
+        getAction()->setIcon(actions[index]->icon());
+    }
+
     const char* className() const override
     {
         return "CmdSketcherCompCurveEdition";
@@ -1713,7 +1735,7 @@ public:
 
 // Trim edge ================================================================
 
-DEF_STD_CMD_A(CmdSketcherTrimming)
+DEF_STD_CMD_AU(CmdSketcherTrimming)
 
 CmdSketcherTrimming::CmdSketcherTrimming()
     : Command("Sketcher_Trimming")
@@ -1729,6 +1751,8 @@ CmdSketcherTrimming::CmdSketcherTrimming()
     eType = ForEdit;
 }
 
+CONSTRUCTION_UPDATE_ACTION(CmdSketcherTrimming, "Sketcher_Trimming")
+
 void CmdSketcherTrimming::activated(int iMsg)
 {
     Q_UNUSED(iMsg);
@@ -1742,7 +1766,7 @@ bool CmdSketcherTrimming::isActive()
 
 // Extend edge ================================================================
 
-DEF_STD_CMD_A(CmdSketcherExtend)
+DEF_STD_CMD_AU(CmdSketcherExtend)
 
 // TODO: fix the translations for this
 CmdSketcherExtend::CmdSketcherExtend()
@@ -1758,6 +1782,8 @@ CmdSketcherExtend::CmdSketcherExtend()
     sAccel = "G, Q";
     eType = ForEdit;
 }
+
+CONSTRUCTION_UPDATE_ACTION(CmdSketcherExtend, "Sketcher_Extend")
 
 void CmdSketcherExtend::activated(int iMsg)
 {

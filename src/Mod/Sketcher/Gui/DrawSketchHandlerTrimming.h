@@ -25,6 +25,7 @@
 #pragma once
 
 #include <QApplication>
+#include <Precision.hxx>
 #include <Base/Tools.h>
 
 #include <Gui/Notifications.h>
@@ -196,15 +197,21 @@ public:
         Gui::Selection().rmvPreselect();
 
         try {
-            openCommand(QT_TRANSLATE_NOOP("Command", "Trim edge"));
-            Gui::cmdAppObjectArgs(
-                sketchgui->getObject(),
-                "trim(%d,App.Vector(%f,%f,0),%s)",
-                geoIdToTrim,
-                trimPos.x,
-                trimPos.y,
-                includeAxes ? "True" : "False"
-            );
+            if (isConstructionMode()) {
+                openCommand(QT_TRANSLATE_NOOP("Command", "Trim edge as construction geometry"));
+                trimAsConstruction();
+            }
+            else {
+                openCommand(QT_TRANSLATE_NOOP("Command", "Trim edge"));
+                Gui::cmdAppObjectArgs(
+                    sketchgui->getObject(),
+                    "trim(%d,App.Vector(%f,%f,0),%s)",
+                    geoIdToTrim,
+                    trimPos.x,
+                    trimPos.y,
+                    includeAxes ? "True" : "False"
+                );
+            }
             commitCommand();
             tryAutoRecompute(sketchgui->getObject<Sketcher::SketchObject>());
         }
@@ -219,6 +226,213 @@ public:
     }
 
 private:
+    struct GeometryReference
+    {
+        int geoId = Sketcher::GeoEnum::GeoUndef;
+        long geometryId = 0;
+    };
+
+    struct GeometrySegment
+    {
+        int geoId = Sketcher::GeoEnum::GeoUndef;
+        Sketcher::PointPos firstPoint = Sketcher::PointPos::none;
+        Sketcher::PointPos secondPoint = Sketcher::PointPos::none;
+    };
+
+    GeometryReference makeGeometryReference(Sketcher::SketchObject* sketch, int geoId) const
+    {
+        GeometryReference reference;
+        reference.geoId = geoId;
+        if (geoId >= 0) {
+            reference.geometryId = Sketcher::GeometryFacade::getId(sketch->getGeometry(geoId));
+        }
+        return reference;
+    }
+
+    int resolveGeometryReference(
+        Sketcher::SketchObject* sketch,
+        const GeometryReference& reference
+    ) const
+    {
+        if (reference.geoId < 0) {
+            return reference.geoId;
+        }
+
+        for (int geoId = 0; geoId <= sketch->getHighestCurveIndex(); ++geoId) {
+            if (Sketcher::GeometryFacade::getId(sketch->getGeometry(geoId))
+                == reference.geometryId) {
+                return geoId;
+            }
+        }
+        return Sketcher::GeoEnum::GeoUndef;
+    }
+
+    bool pointsCoincide(const Base::Vector3d& first, const Base::Vector3d& second) const
+    {
+        return (first - second).Sqr() <= Precision::SquareConfusion();
+    }
+
+    GeometrySegment findGeometrySegment(
+        Sketcher::SketchObject* sketch,
+        const Base::Vector3d& firstPoint,
+        const Base::Vector3d& secondPoint
+    ) const
+    {
+        for (int geoId = 0; geoId <= sketch->getHighestCurveIndex(); ++geoId) {
+            const Part::Geometry* geometry = sketch->getGeometry(geoId);
+            if (!Sketcher::GeometryFacade::isInternalType(
+                    geometry,
+                    Sketcher::InternalType::None
+                )
+                || sketch->isClosedCurve(geometry)) {
+                continue;
+            }
+
+            const Base::Vector3d startPoint
+                = sketch->getPoint(geoId, Sketcher::PointPos::start);
+            const Base::Vector3d endPoint
+                = sketch->getPoint(geoId, Sketcher::PointPos::end);
+            if (pointsCoincide(startPoint, firstPoint)
+                && pointsCoincide(endPoint, secondPoint)) {
+                return {
+                    geoId,
+                    Sketcher::PointPos::start,
+                    Sketcher::PointPos::end
+                };
+            }
+            if (pointsCoincide(endPoint, firstPoint)
+                && pointsCoincide(startPoint, secondPoint)) {
+                return {
+                    geoId,
+                    Sketcher::PointPos::end,
+                    Sketcher::PointPos::start
+                };
+            }
+        }
+        return {};
+    }
+
+    void splitGeometry(int geoId, const Base::Vector3d& point)
+    {
+        Gui::cmdAppObjectArgs(
+            sketchgui->getObject(),
+            "split(%d,App.Vector(%f,%f,0))",
+            geoId,
+            point.x,
+            point.y
+        );
+    }
+
+    void setConstruction(int geoId)
+    {
+        Gui::cmdAppObjectArgs(sketchgui->getObject(), "setConstruction(%d,True)", geoId);
+    }
+
+    void constrainCutPoint(
+        int constructionGeoId,
+        Sketcher::PointPos constructionPoint,
+        int cuttingGeoId
+    )
+    {
+        if (cuttingGeoId == Sketcher::GeoEnum::GeoUndef || cuttingGeoId == constructionGeoId) {
+            return;
+        }
+
+        Gui::cmdAppObjectArgs(
+            sketchgui->getObject(),
+            "addConstraint(Sketcher.Constraint('PointOnObject',%d,%d,%d))",
+            constructionGeoId,
+            static_cast<int>(constructionPoint),
+            cuttingGeoId
+        );
+    }
+
+    void trimAsConstruction()
+    {
+        auto* sketch = sketchgui->getObject<Sketcher::SketchObject>();
+
+        int cuttingGeoId1 = Sketcher::GeoEnum::GeoUndef;
+        int cuttingGeoId2 = Sketcher::GeoEnum::GeoUndef;
+        Base::Vector3d cutPoint1;
+        Base::Vector3d cutPoint2;
+        if (!sketch->seekTrimPoints(
+                geoIdToTrim,
+                Base::Vector3d(trimPos.x, trimPos.y, 0),
+                includeAxes,
+                cuttingGeoId1,
+                cutPoint1,
+                cuttingGeoId2,
+                cutPoint2
+            )) {
+            // Normal trim deletes the whole geometry when no boundaries are found.
+            setConstruction(geoIdToTrim);
+            return;
+        }
+
+        const bool hasFirstCut = cuttingGeoId1 != Sketcher::GeoEnum::GeoUndef;
+        const bool hasSecondCut = cuttingGeoId2 != Sketcher::GeoEnum::GeoUndef;
+        if ((!hasFirstCut && !hasSecondCut)
+            || (hasFirstCut && hasSecondCut && pointsCoincide(cutPoint1, cutPoint2))) {
+            setConstruction(geoIdToTrim);
+            return;
+        }
+
+        const GeometryReference cuttingReference1
+            = makeGeometryReference(sketch, cuttingGeoId1);
+        const GeometryReference cuttingReference2
+            = makeGeometryReference(sketch, cuttingGeoId2);
+        const bool isClosed = sketch->isClosedCurve(sketch->getGeometry(geoIdToTrim));
+        const Base::Vector3d originalStart
+            = sketch->getPoint(geoIdToTrim, Sketcher::PointPos::start);
+        const Base::Vector3d originalEnd
+            = sketch->getPoint(geoIdToTrim, Sketcher::PointPos::end);
+
+        GeometrySegment constructionSegment;
+        if (isClosed) {
+            splitGeometry(geoIdToTrim, cutPoint1);
+            splitGeometry(geoIdToTrim, cutPoint2);
+            constructionSegment = findGeometrySegment(sketch, cutPoint1, cutPoint2);
+        }
+        else if (hasFirstCut && hasSecondCut) {
+            splitGeometry(geoIdToTrim, cutPoint1);
+            const GeometrySegment tail
+                = findGeometrySegment(sketch, cutPoint1, originalEnd);
+            if (tail.geoId == Sketcher::GeoEnum::GeoUndef) {
+                throw Base::RuntimeError();
+            }
+            splitGeometry(tail.geoId, cutPoint2);
+            constructionSegment = findGeometrySegment(sketch, cutPoint1, cutPoint2);
+        }
+        else if (hasFirstCut) {
+            splitGeometry(geoIdToTrim, cutPoint1);
+            constructionSegment = findGeometrySegment(sketch, cutPoint1, originalEnd);
+        }
+        else {
+            splitGeometry(geoIdToTrim, cutPoint2);
+            constructionSegment = findGeometrySegment(sketch, originalStart, cutPoint2);
+        }
+
+        if (constructionSegment.geoId == Sketcher::GeoEnum::GeoUndef) {
+            throw Base::RuntimeError();
+        }
+        setConstruction(constructionSegment.geoId);
+
+        if (hasFirstCut) {
+            constrainCutPoint(
+                constructionSegment.geoId,
+                constructionSegment.firstPoint,
+                resolveGeometryReference(sketch, cuttingReference1)
+            );
+        }
+        if (hasSecondCut) {
+            constrainCutPoint(
+                constructionSegment.geoId,
+                constructionSegment.secondPoint,
+                resolveGeometryReference(sketch, cuttingReference2)
+            );
+        }
+    }
+
     std::string getToolName() const override
     {
         return "DSH_Trimming";
@@ -243,7 +457,9 @@ private:
 
     QPixmap getToolIcon() const override
     {
-        return Gui::BitmapFactory().pixmap("Sketcher_Trimming");
+        return Gui::BitmapFactory().pixmap(
+            isConstructionMode() ? "Sketcher_Trimming_Constr" : "Sketcher_Trimming"
+        );
     }
 
     QString getToolWidgetText() const override

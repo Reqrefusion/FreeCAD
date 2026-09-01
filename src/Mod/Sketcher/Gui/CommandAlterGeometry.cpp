@@ -167,6 +167,9 @@ CmdSketcherToggleConstruction::CmdSketcherToggleConstruction()
     rcCmdMgr.addCommandMode("ToggleConstruction", "Sketcher_CompExternal");
     rcCmdMgr.addCommandMode("ToggleConstruction", "Sketcher_Projection");
     rcCmdMgr.addCommandMode("ToggleConstruction", "Sketcher_Intersection");
+    rcCmdMgr.addCommandMode("ToggleConstruction", "Sketcher_Trimming");
+    rcCmdMgr.addCommandMode("ToggleConstruction", "Sketcher_Extend");
+    rcCmdMgr.addCommandMode("ToggleConstruction", "Sketcher_CompCurveEdition");
     rcCmdMgr.addCommandMode("ToggleConstruction", "Sketcher_ToggleConstruction");
 }
 

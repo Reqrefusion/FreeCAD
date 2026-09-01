@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- SPDX-License-Identifier: LGPL-2.1-or-later -->
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="blue" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#729fcf"/>
+      <stop offset="1" stop-color="#3465a4"/>
+    </linearGradient>
+  </defs>
+  <path d="M7 47 C16 24 27 16 55 14" fill="none" stroke="#0b2d4d" stroke-width="8" stroke-linecap="round" stroke-dasharray="10 6"/>
+  <path d="M7 47 C16 24 27 16 55 14" fill="none" stroke="url(#blue)" stroke-width="4" stroke-linecap="round" stroke-dasharray="10 6"/>
+  <circle cx="7" cy="47" r="4" fill="#729fcf" stroke="#0b2d4d" stroke-width="2"/>
+  <circle cx="55" cy="14" r="4" fill="#729fcf" stroke="#0b2d4d" stroke-width="2"/>
+  <path d="M27 27 L51 53 M27 53 L51 27" fill="none" stroke="#5b1515" stroke-width="9" stroke-linecap="round"/>
+  <path d="M27 27 L51 53 M27 53 L51 27" fill="none" stroke="#ef2929" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="27" cy="27" r="5" fill="#fce94f" stroke="#5b1515" stroke-width="2"/>
+  <circle cx="27" cy="53" r="5" fill="#fce94f" stroke="#5b1515" stroke-width="2"/>
+</svg>
