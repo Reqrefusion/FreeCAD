@@ -475,9 +475,19 @@ public:
     );
 
     /// trim a curve
-    SketchSolveStatus trim(int geoId, const Base::Vector3d& point, bool includeSketchAxes = false);
+    SketchSolveStatus trim(
+        int geoId,
+        const Base::Vector3d& point,
+        bool includeSketchAxes = false,
+        bool keepTrimmedAsConstruction = false
+    );
     /// extend a curve
-    SketchSolveStatus extend(int geoId, double increment, PointPos endPoint);
+    SketchSolveStatus extend(
+        int geoId,
+        double increment,
+        PointPos endPoint,
+        bool keepExtendedAsConstruction = false
+    );
     /// Once smaller pieces have been created from a larger curve (by split or trim, say), derive
     /// the constraint that will replace the given one (which is to be deleted). NOTE: Currently
     /// assuming all constraints on the end points of the old curve have been transferred or

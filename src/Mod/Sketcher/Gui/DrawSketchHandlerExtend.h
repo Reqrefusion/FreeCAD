@@ -287,35 +287,41 @@ public:
         }
         else if (Mode == STATUS_SEEK_Second) {
             try {
+                auto* sketch = sketchgui->getSketchObject();
                 openCommand(QT_TRANSLATE_NOOP("Command", "Extend edge"));
                 Gui::cmdAppObjectArgs(
                     sketchgui->getObject(),
-                    "extend(%d, %f, %d)\n",  // GeoId, increment, PointPos
+                    "extend(%d, %f, %d, %s)\n",  // GeoId, increment, PointPos, construction
                     BaseGeoId,
                     Increment,
                     ExtendFromStart ? static_cast<int>(Sketcher::PointPos::start)
-                                    : static_cast<int>(Sketcher::PointPos::end)
+                                    : static_cast<int>(Sketcher::PointPos::end),
+                    isConstructionMode() ? "True" : "False"
                 );
                 commitCommand();
 
                 ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath(
                     "User parameter:BaseApp/Preferences/Mod/Sketcher"
                 );
-                bool autoRecompute = hGrp->GetBool("AutoRecompute", false);
-                if (autoRecompute) {
-                    Gui::Command::updateActive();
-                }
 
                 // constrain chosen point
                 if (!SugConstr.empty()) {
+                    int autoConstraintGeoId = BaseGeoId;
+                    if (isConstructionMode() && Increment > 0.0) {
+                        autoConstraintGeoId = sketch->getHighestCurveIndex();
+                    }
                     createAutoConstraints(
                         SugConstr,
-                        BaseGeoId,
+                        autoConstraintGeoId,
                         (ExtendFromStart) ? Sketcher::PointPos::start : Sketcher::PointPos::end
                     );
                     SugConstr.clear();
                 }
-                bool continuousMode = hGrp->GetBool("ContinuousCreationMode", true);
+
+                // Keep the solver and the view in sync even when Auto Recompute is disabled.
+                tryAutoRecomputeIfNotSolve(sketch);
+
+                const bool continuousMode = hGrp->GetBool("ContinuousCreationMode", true);
 
                 if (continuousMode) {
                     // This code enables the continuous creation mode.

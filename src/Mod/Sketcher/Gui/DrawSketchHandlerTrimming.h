@@ -24,6 +24,8 @@
 
 #pragma once
 
+#include <set>
+
 #include <QApplication>
 #include <Base/Tools.h>
 
@@ -111,6 +113,7 @@ public:
 
     bool pressButton(Base::Vector2d onSketchPos) override
     {
+        trimmedGeometryIds.clear();
         mousePressed = true;
         return DrawSketchControllableHandler::pressButton(onSketchPos);
     }
@@ -118,7 +121,9 @@ public:
     bool releaseButton(Base::Vector2d onSketchPos) override
     {
         mousePressed = false;
-        return DrawSketchControllableHandler::releaseButton(onSketchPos);
+        const bool result = DrawSketchControllableHandler::releaseButton(onSketchPos);
+        trimmedGeometryIds.clear();
+        return result;
     }
 
     void updateDataAndDrawToPosition(Base::Vector2d onSketchPos) override
@@ -187,7 +192,26 @@ public:
     void executeCommands() override
     {
         if (geoIdToTrim < 0) {
+            trimmedGeometryIds.clear();
             return;
+        }
+
+        auto* sketch = sketchgui->getObject<Sketcher::SketchObject>();
+        if (geoIdToTrim > sketch->getHighestCurveIndex()) {
+            return;
+        }
+
+        const bool constructionMode = isConstructionMode();
+        int firstNewGeoId = Sketcher::GeoEnum::GeoUndef;
+        if (constructionMode) {
+            const auto* geometry = sketch->getGeometry(geoIdToTrim);
+            const int geometryId = Sketcher::GeometryFacade::getId(geometry);
+            if (trimmedGeometryIds.contains(geometryId)) {
+                return;
+            }
+
+            trimmedGeometryIds.insert(geometryId);
+            firstNewGeoId = sketch->getHighestCurveIndex() + 1;
         }
 
         // FIXME: Attempt to avoid double trimming. This messes up the cursor.
@@ -199,16 +223,27 @@ public:
             openCommand(QT_TRANSLATE_NOOP("Command", "Trim edge"));
             Gui::cmdAppObjectArgs(
                 sketchgui->getObject(),
-                "trim(%d,App.Vector(%f,%f,0),%s)",
+                "trim(%d,App.Vector(%f,%f,0),%s,%s)",
                 geoIdToTrim,
                 trimPos.x,
                 trimPos.y,
-                includeAxes ? "True" : "False"
+                includeAxes ? "True" : "False",
+                constructionMode ? "True" : "False"
             );
             commitCommand();
-            tryAutoRecompute(sketchgui->getObject<Sketcher::SketchObject>());
+            if (constructionMode) {
+                const int lastGeoId = sketch->getHighestCurveIndex();
+                for (int geoId = firstNewGeoId; geoId <= lastGeoId; ++geoId) {
+                    const auto* geometry = sketch->getGeometry(geoId);
+                    trimmedGeometryIds.insert(Sketcher::GeometryFacade::getId(geometry));
+                }
+            }
+
+            // Keep the solver and the view in sync even when Auto Recompute is disabled.
+            tryAutoRecomputeIfNotSolve(sketch);
         }
         catch (const Base::Exception&) {
+            trimmedGeometryIds.clear();
             Gui::NotifyError(
                 sketchgui,
                 QT_TRANSLATE_NOOP("Notifications", "Error"),
@@ -243,7 +278,9 @@ private:
 
     QPixmap getToolIcon() const override
     {
-        return Gui::BitmapFactory().pixmap("Sketcher_Trimming");
+        return Gui::BitmapFactory().pixmap(
+            isConstructionMode() ? "Sketcher_Trimming_Constr" : "Sketcher_Trimming"
+        );
     }
 
     QString getToolWidgetText() const override
@@ -253,6 +290,7 @@ private:
 
 private:
     std::vector<Base::Vector2d> EditMarkers;
+    std::set<int> trimmedGeometryIds;
     bool mousePressed = false;
     Base::Vector2d trimPos;
     int geoIdToTrim = Sketcher::GeoEnum::GeoUndef;
