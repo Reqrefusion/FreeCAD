@@ -94,6 +94,22 @@ using namespace SketcherGui;
         } \
     }
 
+#define CONSTRUCTION_UPDATE_ACTION_ICONS(CLASS, NORMAL_ICON, CONSTRUCTION_ICON) \
+    void CLASS::updateAction(int mode) \
+    { \
+        auto act = getAction(); \
+        if (act) { \
+            switch (static_cast<GeometryCreationMode>(mode)) { \
+                case GeometryCreationMode::Normal: \
+                    act->setIcon(Gui::BitmapFactory().iconFromTheme(NORMAL_ICON)); \
+                    break; \
+                case GeometryCreationMode::Construction: \
+                    act->setIcon(Gui::BitmapFactory().iconFromTheme(CONSTRUCTION_ICON)); \
+                    break; \
+            } \
+        } \
+    }
+
 
 /* Sketch commands =======================================================*/
 
@@ -1715,8 +1731,12 @@ public:
                 actions[2]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_Extend"));
                 break;
             case GeometryCreationMode::Construction:
-                actions[0]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_Trimming_Constr"));
-                actions[2]->setIcon(Gui::BitmapFactory().iconFromTheme("Sketcher_Extend_Constr"));
+                actions[0]->setIcon(
+                    Gui::BitmapFactory().iconFromTheme("Sketcher_ToggleConstruction_Constr")
+                );
+                actions[2]->setIcon(
+                    Gui::BitmapFactory().iconFromTheme("Sketcher_CreateLine_Constr")
+                );
                 break;
         }
         getAction()->setIcon(actions[index]->icon());
@@ -1751,7 +1771,11 @@ CmdSketcherTrimming::CmdSketcherTrimming()
     eType = ForEdit;
 }
 
-CONSTRUCTION_UPDATE_ACTION(CmdSketcherTrimming, "Sketcher_Trimming")
+CONSTRUCTION_UPDATE_ACTION_ICONS(
+    CmdSketcherTrimming,
+    "Sketcher_Trimming",
+    "Sketcher_ToggleConstruction_Constr"
+)
 
 void CmdSketcherTrimming::activated(int iMsg)
 {
@@ -1783,7 +1807,11 @@ CmdSketcherExtend::CmdSketcherExtend()
     eType = ForEdit;
 }
 
-CONSTRUCTION_UPDATE_ACTION(CmdSketcherExtend, "Sketcher_Extend")
+CONSTRUCTION_UPDATE_ACTION_ICONS(
+    CmdSketcherExtend,
+    "Sketcher_Extend",
+    "Sketcher_CreateLine_Constr"
+)
 
 void CmdSketcherExtend::activated(int iMsg)
 {

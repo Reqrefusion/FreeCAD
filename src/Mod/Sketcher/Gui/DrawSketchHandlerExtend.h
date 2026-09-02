@@ -538,9 +538,13 @@ private:
     {
         auto* sketch = sketchgui->getSketchObject();
         const Part::Geometry* geometry = sketch->getGeometry(BaseGeoId);
-        Base::Vector3d cutPoint;
+        std::unique_ptr<Part::Geometry> shortenedPart;
+        Sketcher::PointPos constructionSharedPoint;
+        const Sketcher::PointPos originalPoint
+            = ExtendFromStart ? Sketcher::PointPos::start : Sketcher::PointPos::end;
+        const bool isLineSegment = geometry->is<Part::GeomLineSegment>();
 
-        if (geometry->is<Part::GeomLineSegment>()) {
+        if (isLineSegment) {
             const auto* segment = static_cast<const Part::GeomLineSegment*>(geometry);
             const Base::Vector3d startPoint = segment->getStartPoint();
             const Base::Vector3d endPoint = segment->getEndPoint();
@@ -554,8 +558,19 @@ private:
                 };
             }
             direction.Normalize();
-            cutPoint = ExtendFromStart ? endPoint - direction * newLength
-                                       : startPoint + direction * newLength;
+            const Base::Vector3d cutPoint = ExtendFromStart
+                ? endPoint - direction * newLength
+                : startPoint + direction * newLength;
+            auto removedSegment = std::make_unique<Part::GeomLineSegment>();
+            if (ExtendFromStart) {
+                removedSegment->setPoints(startPoint, cutPoint);
+                constructionSharedPoint = Sketcher::PointPos::end;
+            }
+            else {
+                removedSegment->setPoints(cutPoint, endPoint);
+                constructionSharedPoint = Sketcher::PointPos::start;
+            }
+            shortenedPart = std::move(removedSegment);
         }
         else {
             const auto* arc = static_cast<const Part::GeomArcOfCircle*>(geometry);
@@ -570,32 +585,53 @@ private:
                 };
             }
 
-            const double cutParameter = ExtendFromStart ? startParameter - Increment
-                                                        : endParameter + Increment;
-            const Base::Vector3d center = arc->getCenter();
-            const double radius = arc->getRadius();
-            cutPoint = Base::Vector3d(
-                center.x + radius * cos(cutParameter),
-                center.y + radius * sin(cutParameter),
-                center.z
+            shortenedPart.reset(
+                ExtendFromStart
+                    ? arc->createArc(startParameter, startParameter - Increment)
+                    : arc->createArc(endParameter + Increment, endParameter)
             );
+            constructionSharedPoint
+                = ExtendFromStart ? Sketcher::PointPos::end : Sketcher::PointPos::start;
         }
 
         Gui::cmdAppObjectArgs(
             sketchgui->getObject(),
-            "split(%d,App.Vector(%f,%f,0))",
+            "extend(%d, %f, %d)\n",
             BaseGeoId,
-            cutPoint.x,
-            cutPoint.y
+            Increment,
+            static_cast<int>(originalPoint)
         );
 
-        const int constructionGeoId
-            = ExtendFromStart ? BaseGeoId : sketch->getHighestCurveIndex();
-        setConstruction(constructionGeoId);
-        return {
+        const int constructionGeoId = addConstructionGeometry(std::move(shortenedPart));
+        addCoincidentConstraint(
             constructionGeoId,
-            ExtendFromStart ? Sketcher::PointPos::end : Sketcher::PointPos::start
-        };
+            constructionSharedPoint,
+            BaseGeoId,
+            originalPoint
+        );
+        if (isLineSegment) {
+            Gui::cmdAppObjectArgs(
+                sketchgui->getObject(),
+                "addConstraint(Sketcher.Constraint('Parallel',%d,%d))",
+                constructionGeoId,
+                BaseGeoId
+            );
+        }
+        else {
+            addCoincidentConstraint(
+                constructionGeoId,
+                Sketcher::PointPos::mid,
+                BaseGeoId,
+                Sketcher::PointPos::mid
+            );
+            Gui::cmdAppObjectArgs(
+                sketchgui->getObject(),
+                "addConstraint(Sketcher.Constraint('Equal',%d,%d))",
+                constructionGeoId,
+                BaseGeoId
+            );
+        }
+        return {BaseGeoId, originalPoint};
     }
 
     ExtensionTarget extendWithConstruction()
