@@ -294,7 +294,8 @@ public:
                     BaseGeoId,
                     ExtendFromStart ? Sketcher::PointPos::start : Sketcher::PointPos::end
                 };
-                if (isConstructionMode()) {
+                const bool constructionMode = isConstructionMode();
+                if (constructionMode) {
                     openCommand(
                         QT_TRANSLATE_NOOP("Command", "Extend edge with construction geometry")
                     );
@@ -323,11 +324,16 @@ public:
 
                 // constrain chosen point
                 if (!SugConstr.empty()) {
-                    createAutoConstraints(
-                        SugConstr,
-                        autoConstraintTarget.geoId,
-                        autoConstraintTarget.point
-                    );
+                    if (constructionMode) {
+                        createFilteredAutoConstraints(SugConstr, autoConstraintTarget);
+                    }
+                    else {
+                        createAutoConstraints(
+                            SugConstr,
+                            autoConstraintTarget.geoId,
+                            autoConstraintTarget.point
+                        );
+                    }
                     SugConstr.clear();
                 }
                 bool continuousMode = hGrp->GetBool("ContinuousCreationMode", true);
@@ -437,21 +443,62 @@ private:
         return sketchgui->getSketchObject()->getHighestCurveIndex();
     }
 
-    void addCoincidentConstraint(
+    std::unique_ptr<Sketcher::Constraint> makeConstraint(
+        Sketcher::ConstraintType type,
         int firstGeoId,
-        Sketcher::PointPos firstPoint,
-        int secondGeoId,
-        Sketcher::PointPos secondPoint
+        Sketcher::PointPos firstPoint = Sketcher::PointPos::none,
+        int secondGeoId = Sketcher::GeoEnum::GeoUndef,
+        Sketcher::PointPos secondPoint = Sketcher::PointPos::none
     )
     {
-        Gui::cmdAppObjectArgs(
-            sketchgui->getObject(),
-            "addConstraint(Sketcher.Constraint('Coincident',%d,%d,%d,%d))",
-            firstGeoId,
-            static_cast<int>(firstPoint),
-            secondGeoId,
-            static_cast<int>(secondPoint)
-        );
+        auto constraint = std::make_unique<Sketcher::Constraint>();
+        constraint->Type = type;
+        constraint->First = firstGeoId;
+        constraint->FirstPos = firstPoint;
+        constraint->Second = secondGeoId;
+        constraint->SecondPos = secondPoint;
+        return constraint;
+    }
+
+    void addFilteredConstraints(
+        std::vector<std::unique_ptr<Sketcher::Constraint>>& constraints
+    )
+    {
+        if (constraints.empty() || !filterRedundantAutoConstraints(constraints)) {
+            return;
+        }
+        if (!constraints.empty()) {
+            addGeneratedAutoConstraints(constraints);
+        }
+    }
+
+    void createFilteredAutoConstraints(
+        const std::vector<AutoConstraint>& suggestions,
+        const ExtensionTarget& target
+    )
+    {
+        std::vector<std::unique_ptr<Sketcher::Constraint>> constraints;
+        for (const auto& suggestion : suggestions) {
+            if (!generateOneAutoConstraintFromSuggestion(
+                    suggestion,
+                    target.geoId,
+                    target.point,
+                    constraints
+                )) {
+                return;
+            }
+        }
+
+        if (constraints.empty() || !filterRedundantAutoConstraints(constraints)) {
+            return;
+        }
+        if (constraints.empty()) {
+            return;
+        }
+
+        openCommand(QT_TRANSLATE_NOOP("Command", "Add Auto-Constraints"));
+        addGeneratedAutoConstraints(constraints);
+        commitCommand();
     }
 
     void setConstruction(int geoId)
@@ -467,6 +514,12 @@ private:
             const Base::Vector3d startPoint = segment->getStartPoint();
             const Base::Vector3d endPoint = segment->getEndPoint();
             Base::Vector3d direction = ExtendFromStart ? startPoint - endPoint : endPoint - startPoint;
+            if (direction.Length() <= Precision::Confusion()) {
+                return {
+                    BaseGeoId,
+                    ExtendFromStart ? Sketcher::PointPos::start : Sketcher::PointPos::end
+                };
+            }
             direction.Normalize();
 
             auto extension = std::make_unique<Part::GeomLineSegment>();
@@ -487,18 +540,25 @@ private:
             }
 
             const int extensionGeoId = addConstructionGeometry(std::move(extension));
-            addCoincidentConstraint(
-                extensionGeoId,
-                extensionSharedPoint,
-                BaseGeoId,
-                originalPoint
+            std::vector<std::unique_ptr<Sketcher::Constraint>> constraints;
+            constraints.push_back(
+                makeConstraint(
+                    Sketcher::Coincident,
+                    extensionGeoId,
+                    extensionSharedPoint,
+                    BaseGeoId,
+                    originalPoint
+                )
             );
-            Gui::cmdAppObjectArgs(
-                sketchgui->getObject(),
-                "addConstraint(Sketcher.Constraint('Parallel',%d,%d))",
-                extensionGeoId,
-                BaseGeoId
+            constraints.push_back(
+                makeConstraint(
+                    Sketcher::Parallel,
+                    extensionGeoId,
+                    Sketcher::PointPos::none,
+                    BaseGeoId
+                )
             );
+            addFilteredConstraints(constraints);
             return {extensionGeoId, extensionFreePoint};
         }
 
@@ -506,31 +566,49 @@ private:
         double startParameter;
         double endParameter;
         arc->getRange(startParameter, endParameter, true);
+        const Sketcher::PointPos originalPoint
+            = ExtendFromStart ? Sketcher::PointPos::start : Sketcher::PointPos::end;
         std::unique_ptr<Part::Geometry> extension(
             ExtendFromStart ? arc->createArc(startParameter - Increment, startParameter)
                             : arc->createArc(endParameter, endParameter + Increment)
         );
+        if (!extension) {
+            return {BaseGeoId, originalPoint};
+        }
         const int extensionGeoId = addConstructionGeometry(std::move(extension));
         const Sketcher::PointPos extensionSharedPoint
             = ExtendFromStart ? Sketcher::PointPos::end : Sketcher::PointPos::start;
         const Sketcher::PointPos extensionFreePoint
             = ExtendFromStart ? Sketcher::PointPos::start : Sketcher::PointPos::end;
-        const Sketcher::PointPos originalPoint
-            = ExtendFromStart ? Sketcher::PointPos::start : Sketcher::PointPos::end;
 
-        addCoincidentConstraint(extensionGeoId, extensionSharedPoint, BaseGeoId, originalPoint);
-        addCoincidentConstraint(
-            extensionGeoId,
-            Sketcher::PointPos::mid,
-            BaseGeoId,
-            Sketcher::PointPos::mid
+        std::vector<std::unique_ptr<Sketcher::Constraint>> constraints;
+        constraints.push_back(
+            makeConstraint(
+                Sketcher::Coincident,
+                extensionGeoId,
+                extensionSharedPoint,
+                BaseGeoId,
+                originalPoint
+            )
         );
-        Gui::cmdAppObjectArgs(
-            sketchgui->getObject(),
-            "addConstraint(Sketcher.Constraint('Equal',%d,%d))",
-            extensionGeoId,
-            BaseGeoId
+        constraints.push_back(
+            makeConstraint(
+                Sketcher::Coincident,
+                extensionGeoId,
+                Sketcher::PointPos::mid,
+                BaseGeoId,
+                Sketcher::PointPos::mid
+            )
         );
+        constraints.push_back(
+            makeConstraint(
+                Sketcher::Equal,
+                extensionGeoId,
+                Sketcher::PointPos::none,
+                BaseGeoId
+            )
+        );
+        addFilteredConstraints(constraints);
         return {extensionGeoId, extensionFreePoint};
     }
 
@@ -594,6 +672,10 @@ private:
                 = ExtendFromStart ? Sketcher::PointPos::end : Sketcher::PointPos::start;
         }
 
+        if (!shortenedPart) {
+            return {BaseGeoId, originalPoint};
+        }
+
         Gui::cmdAppObjectArgs(
             sketchgui->getObject(),
             "extend(%d, %f, %d)\n",
@@ -603,34 +685,46 @@ private:
         );
 
         const int constructionGeoId = addConstructionGeometry(std::move(shortenedPart));
-        addCoincidentConstraint(
-            constructionGeoId,
-            constructionSharedPoint,
-            BaseGeoId,
-            originalPoint
+        std::vector<std::unique_ptr<Sketcher::Constraint>> constraints;
+        constraints.push_back(
+            makeConstraint(
+                Sketcher::Coincident,
+                constructionGeoId,
+                constructionSharedPoint,
+                BaseGeoId,
+                originalPoint
+            )
         );
         if (isLineSegment) {
-            Gui::cmdAppObjectArgs(
-                sketchgui->getObject(),
-                "addConstraint(Sketcher.Constraint('Parallel',%d,%d))",
-                constructionGeoId,
-                BaseGeoId
+            constraints.push_back(
+                makeConstraint(
+                    Sketcher::Parallel,
+                    constructionGeoId,
+                    Sketcher::PointPos::none,
+                    BaseGeoId
+                )
             );
         }
         else {
-            addCoincidentConstraint(
-                constructionGeoId,
-                Sketcher::PointPos::mid,
-                BaseGeoId,
-                Sketcher::PointPos::mid
+            constraints.push_back(
+                makeConstraint(
+                    Sketcher::Coincident,
+                    constructionGeoId,
+                    Sketcher::PointPos::mid,
+                    BaseGeoId,
+                    Sketcher::PointPos::mid
+                )
             );
-            Gui::cmdAppObjectArgs(
-                sketchgui->getObject(),
-                "addConstraint(Sketcher.Constraint('Equal',%d,%d))",
-                constructionGeoId,
-                BaseGeoId
+            constraints.push_back(
+                makeConstraint(
+                    Sketcher::Equal,
+                    constructionGeoId,
+                    Sketcher::PointPos::none,
+                    BaseGeoId
+                )
             );
         }
+        addFilteredConstraints(constraints);
         return {BaseGeoId, originalPoint};
     }
 
