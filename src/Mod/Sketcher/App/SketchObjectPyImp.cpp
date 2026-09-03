@@ -1584,16 +1584,32 @@ PyObject* SketchObjectPy::trim(PyObject* args)
     PyObject* pcObj;
     int GeoId;
     PyObject* includeAxes = Py_False;
+    PyObject* keepTrimmedAsConstruction = Py_False;
 
     if (
-        !PyArg_ParseTuple(args, "iO!|O!", &GeoId, &(Base::VectorPy::Type), &pcObj, &PyBool_Type, &includeAxes)
+        !PyArg_ParseTuple(
+            args,
+            "iO!|O!O!",
+            &GeoId,
+            &(Base::VectorPy::Type),
+            &pcObj,
+            &PyBool_Type,
+            &includeAxes,
+            &PyBool_Type,
+            &keepTrimmedAsConstruction
+        )
     ) {
         return nullptr;
     }
 
     Base::Vector3d v1 = static_cast<Base::VectorPy*>(pcObj)->value();
 
-    if (this->getSketchObjectPtr()->trim(GeoId, v1, Base::asBoolean(includeAxes))) {
+    if (this->getSketchObjectPtr()->trim(
+            GeoId,
+            v1,
+            Base::asBoolean(includeAxes),
+            Base::asBoolean(keepTrimmedAsConstruction)
+        )) {
         std::stringstream str;
         str << "Not able to trim curve with the given index: " << GeoId;
         PyErr_SetString(PyExc_ValueError, str.str().c_str());
@@ -1608,10 +1624,24 @@ PyObject* SketchObjectPy::extend(PyObject* args)
     double increment;
     int endPoint;
     int GeoId;
+    PyObject* keepExtendedAsConstruction = Py_False;
 
-    if (PyArg_ParseTuple(args, "idi", &GeoId, &increment, &endPoint)) {
+    if (PyArg_ParseTuple(
+            args,
+            "idi|O!",
+            &GeoId,
+            &increment,
+            &endPoint,
+            &PyBool_Type,
+            &keepExtendedAsConstruction
+        )) {
         if (this->getSketchObjectPtr()
-                ->extend(GeoId, increment, static_cast<Sketcher::PointPos>(endPoint))) {
+                ->extend(
+                    GeoId,
+                    increment,
+                    static_cast<Sketcher::PointPos>(endPoint),
+                    Base::asBoolean(keepExtendedAsConstruction)
+                )) {
             std::stringstream str;
             str << "Not able to extend geometry with id : (" << GeoId << ") for increment ("
                 << increment << ") and point position (" << endPoint << ")";
@@ -1624,7 +1654,7 @@ PyObject* SketchObjectPy::extend(PyObject* args)
     PyErr_SetString(
         PyExc_TypeError,
         "extend() method accepts:\n"
-        "-- int,float,int\n"
+        "-- int,float,int,[bool]\n"
     );
     return nullptr;
 }

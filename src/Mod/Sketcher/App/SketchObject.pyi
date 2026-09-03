@@ -696,13 +696,27 @@ class SketchObject(Part2DObject):
         """
         ...
 
-    def trim(self) -> None:
+    def trim(
+        self,
+        GeoIndex: int,
+        Point: Vector,
+        IncludeSketchAxes: bool = False,
+        KeepTrimmedAsConstruction: bool = False,
+        /,
+    ) -> None:
         """
         Trim a curve with a given id at a given reference point
         """
         ...
 
-    def extend(self) -> None:
+    def extend(
+        self,
+        GeoIndex: int,
+        Increment: float,
+        PointPos: int,
+        KeepExtendedAsConstruction: bool = False,
+        /,
+    ) -> None:
         """
         Extend a curve to new start and end positions
         """

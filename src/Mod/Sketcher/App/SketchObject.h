@@ -62,7 +62,6 @@ ENABLE_BITMASK_OPERATORS(Sketcher::DeleteOption)
 
 namespace Sketcher
 {
-
 class SketchAnalysis;
 
 struct ExternalToAdd
@@ -481,9 +480,19 @@ public:
     );
 
     /// trim a curve
-    int trim(int geoId, const Base::Vector3d& point, bool includeSketchAxes = false);
+    int trim(
+        int geoId,
+        const Base::Vector3d& point,
+        bool includeSketchAxes = false,
+        bool keepTrimmedAsConstruction = false
+    );
     /// extend a curve
-    int extend(int geoId, double increment, PointPos endPoint);
+    int extend(
+        int geoId,
+        double increment,
+        PointPos endPoint,
+        bool keepExtendedAsConstruction = false
+    );
     /// Once smaller pieces have been created from a larger curve (by split or trim, say), derive
     /// the constraint that will replace the given one (which is to be deleted). NOTE: Currently
     /// assuming all constraints on the end points of the old curve have been transferred or
@@ -493,7 +502,8 @@ public:
         const int oldId,
         const std::vector<int>& newIds,
         const Constraint* con,
-        std::vector<Constraint*>& newConstraints
+        std::vector<Constraint*>& newConstraints,
+        const bool assumeTangency = false
     ) const;
     // Explicitly giving `newGeos` for cases where they are not yet added
     bool deriveConstraintsForPieces(
@@ -501,7 +511,8 @@ public:
         const std::vector<int>& newIds,
         const std::vector<const Part::Geometry*>& newGeo,
         const Constraint* con,
-        std::vector<Constraint*>& newConstraints
+        std::vector<Constraint*>& newConstraints,
+        const bool assumeTangency = false
     ) const;
 
     /// split a curve
@@ -668,13 +679,19 @@ public:
         std::vector<int>& GeoIdList,
         std::vector<PointPos>& PosIdList
     ) const;
+    void getDirectlyCoincidentPoints(
+        const int GeoId1,
+        const int GeoId2,
+        std::vector<int>& GeoIds3,
+        std::vector<PointPos>& PosIds3
+    ) const;
     bool arePointsCoincident(int GeoId1, PointPos PosId1, int GeoId2, PointPos PosId2);
 
     // Returns true if the sketch has 1 or more block constraint
     bool hasBlockConstraint() const;
 
     /// returns a list of indices of all constraints involving given GeoId
-    void getConstraintIndices(int GeoId, std::vector<int>& constraintList);
+    void getConstraintIndices(int GeoId, std::vector<int>& constraintList) const;
 
     /// generates a warning message about constraint conflicts and appends it to the given message
     static void appendConflictMsg(const std::vector<int>& conflicting, std::string& msg);
@@ -1060,19 +1077,6 @@ protected:
 
     void updateGeoHistory();
     void generateId(const Part::Geometry* geo);
-
-    /*!
-     \brief Transfer constraints on lines being filleted.
-
-     Since filleting moves the endpoints of the input geometry, existing constraints may no longer
-     be sensible. If fillet() was called with preserveCorner=false, the constraints are simply
-     deleted. But if the lines are coincident and preserveCorner=true, we can preserve most
-     constraints on the old end points by moving them to the preserved corner, or transforming
-     distance constraints on straight lines into point-to-point distance constraints.
-
-     \param geoId1, podId1, geoId2, posId2 - The two lines that have just been filleted
-     */
-    void transferFilletConstraints(int geoId1, PointPos posId1, int geoId2, PointPos posId2);
 
     // refactoring functions
     // check whether constraint may be changed driving status
