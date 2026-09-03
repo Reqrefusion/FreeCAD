@@ -115,7 +115,9 @@ public:
 
     bool pressButton(Base::Vector2d onSketchPos) override
     {
-        mousePressed = true;
+        // The construction result is created under the cursor. Repeating trim while dragging
+        // would immediately select that new geometry and process it again.
+        mousePressed = !isConstructionMode();
         return DrawSketchControllableHandler::pressButton(onSketchPos);
     }
 
@@ -235,6 +237,12 @@ private:
         long geometryId = 0;
     };
 
+    struct GeometryPointReference
+    {
+        int geoId = Sketcher::GeoEnum::GeoUndef;
+        Sketcher::PointPos point = Sketcher::PointPos::none;
+    };
+
     GeometryReference makeGeometryReference(Sketcher::SketchObject* sketch, int geoId) const
     {
         GeometryReference reference;
@@ -268,6 +276,43 @@ private:
         return (first - second).Length() < 500 * Precision::Confusion();
     }
 
+    GeometryPointReference findAdjacentGeometryPoint(
+        Sketcher::SketchObject* sketch,
+        const Base::Vector3d& point,
+        int firstExcludedGeoId,
+        int secondExcludedGeoId
+    ) const
+    {
+        for (int geoId = 0; geoId <= sketch->getHighestCurveIndex(); ++geoId) {
+            if (geoId == firstExcludedGeoId || geoId == secondExcludedGeoId) {
+                continue;
+            }
+
+            const Part::Geometry* geometry = sketch->getGeometry(geoId);
+            if (!Sketcher::GeometryFacade::isInternalType(
+                    geometry,
+                    Sketcher::InternalType::None
+                )
+                || sketch->isClosedCurve(geometry)) {
+                continue;
+            }
+
+            if (pointsCoincide(
+                    sketch->getPoint(geoId, Sketcher::PointPos::start),
+                    point
+                )) {
+                return {geoId, Sketcher::PointPos::start};
+            }
+            if (pointsCoincide(
+                    sketch->getPoint(geoId, Sketcher::PointPos::end),
+                    point
+                )) {
+                return {geoId, Sketcher::PointPos::end};
+            }
+        }
+        return {};
+    }
+
     void setConstruction(int geoId)
     {
         Gui::cmdAppObjectArgs(sketchgui->getObject(), "setConstruction(%d,True)", geoId);
@@ -293,10 +338,54 @@ private:
     void constrainCutPoint(
         int constructionGeoId,
         Sketcher::PointPos constructionPoint,
-        int cuttingGeoId
+        const GeometryPointReference& adjacentPoint,
+        int cuttingGeoId,
+        const Base::Vector3d& cutPoint
     )
     {
+        if (adjacentPoint.geoId != Sketcher::GeoEnum::GeoUndef) {
+            Gui::cmdAppObjectArgs(
+                sketchgui->getObject(),
+                "addConstraint(Sketcher.Constraint('Coincident',%d,%d,%d,%d))",
+                constructionGeoId,
+                static_cast<int>(constructionPoint),
+                adjacentPoint.geoId,
+                static_cast<int>(adjacentPoint.point)
+            );
+            return;
+        }
+
         if (cuttingGeoId == Sketcher::GeoEnum::GeoUndef || cuttingGeoId == constructionGeoId) {
+            return;
+        }
+
+        auto* sketch = sketchgui->getSketchObject();
+        if (pointsCoincide(
+                sketch->getPoint(cuttingGeoId, Sketcher::PointPos::start),
+                cutPoint
+            )) {
+            Gui::cmdAppObjectArgs(
+                sketchgui->getObject(),
+                "addConstraint(Sketcher.Constraint('Coincident',%d,%d,%d,%d))",
+                constructionGeoId,
+                static_cast<int>(constructionPoint),
+                cuttingGeoId,
+                static_cast<int>(Sketcher::PointPos::start)
+            );
+            return;
+        }
+        if (pointsCoincide(
+                sketch->getPoint(cuttingGeoId, Sketcher::PointPos::end),
+                cutPoint
+            )) {
+            Gui::cmdAppObjectArgs(
+                sketchgui->getObject(),
+                "addConstraint(Sketcher.Constraint('Coincident',%d,%d,%d,%d))",
+                constructionGeoId,
+                static_cast<int>(constructionPoint),
+                cuttingGeoId,
+                static_cast<int>(Sketcher::PointPos::end)
+            );
             return;
         }
 
@@ -379,20 +468,45 @@ private:
             trimPos.y,
             includeAxes ? "True" : "False"
         );
+
+        const int resolvedCuttingGeoId1
+            = resolveGeometryReference(sketch, cuttingReference1);
+        const int resolvedCuttingGeoId2
+            = resolveGeometryReference(sketch, cuttingReference2);
+        const GeometryPointReference adjacentPoint1 = hasFirstCut
+            ? findAdjacentGeometryPoint(
+                  sketch,
+                  cutPoint1,
+                  resolvedCuttingGeoId1,
+                  resolvedCuttingGeoId2
+              )
+            : GeometryPointReference {};
+        const GeometryPointReference adjacentPoint2 = hasSecondCut
+            ? findAdjacentGeometryPoint(
+                  sketch,
+                  cutPoint2,
+                  resolvedCuttingGeoId1,
+                  resolvedCuttingGeoId2
+              )
+            : GeometryPointReference {};
         const int constructionGeoId = addConstructionGeometry(std::move(constructionGeometry));
 
         if (hasFirstCut) {
             constrainCutPoint(
                 constructionGeoId,
                 Sketcher::PointPos::start,
-                resolveGeometryReference(sketch, cuttingReference1)
+                adjacentPoint1,
+                resolvedCuttingGeoId1,
+                cutPoint1
             );
         }
         if (hasSecondCut) {
             constrainCutPoint(
                 constructionGeoId,
                 Sketcher::PointPos::end,
-                resolveGeometryReference(sketch, cuttingReference2)
+                adjacentPoint2,
+                resolvedCuttingGeoId2,
+                cutPoint2
             );
         }
     }
@@ -422,7 +536,7 @@ private:
     QPixmap getToolIcon() const override
     {
         return Gui::BitmapFactory().pixmap(
-            isConstructionMode() ? "Sketcher_ToggleConstruction_Constr" : "Sketcher_Trimming"
+            isConstructionMode() ? "Sketcher_Trimming_Constr" : "Sketcher_Trimming"
         );
     }
 
