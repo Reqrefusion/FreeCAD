@@ -770,6 +770,7 @@ void createNewConstraintsForTrim(
     const std::vector<const Part::Geometry*>& pieceGeos,
     std::vector<int>& idsOfOldConstraints,
     std::vector<Constraint*>& newConstraints,
+    std::vector<Constraint*>& cutConstraints,
     std::set<int, std::greater<>>& geoIdsToBeDeleted,
     std::map<Constraint*, int>& newToOldConstraintMap
 )
@@ -854,14 +855,14 @@ void createNewConstraintsForTrim(
     // TODO: Tangent/perpendicular not yet covered
 
     if (cuttingGeoIds[0] != GeoEnum::GeoUndef && !isPoint1ConstrainedOnGeoId1) {
-        newConstraints.emplace_back(
+        cutConstraints.emplace_back(
             getNewConstraintAtTrimCut(obj, cuttingGeoIds[0], newIds.front(), PointPos::end, cutPoints[0])
                 .release()
         );
     }
 
     if (cuttingGeoIds[1] != GeoEnum::GeoUndef && !isPoint2ConstrainedOnGeoId2) {
-        newConstraints.emplace_back(
+        cutConstraints.emplace_back(
             getNewConstraintAtTrimCut(obj, cuttingGeoIds[1], newIds.back(), PointPos::start, cutPoints[1])
                 .release()
         );
@@ -1004,6 +1005,7 @@ int SketchObject::trim(
     // FIXME: We are using non-smart pointers since that's what's needed in `addConstraints`.
     const auto& allConstraints = this->Constraints.getValues();
     std::vector<Constraint*> newConstraints;
+    std::vector<Constraint*> cutConstraints;
     std::vector<int> idsOfOldConstraints;
     std::set<int, std::greater<>> geoIdsToBeDeleted;
     getConstraintIndices(GeoId, idsOfOldConstraints);
@@ -1038,9 +1040,14 @@ int SketchObject::trim(
         pieceGeos,
         idsOfOldConstraints,
         newConstraints,
+        cutConstraints,
         geoIdsToBeDeleted,
         newToOldConstraintMap
     );
+    if (!keepTrimmedAsConstruction) {
+        newConstraints.insert(newConstraints.end(), cutConstraints.begin(), cutConstraints.end());
+        cutConstraints.clear();
+    }
 
     //******************* Step D => Replacing geometries and constraints
     //****************************************//
@@ -1149,11 +1156,25 @@ int SketchObject::trim(
         for (auto& cons : newConstraints) {
             changeConstraintAfterDeletingGeo(cons, deletedGeoId);
         }
+        for (auto& cons : cutConstraints) {
+            changeConstraintAfterDeletingGeo(cons, deletedGeoId);
+        }
     }
     std::erase_if(newConstraints, [](const auto& constr) {
         return constr->Type == ConstraintType::None;
     });
     delGeometries(geoIdsToBeDeleted.begin(), geoIdsToBeDeleted.end());
+
+    // Keep only independent constraints at the trim points.
+    for (auto* constraint : cutConstraints) {
+        newConstraints.push_back(constraint);
+        const int dof = diagnoseAdditionalConstraints(newConstraints);
+        if (dof < 0 || getLastHasRedundancies() || getLastHasPartialRedundancies()
+            || getLastHasConflicts() || getLastHasMalformedConstraints()) {
+            newConstraints.pop_back();
+            delete constraint;
+        }
+    }
 
     int lastAddedIndex = addConstraints(newConstraints);
     int firstAddedIndex = lastAddedIndex - (int)newConstraints.size() + 1;
