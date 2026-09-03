@@ -356,10 +356,92 @@ int SketchObject::fillet(int GeoId1, int GeoId2, const Base::Vector3d& refPnt1,
     return 0;
 }
 
-int SketchObject::extend(int GeoId, double increment, PointPos endpoint)
+int SketchObject::extend(
+    int GeoId,
+    double increment,
+    PointPos endpoint,
+    bool keepExtendedAsConstruction
+)
 {
     if (GeoId < 0 || GeoId > getHighestCurveIndex())
         return -1;
+
+    if (keepExtendedAsConstruction) {
+        if (increment == 0.0) {
+            return 0;
+        }
+        if (endpoint != PointPos::start && endpoint != PointPos::end) {
+            return -1;
+        }
+
+        Base::StateLocker lock(managedoperation, true);
+        const auto* originalGeo = getGeometry<Part::GeomCurve>(GeoId);
+        if (!originalGeo) {
+            return -1;
+        }
+        const bool originalConstruction = GeometryFacade::getConstruction(originalGeo);
+        Base::Vector3d splitPoint;
+
+        if (increment > 0.0) {
+            splitPoint = getPoint(GeoId, endpoint);
+            if (extend(GeoId, increment, endpoint, false)) {
+                return -1;
+            }
+        }
+        else if (originalGeo->is<Part::GeomLineSegment>()) {
+            const auto* line = static_cast<const Part::GeomLineSegment*>(originalGeo);
+            const Base::Vector3d start = line->getStartPoint();
+            const Base::Vector3d end = line->getEndPoint();
+            Base::Vector3d direction = endpoint == PointPos::start ? start - end : end - start;
+            const double length = direction.Length() + increment;
+            if (length <= Precision::Confusion()) {
+                return -1;
+            }
+            direction.Normalize();
+            direction.Scale(length, length, length);
+            splitPoint = direction + (endpoint == PointPos::start ? end : start);
+        }
+        else if (originalGeo->is<Part::GeomArcOfCircle>()) {
+            const auto* arc = static_cast<const Part::GeomArcOfCircle*>(originalGeo);
+            double firstParam, lastParam;
+            arc->getRange(firstParam, lastParam, true);
+            const double splitParam
+                = endpoint == PointPos::start ? firstParam - increment : lastParam + increment;
+            if (splitParam >= lastParam || splitParam <= firstParam) {
+                return -1;
+            }
+            splitPoint = arc->pointAtParameter(splitParam);
+        }
+        else {
+            return -1;
+        }
+
+        const int newId = getHighestCurveIndex() + 1;
+        if (split(GeoId, splitPoint, true)) {
+            return -1;
+        }
+
+        if (endpoint == PointPos::start) {
+            const int temporaryId = static_cast<int>(getInternalGeometry().size());
+            for (auto* constraint : Constraints.getValues()) {
+                constraint->substituteIndex(GeoId, temporaryId);
+                constraint->substituteIndex(newId, GeoId);
+                constraint->substituteIndex(temporaryId, newId);
+            }
+
+            auto geometries = getInternalGeometry();
+            const int originalId = GeometryFacade::getId(geometries[GeoId]);
+            const int appendedId = GeometryFacade::getId(geometries[newId]);
+            std::swap(geometries[GeoId], geometries[newId]);
+            GeometryFacade::setId(geometries[GeoId], originalId);
+            GeometryFacade::setId(geometries[newId], appendedId);
+            Geometry.setValues(std::move(geometries));
+        }
+
+        setConstruction(GeoId, originalConstruction);
+        setConstruction(newId, true);
+        return 0;
+    }
 
     const std::vector<Part::Geometry*>& geomList = getInternalGeometry();
     Part::Geometry* geom = geomList[GeoId];
@@ -611,7 +693,8 @@ bool getParamLimitsOfNewGeosForTrim(
     int GeoId,
     std::array<int, 2>& cuttingGeoIds,
     std::array<Base::Vector3d, 2>& cutPoints,
-    std::vector<std::pair<double, double>>& paramsOfNewGeos
+    std::vector<std::pair<double, double>>& paramsOfNewGeos,
+    std::pair<double, double>* trimmedParams = nullptr
 )
 {
     const auto* geoAsCurve = obj->getGeometry<Part::GeomCurve>(GeoId);
@@ -631,6 +714,13 @@ bool getParamLimitsOfNewGeosForTrim(
 
     if (!obj->isClosedCurve(geoAsCurve) && areParamsWithinApproximation(lastParam, cut1Param)) {
         cuttingGeoIds[1] = GeoEnum::GeoUndef;
+    }
+
+    if (trimmedParams) {
+        trimmedParams->first
+            = cuttingGeoIds[0] == GeoEnum::GeoUndef ? firstParam : cut0Param;
+        trimmedParams->second
+            = cuttingGeoIds[1] == GeoEnum::GeoUndef ? lastParam : cut1Param;
     }
 
     size_t numUndefs = std::count(cuttingGeoIds.begin(), cuttingGeoIds.end(), GeoEnum::GeoUndef);
@@ -680,7 +770,8 @@ void createNewConstraintsForTrim(
     const std::array<int, 2>& cuttingGeoIds,
     const std::array<Base::Vector3d, 2>& cutPoints,
     const std::vector<int>& newIds,
-    const std::vector<const Part::Geometry*> newGeos,
+    const std::vector<int>& pieceIds,
+    const std::vector<const Part::Geometry*>& pieceGeos,
     std::vector<int>& idsOfOldConstraints,
     std::vector<Constraint*>& newConstraints,
     std::set<int, std::greater<>>& geoIdsToBeDeleted,
@@ -747,7 +838,14 @@ void createNewConstraintsForTrim(
         }
         // constraint has not yet been changed
         size_t sizeBefore = newConstraints.size();
-        obj->deriveConstraintsForPieces(GeoId, newIds, newGeos, con, newConstraints);
+        obj->deriveConstraintsForPieces(
+            GeoId,
+            pieceIds,
+            pieceGeos,
+            con,
+            newConstraints,
+            pieceIds.size() != newIds.size()
+        );
         // Map all newly added derived constraints to the old ID
         for (size_t i = sizeBefore; i < newConstraints.size(); ++i) {
             newToOldConstraintMap[newConstraints[i]] = oldConstrId;
@@ -774,7 +872,12 @@ void createNewConstraintsForTrim(
     }
 }
 
-int SketchObject::trim(int GeoId, const Base::Vector3d& point, bool includeSketchAxes)
+int SketchObject::trim(
+    int GeoId,
+    const Base::Vector3d& point,
+    bool includeSketchAxes,
+    bool keepTrimmedAsConstruction
+)
 {
     if (!isGeoIdAllowedForTrim(this, GeoId)) {
         return -1;
@@ -817,16 +920,34 @@ int SketchObject::trim(int GeoId, const Base::Vector3d& point, bool includeSketc
             cuttingGeoIds[1],
             cutPoints[1]
         )) {
-        // If no suitable trim points are found, then trim defaults to deleting the geometry
-        delGeometry(GeoId, DeleteOption::IncludeInternalGeometry);
+        if (keepTrimmedAsConstruction) {
+            setConstruction(GeoId, true);
+        }
+        else {
+            // If no suitable trim points are found, then trim defaults to deleting the geometry
+            delGeometry(GeoId, DeleteOption::IncludeInternalGeometry);
+        }
         return 0;
     }
 
     // TODO: find trim parameters
     std::vector<std::pair<double, double>> paramsOfNewGeos;
     paramsOfNewGeos.reserve(2);
-    if (!getParamLimitsOfNewGeosForTrim(this, GeoId, cuttingGeoIds, cutPoints, paramsOfNewGeos)) {
+    std::pair<double, double> trimmedParams;
+    if (!getParamLimitsOfNewGeosForTrim(
+            this,
+            GeoId,
+            cuttingGeoIds,
+            cutPoints,
+            paramsOfNewGeos,
+            keepTrimmedAsConstruction ? &trimmedParams : nullptr
+        )) {
         return -1;
+    }
+
+    if (keepTrimmedAsConstruction && paramsOfNewGeos.empty()) {
+        setConstruction(GeoId, true);
+        return 0;
     }
 
     //******************* Step B => Creation of new geometries
@@ -860,6 +981,26 @@ int SketchObject::trim(int GeoId, const Base::Vector3d& point, bool includeSketc
         newGeosAsConsts.push_back(geo);
     }
 
+    int constructionId = GeoEnum::GeoUndef;
+    std::vector<int> pieceIds = newIds;
+    std::vector<const Part::Geometry*> pieceGeos = newGeosAsConsts;
+    if (keepTrimmedAsConstruction) {
+        constructionId = getHighestCurveIndex() + static_cast<int>(newGeos.size());
+        auto* trimmedGeo = geoAsCurve->createArc(trimmedParams.first, trimmedParams.second);
+        assert(trimmedGeo);
+        newGeos.push_back(trimmedGeo);
+
+        std::size_t position = pieceIds.size();
+        if (isOriginalCurvePeriodic || cuttingGeoIds[0] == GeoEnum::GeoUndef) {
+            position = 0;
+        }
+        else if (cuttingGeoIds[1] != GeoEnum::GeoUndef) {
+            position = 1;
+        }
+        pieceIds.insert(pieceIds.begin() + position, constructionId);
+        pieceGeos.insert(pieceGeos.begin() + position, trimmedGeo);
+    }
+
     //******************* Step C => Creation of new constraints
     //****************************************//
     // Now that we have the new curves, change constraints as needed
@@ -873,10 +1014,13 @@ int SketchObject::trim(int GeoId, const Base::Vector3d& point, bool includeSketc
     // remove the constraints that we want to manually transfer
     // We could transfer beforehand but in case of exception that transfer is permanent
     if (!isOriginalCurvePeriodic) {
-        std::erase_if(idsOfOldConstraints, [&GeoId, &allConstraints, &cuttingGeoIds](const auto& i) {
+        std::erase_if(idsOfOldConstraints, [&](const auto& i) {
             auto* constr = allConstraints[i];
             bool involvesStart = constr->involvesGeoIdAndPosId(GeoId, PointPos::start);
             bool involvesEnd = constr->involvesGeoIdAndPosId(GeoId, PointPos::end);
+            if (keepTrimmedAsConstruction) {
+                return involvesStart != involvesEnd;
+            }
             bool keepStart = cuttingGeoIds[0] != GeoEnum::GeoUndef;
             bool keepEnd = cuttingGeoIds[1] != GeoEnum::GeoUndef;
             bool involvesBothButNotBothKept = involvesStart && involvesEnd && !(keepStart && keepEnd);
@@ -894,7 +1038,8 @@ int SketchObject::trim(int GeoId, const Base::Vector3d& point, bool includeSketc
         cuttingGeoIds,
         cutPoints,
         newIds,
-        newGeosAsConsts,
+        pieceIds,
+        pieceGeos,
         idsOfOldConstraints,
         newConstraints,
         geoIdsToBeDeleted,
@@ -930,22 +1075,49 @@ int SketchObject::trim(int GeoId, const Base::Vector3d& point, bool includeSketc
     delConstraints(std::move(idsOfOldConstraints), DeleteOption::NoFlag);
 
     if (!isOriginalCurvePeriodic) {
-        transferConstraints(GeoId, PointPos::start, newIds.front(), PointPos::start, true);
-        transferConstraints(GeoId, PointPos::end, newIds.back(), PointPos::end, true);
+        const auto& endpointIds = keepTrimmedAsConstruction ? pieceIds : newIds;
+        transferConstraints(GeoId, PointPos::start, endpointIds.front(), PointPos::start, true);
+        transferConstraints(GeoId, PointPos::end, endpointIds.back(), PointPos::end, true);
     }
+
+    if (keepTrimmedAsConstruction) {
+        const bool tangentJoint = geoAsCurve->is<Part::GeomLineSegment>()
+            || geoAsCurve->is<Part::GeomBSplineCurve>();
+        const auto addJoint = [&](int first, PointPos firstPos, int second, PointPos secondPos) {
+            auto* joint = new Constraint();
+            joint->Type = tangentJoint ? Tangent : Coincident;
+            joint->First = first;
+            joint->FirstPos = firstPos;
+            joint->Second = second;
+            joint->SecondPos = secondPos;
+            newConstraints.push_back(joint);
+        };
+
+        if (cuttingGeoIds[0] != GeoEnum::GeoUndef) {
+            addJoint(newIds.front(), PointPos::end, constructionId, PointPos::start);
+        }
+        if (cuttingGeoIds[1] != GeoEnum::GeoUndef) {
+            addJoint(constructionId, PointPos::end, newIds.back(), PointPos::start);
+        }
+    }
+
     bool geomHasMid = geoAsCurve->isDerivedFrom<Part::GeomConic>()
         || geoAsCurve->isDerivedFrom<Part::GeomArcOfConic>();
     if (geomHasMid) {
         transferConstraints(GeoId, PointPos::mid, newIds.front(), PointPos::mid, true);
         // Make centers coincident
-        if (newIds.size() > 1) {
-            auto* joint = new Constraint();
-            joint->Type = Coincident;
-            joint->First = newIds.front();
-            joint->FirstPos = PointPos::mid;
-            joint->Second = newIds.back();
-            joint->SecondPos = PointPos::mid;
-            newConstraints.push_back(joint);
+        const auto& centerIds = keepTrimmedAsConstruction ? pieceIds : newIds;
+        for (const int id : centerIds) {
+            if (id == newIds.front()) {
+                continue;
+            }
+            auto* centerJoint = new Constraint();
+            centerJoint->Type = Coincident;
+            centerJoint->First = newIds.front();
+            centerJoint->FirstPos = PointPos::mid;
+            centerJoint->Second = id;
+            centerJoint->SecondPos = PointPos::mid;
+            newConstraints.push_back(centerJoint);
 
             // Any radius etc. equality constraints here
             // TODO: There could be some form of equality between the constraints here. However, it
@@ -966,8 +1138,11 @@ int SketchObject::trim(int GeoId, const Base::Vector3d& point, bool includeSketc
     for (auto newId : newIds) {
         setConstruction(newId, isOriginalCurveConstruction);
     }
+    if (keepTrimmedAsConstruction) {
+        setConstruction(constructionId, true);
+    }
 
-    if (noRecomputes) {
+    if (noRecomputes && !keepTrimmedAsConstruction) {
         solve();
     }
 
@@ -1007,7 +1182,7 @@ int SketchObject::trim(int GeoId, const Base::Vector3d& point, bool includeSketc
     return 0;
 }
 
-int SketchObject::split(int GeoId, const Base::Vector3d& point)
+int SketchObject::split(int GeoId, const Base::Vector3d& point, bool preserveTangency)
 {
     // No need to check input data validity as this is an sketchobject managed operation
 
@@ -1073,7 +1248,14 @@ int SketchObject::split(int GeoId, const Base::Vector3d& point)
 
     for (const auto& oldConstrId : idsOfOldConstraints) {
         Constraint* con = allConstraints[oldConstrId];
-        deriveConstraintsForPieces(GeoId, newIds, newGeosConst, con, newConstraints);
+        deriveConstraintsForPieces(
+            GeoId,
+            newIds,
+            newGeosConst,
+            con,
+            newConstraints,
+            preserveTangency
+        );
     }
 
     // This also seems to reset SketchObject::Geometry.
@@ -1082,7 +1264,10 @@ int SketchObject::split(int GeoId, const Base::Vector3d& point)
 
     if (!isOriginalCurvePeriodic) {
         auto* joint = new Constraint();
-        joint->Type = Coincident;
+        const bool tangentJoint = preserveTangency
+            && (geoAsCurve->is<Part::GeomLineSegment>()
+                || geoAsCurve->is<Part::GeomBSplineCurve>());
+        joint->Type = tangentJoint ? Tangent : Coincident;
         joint->First = newIds.front();
         joint->FirstPos = PointPos::end;
         joint->Second = newIds.back();

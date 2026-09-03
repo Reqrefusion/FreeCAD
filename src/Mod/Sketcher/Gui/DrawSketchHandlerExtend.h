@@ -24,8 +24,6 @@
 
 #pragma once
 
-#include <Precision.hxx>
-
 #include <Gui/Notifications.h>
 #include <Gui/Selection/SelectionFilter.h>
 #include <Gui/Command.h>
@@ -290,23 +288,23 @@ public:
         else if (Mode == STATUS_SEEK_Second) {
             try {
                 int autoConstraintGeoId = BaseGeoId;
-                if (isConstructionMode()) {
-                    openCommand(
-                        QT_TRANSLATE_NOOP("Command", "Extend edge with construction geometry")
-                    );
-                    autoConstraintGeoId = extendWithConstruction();
+                if (isConstructionMode() && Increment > 0.0) {
+                    autoConstraintGeoId = sketchgui->getSketchObject()->getHighestCurveIndex() + 1;
                 }
-                else {
-                    openCommand(QT_TRANSLATE_NOOP("Command", "Extend edge"));
-                    Gui::cmdAppObjectArgs(
-                        sketchgui->getObject(),
-                        "extend(%d, %f, %d)\n",  // GeoId, increment, PointPos
-                        BaseGeoId,
-                        Increment,
-                        ExtendFromStart ? static_cast<int>(Sketcher::PointPos::start)
-                                        : static_cast<int>(Sketcher::PointPos::end)
-                    );
-                }
+                openCommand(
+                    isConstructionMode()
+                        ? QT_TRANSLATE_NOOP("Command", "Extend edge with construction geometry")
+                        : QT_TRANSLATE_NOOP("Command", "Extend edge")
+                );
+                Gui::cmdAppObjectArgs(
+                    sketchgui->getObject(),
+                    "extend(%d, %f, %d, %s)\n",  // GeoId, increment, PointPos, construction
+                    BaseGeoId,
+                    Increment,
+                    ExtendFromStart ? static_cast<int>(Sketcher::PointPos::start)
+                                    : static_cast<int>(Sketcher::PointPos::end),
+                    isConstructionMode() ? "True" : "False"
+                );
                 commitCommand();
 
                 ParameterGrp::handle hGrp = App::GetApplication().GetParameterGroupByPath(
@@ -322,7 +320,7 @@ public:
                     createAutoConstraints(
                         SugConstr,
                         autoConstraintGeoId,
-                        ExtendFromStart ? Sketcher::PointPos::start : Sketcher::PointPos::end
+                        (ExtendFromStart) ? Sketcher::PointPos::start : Sketcher::PointPos::end
                     );
                     SugConstr.clear();
                 }
@@ -410,64 +408,6 @@ public:
     }
 
 private:
-    int extendWithConstruction()
-    {
-        const Sketcher::PointPos targetPoint
-            = ExtendFromStart ? Sketcher::PointPos::start : Sketcher::PointPos::end;
-        if (Increment == 0.0) {
-            return BaseGeoId;
-        }
-
-        auto* sketch = sketchgui->getSketchObject();
-        Base::Vector3d splitPoint;
-        if (Increment > 0.0) {
-            splitPoint = sketch->getPoint(BaseGeoId, targetPoint);
-            Gui::cmdAppObjectArgs(
-                sketchgui->getObject(),
-                "extend(%d, %f, %d)\n",
-                BaseGeoId,
-                Increment,
-                static_cast<int>(targetPoint)
-            );
-        }
-        else {
-            const Base::Vector2d& point = ExtendFromStart ? EditCurve.front() : EditCurve.back();
-            splitPoint = Base::Vector3d(point.x, point.y, 0);
-            const auto oppositePoint
-                = ExtendFromStart ? Sketcher::PointPos::end : Sketcher::PointPos::start;
-            if ((splitPoint - sketch->getPoint(BaseGeoId, oppositePoint)).Length()
-                < 500 * Precision::Confusion()) {
-                Gui::cmdAppObjectArgs(
-                    sketchgui->getObject(),
-                    "setConstruction(%d,True)",
-                    BaseGeoId
-                );
-                SugConstr.clear();
-                return BaseGeoId;
-            }
-        }
-
-        const int newGeoId = sketch->getHighestCurveIndex() + 1;
-        Gui::cmdAppObjectArgs(
-            sketchgui->getObject(),
-            "split(%d,App.Vector(%f,%f,0))",
-            BaseGeoId,
-            splitPoint.x,
-            splitPoint.y
-        );
-        const int constructionGeoId = ExtendFromStart ? BaseGeoId : newGeoId;
-        Gui::cmdAppObjectArgs(
-            sketchgui->getObject(),
-            "setConstruction(%d,True)",
-            constructionGeoId
-        );
-
-        if (Increment > 0.0) {
-            return constructionGeoId;
-        }
-        return ExtendFromStart ? newGeoId : BaseGeoId;
-    }
-
     int crossProduct(Base::Vector2d& vec1, Base::Vector2d& vec2)
     {
         return vec1.x * vec2.y - vec1.y * vec2.x;

@@ -1661,7 +1661,8 @@ bool SketchObject::deriveConstraintsForPieces(
     const int oldId,
     const std::vector<int>& newIds,
     const Constraint* con,
-    std::vector<Constraint*>& newConstraints
+    std::vector<Constraint*>& newConstraints,
+    bool assumeTangency
 ) const
 {
     std::vector<const Part::Geometry*> newGeos;
@@ -1669,7 +1670,14 @@ bool SketchObject::deriveConstraintsForPieces(
         newGeos.push_back(getGeometry(newId));
     }
 
-    return deriveConstraintsForPieces(oldId, newIds, newGeos, con, newConstraints);
+    return deriveConstraintsForPieces(
+        oldId,
+        newIds,
+        newGeos,
+        con,
+        newConstraints,
+        assumeTangency
+    );
 }
 
 bool SketchObject::deriveConstraintsForPieces(
@@ -1677,7 +1685,8 @@ bool SketchObject::deriveConstraintsForPieces(
     const std::vector<int>& newIds,
     const std::vector<const Part::Geometry*>& newGeos,
     const Constraint* con,
-    std::vector<Constraint*>& newConstraints
+    std::vector<Constraint*>& newConstraints,
+    bool assumeTangency
 ) const
 {
     const Part::Geometry* geo = getGeometry(oldId);
@@ -1699,7 +1708,7 @@ bool SketchObject::deriveConstraintsForPieces(
         } break;
         case Tangent:
         case Perpendicular: {
-            if (geo->is<Part::GeomLineSegment>()) {
+            if (!assumeTangency && geo->is<Part::GeomLineSegment>()) {
                 transferToAll = true;
                 break;
             }
@@ -1858,10 +1867,17 @@ bool SketchObject::deriveConstraintsForPieces(
         return false;
     }
 
-    for (auto& newId : newIds) {
+    if (assumeTangency) {
         Constraint* trans = con->copy();
-        trans->substituteIndex(oldId, newId);
+        trans->substituteIndex(oldId, newIds.front());
         newConstraints.push_back(trans);
+    }
+    else {
+        for (auto& newId : newIds) {
+            Constraint* trans = con->copy();
+            trans->substituteIndex(oldId, newId);
+            newConstraints.push_back(trans);
+        }
     }
 
     return true;
