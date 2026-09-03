@@ -1080,12 +1080,15 @@ int SketchObject::trim(
         transferConstraints(GeoId, PointPos::end, endpointIds.back(), PointPos::end, true);
     }
 
+    const bool closedCircle = keepTrimmedAsConstruction && isOriginalCurvePeriodic
+        && geoAsCurve->is<Part::GeomCircle>();
     if (keepTrimmedAsConstruction) {
         const bool tangentJoint = geoAsCurve->is<Part::GeomLineSegment>()
             || geoAsCurve->is<Part::GeomBSplineCurve>();
         const auto addJoint = [&](int first, PointPos firstPos, int second, PointPos secondPos) {
             auto* joint = new Constraint();
-            joint->Type = tangentJoint ? Tangent : Coincident;
+            joint->Type = (tangentJoint || (closedCircle && second == constructionId)) ? Tangent
+                                                                                      : Coincident;
             joint->First = first;
             joint->FirstPos = firstPos;
             joint->Second = second;
@@ -1108,7 +1111,7 @@ int SketchObject::trim(
         // Make centers coincident
         const auto& centerIds = keepTrimmedAsConstruction ? pieceIds : newIds;
         for (const int id : centerIds) {
-            if (id == newIds.front()) {
+            if (id == newIds.front() || (closedCircle && id == constructionId)) {
                 continue;
             }
             auto* centerJoint = new Constraint();
