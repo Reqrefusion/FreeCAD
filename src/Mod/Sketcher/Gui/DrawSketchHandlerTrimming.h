@@ -24,10 +24,7 @@
 
 #pragma once
 
-#include <cmath>
-
 #include <QApplication>
-#include <Precision.hxx>
 #include <Base/Tools.h>
 
 #include <Gui/Notifications.h>
@@ -36,7 +33,6 @@
 #include <Gui/CommandT.h>
 
 #include <Mod/Sketcher/App/SketchObject.h>
-#include <Mod/Sketcher/App/PythonConverter.h>
 
 #include "DrawSketchControllableHandler.h"
 #include "DrawSketchDefaultWidgetController.h"
@@ -115,8 +111,6 @@ public:
 
     bool pressButton(Base::Vector2d onSketchPos) override
     {
-        // The construction result is created under the cursor. Repeating trim while dragging
-        // would immediately select that new geometry and process it again.
         mousePressed = !isConstructionMode();
         return DrawSketchControllableHandler::pressButton(onSketchPos);
     }
@@ -231,248 +225,44 @@ public:
     }
 
 private:
-    struct GeometryReference
-    {
-        int geoId = Sketcher::GeoEnum::GeoUndef;
-        long geometryId = 0;
-    };
-
-    struct GeometryPointReference
-    {
-        int geoId = Sketcher::GeoEnum::GeoUndef;
-        Sketcher::PointPos point = Sketcher::PointPos::none;
-    };
-
-    GeometryReference makeGeometryReference(Sketcher::SketchObject* sketch, int geoId) const
-    {
-        GeometryReference reference;
-        reference.geoId = geoId;
-        if (geoId >= 0) {
-            reference.geometryId = Sketcher::GeometryFacade::getId(sketch->getGeometry(geoId));
-        }
-        return reference;
-    }
-
-    int resolveGeometryReference(
-        Sketcher::SketchObject* sketch,
-        const GeometryReference& reference
-    ) const
-    {
-        if (reference.geoId < 0) {
-            return reference.geoId;
-        }
-
-        for (int geoId = 0; geoId <= sketch->getHighestCurveIndex(); ++geoId) {
-            if (Sketcher::GeometryFacade::getId(sketch->getGeometry(geoId))
-                == reference.geometryId) {
-                return geoId;
-            }
-        }
-        return Sketcher::GeoEnum::GeoUndef;
-    }
-
-    bool pointsCoincide(const Base::Vector3d& first, const Base::Vector3d& second) const
-    {
-        return (first - second).Length() < 500 * Precision::Confusion();
-    }
-
-    GeometryPointReference findAdjacentGeometryPoint(
-        Sketcher::SketchObject* sketch,
-        const Base::Vector3d& point,
-        int firstExcludedGeoId,
-        int secondExcludedGeoId
-    ) const
-    {
-        for (int geoId = 0; geoId <= sketch->getHighestCurveIndex(); ++geoId) {
-            if (geoId == firstExcludedGeoId || geoId == secondExcludedGeoId) {
-                continue;
-            }
-
-            const Part::Geometry* geometry = sketch->getGeometry(geoId);
-            if (!Sketcher::GeometryFacade::isInternalType(
-                    geometry,
-                    Sketcher::InternalType::None
-                )
-                || sketch->isClosedCurve(geometry)) {
-                continue;
-            }
-
-            if (pointsCoincide(
-                    sketch->getPoint(geoId, Sketcher::PointPos::start),
-                    point
-                )) {
-                return {geoId, Sketcher::PointPos::start};
-            }
-            if (pointsCoincide(
-                    sketch->getPoint(geoId, Sketcher::PointPos::end),
-                    point
-                )) {
-                return {geoId, Sketcher::PointPos::end};
-            }
-        }
-        return {};
-    }
-
-    void setConstruction(int geoId)
-    {
-        Gui::cmdAppObjectArgs(sketchgui->getObject(), "setConstruction(%d,True)", geoId);
-    }
-
-    int addConstructionGeometry(std::unique_ptr<Part::Geometry> geometry)
-    {
-        Sketcher::GeometryFacade::setConstruction(geometry.get(), true);
-        std::vector<Part::Geometry*> geometries {geometry.get()};
-        const std::string sketchObject = Gui::Command::getObjectCmd(sketchgui->getObject());
-        Gui::Command::doCommand(
-            Gui::Command::Doc,
-            Sketcher::PythonConverter::convert(
-                sketchObject,
-                geometries,
-                Sketcher::PythonConverter::Mode::OmitInternalGeometry
-            )
-                .c_str()
-        );
-        return sketchgui->getSketchObject()->getHighestCurveIndex();
-    }
-
-    std::unique_ptr<Sketcher::Constraint> makeCoincidentConstraint(
-        int firstGeoId,
-        Sketcher::PointPos firstPoint,
-        int secondGeoId,
-        Sketcher::PointPos secondPoint
-    ) const
-    {
-        auto constraint = std::make_unique<Sketcher::Constraint>();
-        constraint->Type = Sketcher::Coincident;
-        constraint->First = firstGeoId;
-        constraint->FirstPos = firstPoint;
-        constraint->Second = secondGeoId;
-        constraint->SecondPos = secondPoint;
-        return constraint;
-    }
-
-    std::unique_ptr<Sketcher::Constraint> makeCutConstraint(
-        int constructionGeoId,
-        Sketcher::PointPos constructionPoint,
-        const GeometryPointReference& adjacentPoint,
-        int cuttingGeoId,
-        const Base::Vector3d& cutPoint
-    )
-    {
-        if (adjacentPoint.geoId != Sketcher::GeoEnum::GeoUndef) {
-            return makeCoincidentConstraint(
-                constructionGeoId,
-                constructionPoint,
-                adjacentPoint.geoId,
-                adjacentPoint.point
-            );
-        }
-
-        if (cuttingGeoId == Sketcher::GeoEnum::GeoUndef || cuttingGeoId == constructionGeoId) {
-            return {};
-        }
-
-        // Negative geometry IDs are axes/external references. They support PointOnObject, but
-        // they do not necessarily expose regular curve endpoints through getPoint().
-        if (cuttingGeoId >= 0) {
-            auto* sketch = sketchgui->getSketchObject();
-            if (pointsCoincide(
-                    sketch->getPoint(cuttingGeoId, Sketcher::PointPos::start),
-                    cutPoint
-                )) {
-                return makeCoincidentConstraint(
-                    constructionGeoId,
-                    constructionPoint,
-                    cuttingGeoId,
-                    Sketcher::PointPos::start
-                );
-            }
-            if (pointsCoincide(
-                    sketch->getPoint(cuttingGeoId, Sketcher::PointPos::end),
-                    cutPoint
-                )) {
-                return makeCoincidentConstraint(
-                    constructionGeoId,
-                    constructionPoint,
-                    cuttingGeoId,
-                    Sketcher::PointPos::end
-                );
-            }
-        }
-
-        auto constraint = std::make_unique<Sketcher::Constraint>();
-        constraint->Type = Sketcher::PointOnObject;
-        constraint->First = constructionGeoId;
-        constraint->FirstPos = constructionPoint;
-        constraint->Second = cuttingGeoId;
-        return constraint;
-    }
-
     void trimAsConstruction()
     {
         auto* sketch = sketchgui->getObject<Sketcher::SketchObject>();
-
-        int cuttingGeoId1 = Sketcher::GeoEnum::GeoUndef;
-        int cuttingGeoId2 = Sketcher::GeoEnum::GeoUndef;
-        Base::Vector3d cutPoint1;
-        Base::Vector3d cutPoint2;
+        int firstGeoId, secondGeoId;
+        Base::Vector3d firstPoint, secondPoint;
         if (!sketch->seekTrimPoints(
                 geoIdToTrim,
                 Base::Vector3d(trimPos.x, trimPos.y, 0),
                 includeAxes,
-                cuttingGeoId1,
-                cutPoint1,
-                cuttingGeoId2,
-                cutPoint2
+                firstGeoId,
+                firstPoint,
+                secondGeoId,
+                secondPoint
             )) {
-            // Normal trim deletes the whole geometry when no boundaries are found.
-            setConstruction(geoIdToTrim);
+            Gui::cmdAppObjectArgs(
+                sketchgui->getObject(),
+                "setConstruction(%d,True)",
+                geoIdToTrim
+            );
             return;
         }
 
-        const auto* curve = static_cast<const Part::GeomCurve*>(
-            sketch->getGeometry(geoIdToTrim)
-        );
+        const auto* curve
+            = static_cast<const Part::GeomCurve*>(sketch->getGeometry(geoIdToTrim));
+        if (firstGeoId == Sketcher::GeoEnum::GeoUndef) {
+            firstPoint = sketch->getPoint(geoIdToTrim, Sketcher::PointPos::start);
+        }
+        if (secondGeoId == Sketcher::GeoEnum::GeoUndef) {
+            secondPoint = sketch->getPoint(geoIdToTrim, Sketcher::PointPos::end);
+        }
+
         double firstParameter = curve->getFirstParameter();
-        double lastParameter = curve->getLastParameter();
-        double firstCutParameter = firstParameter;
-        double secondCutParameter = lastParameter;
-        curve->closestParameter(cutPoint1, firstCutParameter);
-        curve->closestParameter(cutPoint2, secondCutParameter);
-
-        bool hasFirstCut = cuttingGeoId1 != Sketcher::GeoEnum::GeoUndef;
-        bool hasSecondCut = cuttingGeoId2 != Sketcher::GeoEnum::GeoUndef;
-        if (!sketch->isClosedCurve(curve)
-            && std::abs(firstCutParameter - firstParameter) < Precision::PApproximation()) {
-            hasFirstCut = false;
-            cuttingGeoId1 = Sketcher::GeoEnum::GeoUndef;
-        }
-        if (!sketch->isClosedCurve(curve)
-            && std::abs(secondCutParameter - lastParameter) < Precision::PApproximation()) {
-            hasSecondCut = false;
-            cuttingGeoId2 = Sketcher::GeoEnum::GeoUndef;
-        }
-        if ((!hasFirstCut && !hasSecondCut)
-            || (hasFirstCut && hasSecondCut && pointsCoincide(cutPoint1, cutPoint2))) {
-            setConstruction(geoIdToTrim);
-            return;
-        }
-
-        const GeometryReference cuttingReference1
-            = makeGeometryReference(sketch, cuttingGeoId1);
-        const GeometryReference cuttingReference2
-            = makeGeometryReference(sketch, cuttingGeoId2);
-        const double constructionFirstParameter
-            = hasFirstCut ? firstCutParameter : firstParameter;
-        const double constructionLastParameter
-            = hasSecondCut ? secondCutParameter : lastParameter;
-        std::unique_ptr<Part::Geometry> constructionGeometry(
-            curve->createArc(constructionFirstParameter, constructionLastParameter)
+        double secondParameter = curve->getLastParameter();
+        curve->closestParameter(firstPoint, firstParameter);
+        curve->closestParameter(secondPoint, secondParameter);
+        std::unique_ptr<Part::Geometry> removedPart(
+            curve->createArc(firstParameter, secondParameter)
         );
-        if (!constructionGeometry) {
-            setConstruction(geoIdToTrim);
-            return;
-        }
 
         Gui::cmdAppObjectArgs(
             sketchgui->getObject(),
@@ -482,61 +272,10 @@ private:
             trimPos.y,
             includeAxes ? "True" : "False"
         );
-
-        const int resolvedCuttingGeoId1
-            = resolveGeometryReference(sketch, cuttingReference1);
-        const int resolvedCuttingGeoId2
-            = resolveGeometryReference(sketch, cuttingReference2);
-        const GeometryPointReference adjacentPoint1 = hasFirstCut
-            ? findAdjacentGeometryPoint(
-                  sketch,
-                  cutPoint1,
-                  resolvedCuttingGeoId1,
-                  resolvedCuttingGeoId2
-              )
-            : GeometryPointReference {};
-        const GeometryPointReference adjacentPoint2 = hasSecondCut
-            ? findAdjacentGeometryPoint(
-                  sketch,
-                  cutPoint2,
-                  resolvedCuttingGeoId1,
-                  resolvedCuttingGeoId2
-              )
-            : GeometryPointReference {};
-        const int constructionGeoId = addConstructionGeometry(std::move(constructionGeometry));
-
-        std::vector<std::unique_ptr<Sketcher::Constraint>> boundaryConstraints;
-        if (hasFirstCut) {
-            if (auto constraint = makeCutConstraint(
-                    constructionGeoId,
-                    Sketcher::PointPos::start,
-                    adjacentPoint1,
-                    resolvedCuttingGeoId1,
-                    cutPoint1
-                )) {
-                boundaryConstraints.push_back(std::move(constraint));
-            }
-        }
-        if (hasSecondCut) {
-            if (auto constraint = makeCutConstraint(
-                    constructionGeoId,
-                    Sketcher::PointPos::end,
-                    adjacentPoint2,
-                    resolvedCuttingGeoId2,
-                    cutPoint2
-                )) {
-                boundaryConstraints.push_back(std::move(constraint));
-            }
-        }
-
-        // Normal trim may already preserve the same topological relationship. Diagnose all
-        // candidates together and only add the subset that the Sketcher solver finds independent.
-        if (boundaryConstraints.empty()
-            || !filterRedundantAutoConstraints(boundaryConstraints)) {
-            return;
-        }
-        if (!boundaryConstraints.empty()) {
-            addGeneratedAutoConstraints(boundaryConstraints);
+        if (removedPart) {
+            Sketcher::GeometryFacade::setConstruction(removedPart.get(), true);
+            ShapeGeometry.push_back(std::move(removedPart));
+            commandAddShapeGeometryAndConstraints();
         }
     }
 
