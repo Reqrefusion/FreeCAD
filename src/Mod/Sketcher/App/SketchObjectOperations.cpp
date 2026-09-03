@@ -694,7 +694,7 @@ bool getParamLimitsOfNewGeosForTrim(
     std::array<int, 2>& cuttingGeoIds,
     std::array<Base::Vector3d, 2>& cutPoints,
     std::vector<std::pair<double, double>>& paramsOfNewGeos,
-    std::pair<double, double>* trimmedParams = nullptr
+    std::pair<double, double>& trimmedParams
 )
 {
     const auto* geoAsCurve = obj->getGeometry<Part::GeomCurve>(GeoId);
@@ -716,12 +716,8 @@ bool getParamLimitsOfNewGeosForTrim(
         cuttingGeoIds[1] = GeoEnum::GeoUndef;
     }
 
-    if (trimmedParams) {
-        trimmedParams->first
-            = cuttingGeoIds[0] == GeoEnum::GeoUndef ? firstParam : cut0Param;
-        trimmedParams->second
-            = cuttingGeoIds[1] == GeoEnum::GeoUndef ? lastParam : cut1Param;
-    }
+    trimmedParams.first = cuttingGeoIds[0] == GeoEnum::GeoUndef ? firstParam : cut0Param;
+    trimmedParams.second = cuttingGeoIds[1] == GeoEnum::GeoUndef ? lastParam : cut1Param;
 
     size_t numUndefs = std::count(cuttingGeoIds.begin(), cuttingGeoIds.end(), GeoEnum::GeoUndef);
 
@@ -940,7 +936,7 @@ int SketchObject::trim(
             cuttingGeoIds,
             cutPoints,
             paramsOfNewGeos,
-            keepTrimmedAsConstruction ? &trimmedParams : nullptr
+            trimmedParams
         )) {
         return -1;
     }

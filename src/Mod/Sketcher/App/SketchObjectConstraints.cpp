@@ -1661,8 +1661,7 @@ bool SketchObject::deriveConstraintsForPieces(
     const int oldId,
     const std::vector<int>& newIds,
     const Constraint* con,
-    std::vector<Constraint*>& newConstraints,
-    bool assumeTangency
+    std::vector<Constraint*>& newConstraints
 ) const
 {
     std::vector<const Part::Geometry*> newGeos;
@@ -1670,14 +1669,7 @@ bool SketchObject::deriveConstraintsForPieces(
         newGeos.push_back(getGeometry(newId));
     }
 
-    return deriveConstraintsForPieces(
-        oldId,
-        newIds,
-        newGeos,
-        con,
-        newConstraints,
-        assumeTangency
-    );
+    return deriveConstraintsForPieces(oldId, newIds, newGeos, con, newConstraints);
 }
 
 bool SketchObject::deriveConstraintsForPieces(
@@ -1867,17 +1859,11 @@ bool SketchObject::deriveConstraintsForPieces(
         return false;
     }
 
-    if (assumeTangency) {
+    const size_t transferCount = assumeTangency ? 1 : newIds.size();
+    for (size_t i = 0; i < transferCount; ++i) {
         Constraint* trans = con->copy();
-        trans->substituteIndex(oldId, newIds.front());
+        trans->substituteIndex(oldId, newIds[i]);
         newConstraints.push_back(trans);
-    }
-    else {
-        for (auto& newId : newIds) {
-            Constraint* trans = con->copy();
-            trans->substituteIndex(oldId, newId);
-            newConstraints.push_back(trans);
-        }
     }
 
     return true;

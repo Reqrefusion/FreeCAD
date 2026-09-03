@@ -111,7 +111,7 @@ public:
 
     bool pressButton(Base::Vector2d onSketchPos) override
     {
-        mousePressed = !isConstructionMode();
+        mousePressed = true;
         return DrawSketchControllableHandler::pressButton(onSketchPos);
     }
 
@@ -127,7 +127,7 @@ public:
         geoIdToTrim = getPreselectCurve();
 
         // Hold-and-drag trim
-        if (mousePressed) {
+        if (mousePressed && !isConstructionMode()) {
             executeCommands();
             return;
         }
@@ -196,11 +196,7 @@ public:
         Gui::Selection().rmvPreselect();
 
         try {
-            openCommand(
-                isConstructionMode()
-                    ? QT_TRANSLATE_NOOP("Command", "Trim edge as construction geometry")
-                    : QT_TRANSLATE_NOOP("Command", "Trim edge")
-            );
+            openCommand(QT_TRANSLATE_NOOP("Command", "Trim edge"));
             Gui::cmdAppObjectArgs(
                 sketchgui->getObject(),
                 "trim(%d,App.Vector(%f,%f,0),%s,%s)",

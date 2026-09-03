@@ -287,15 +287,7 @@ public:
         }
         else if (Mode == STATUS_SEEK_Second) {
             try {
-                int autoConstraintGeoId = BaseGeoId;
-                if (isConstructionMode() && Increment > 0.0) {
-                    autoConstraintGeoId = sketchgui->getSketchObject()->getHighestCurveIndex() + 1;
-                }
-                openCommand(
-                    isConstructionMode()
-                        ? QT_TRANSLATE_NOOP("Command", "Extend edge with construction geometry")
-                        : QT_TRANSLATE_NOOP("Command", "Extend edge")
-                );
+                openCommand(QT_TRANSLATE_NOOP("Command", "Extend edge"));
                 Gui::cmdAppObjectArgs(
                     sketchgui->getObject(),
                     "extend(%d, %f, %d, %s)\n",  // GeoId, increment, PointPos, construction
@@ -317,6 +309,10 @@ public:
 
                 // constrain chosen point
                 if (!SugConstr.empty()) {
+                    int autoConstraintGeoId = BaseGeoId;
+                    if (isConstructionMode() && Increment > 0.0) {
+                        autoConstraintGeoId = sketchgui->getSketchObject()->getHighestCurveIndex();
+                    }
                     createAutoConstraints(
                         SugConstr,
                         autoConstraintGeoId,

@@ -503,8 +503,7 @@ public:
         const int oldId,
         const std::vector<int>& newIds,
         const Constraint* con,
-        std::vector<Constraint*>& newConstraints,
-        bool assumeTangency = false
+        std::vector<Constraint*>& newConstraints
     ) const;
     // Explicitly giving `newGeos` for cases where they are not yet added
     bool deriveConstraintsForPieces(
