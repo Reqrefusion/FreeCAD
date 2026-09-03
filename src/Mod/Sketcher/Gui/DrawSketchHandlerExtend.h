@@ -24,13 +24,14 @@
 
 #pragma once
 
+#include <Precision.hxx>
+
 #include <Gui/Notifications.h>
 #include <Gui/Selection/SelectionFilter.h>
 #include <Gui/Command.h>
 #include <Gui/CommandT.h>
 
 #include <Mod/Sketcher/App/SketchObject.h>
-#include <Mod/Sketcher/App/PythonConverter.h>
 
 #include "DrawSketchHandler.h"
 #include "Utils.h"
@@ -409,22 +410,6 @@ public:
     }
 
 private:
-    int addConstructionGeometry(std::unique_ptr<Part::Geometry> geometry)
-    {
-        Sketcher::GeometryFacade::setConstruction(geometry.get(), true);
-        std::vector<Part::Geometry*> geometries {geometry.get()};
-        Gui::Command::doCommand(
-            Gui::Command::Doc,
-            Sketcher::PythonConverter::convert(
-                Gui::Command::getObjectCmd(sketchgui->getObject()),
-                geometries,
-                Sketcher::PythonConverter::Mode::OmitInternalGeometry
-            )
-                .c_str()
-        );
-        return sketchgui->getSketchObject()->getHighestCurveIndex();
-    }
-
     int extendWithConstruction()
     {
         const Sketcher::PointPos targetPoint
@@ -433,44 +418,10 @@ private:
             return BaseGeoId;
         }
 
-        const Part::Geometry* geometry = sketchgui->getSketchObject()->getGeometry(BaseGeoId);
-        std::unique_ptr<Part::Geometry> constructionPart;
-        if (geometry->is<Part::GeomLineSegment>()) {
-            const auto* line = static_cast<const Part::GeomLineSegment*>(geometry);
-            const Base::Vector3d editedStart(EditCurve[0].x, EditCurve[0].y, 0);
-            const Base::Vector3d editedEnd(EditCurve[1].x, EditCurve[1].y, 0);
-            auto part = std::make_unique<Part::GeomLineSegment>();
-            if (ExtendFromStart) {
-                part->setPoints(
-                    Increment > 0.0 ? editedStart : line->getStartPoint(),
-                    Increment > 0.0 ? line->getStartPoint() : editedStart
-                );
-            }
-            else {
-                part->setPoints(
-                    Increment > 0.0 ? line->getEndPoint() : editedEnd,
-                    Increment > 0.0 ? editedEnd : line->getEndPoint()
-                );
-            }
-            constructionPart = std::move(part);
-        }
-        else {
-            const auto* arc = static_cast<const Part::GeomArcOfCircle*>(geometry);
-            double start, end;
-            arc->getRange(start, end, true);
-            constructionPart.reset(
-                Increment > 0.0
-                    ? (ExtendFromStart ? arc->createArc(start - Increment, start)
-                                       : arc->createArc(end, end + Increment))
-                    : (ExtendFromStart ? arc->createArc(start, start - Increment)
-                                       : arc->createArc(end + Increment, end))
-            );
-        }
-
-        if (!constructionPart) {
-            return BaseGeoId;
-        }
-        if (Increment < 0.0) {
+        auto* sketch = sketchgui->getSketchObject();
+        Base::Vector3d splitPoint;
+        if (Increment > 0.0) {
+            splitPoint = sketch->getPoint(BaseGeoId, targetPoint);
             Gui::cmdAppObjectArgs(
                 sketchgui->getObject(),
                 "extend(%d, %f, %d)\n",
@@ -479,9 +430,42 @@ private:
                 static_cast<int>(targetPoint)
             );
         }
+        else {
+            const Base::Vector2d& point = ExtendFromStart ? EditCurve.front() : EditCurve.back();
+            splitPoint = Base::Vector3d(point.x, point.y, 0);
+            const auto oppositePoint
+                = ExtendFromStart ? Sketcher::PointPos::end : Sketcher::PointPos::start;
+            if ((splitPoint - sketch->getPoint(BaseGeoId, oppositePoint)).Length()
+                < 500 * Precision::Confusion()) {
+                Gui::cmdAppObjectArgs(
+                    sketchgui->getObject(),
+                    "setConstruction(%d,True)",
+                    BaseGeoId
+                );
+                SugConstr.clear();
+                return BaseGeoId;
+            }
+        }
 
-        const int constructionGeoId = addConstructionGeometry(std::move(constructionPart));
-        return Increment > 0.0 ? constructionGeoId : BaseGeoId;
+        const int newGeoId = sketch->getHighestCurveIndex() + 1;
+        Gui::cmdAppObjectArgs(
+            sketchgui->getObject(),
+            "split(%d,App.Vector(%f,%f,0))",
+            BaseGeoId,
+            splitPoint.x,
+            splitPoint.y
+        );
+        const int constructionGeoId = ExtendFromStart ? BaseGeoId : newGeoId;
+        Gui::cmdAppObjectArgs(
+            sketchgui->getObject(),
+            "setConstruction(%d,True)",
+            constructionGeoId
+        );
+
+        if (Increment > 0.0) {
+            return constructionGeoId;
+        }
+        return ExtendFromStart ? newGeoId : BaseGeoId;
     }
 
     int crossProduct(Base::Vector2d& vec1, Base::Vector2d& vec2)

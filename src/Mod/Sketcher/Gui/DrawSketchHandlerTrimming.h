@@ -25,6 +25,7 @@
 #pragma once
 
 #include <QApplication>
+#include <Precision.hxx>
 #include <Base/Tools.h>
 
 #include <Gui/Notifications.h>
@@ -225,6 +226,44 @@ public:
     }
 
 private:
+    void constrainCutPoint(
+        int geometryId,
+        Sketcher::PointPos point,
+        int cuttingGeometryId,
+        const Base::Vector3d& cutPoint,
+        bool matchCuttingEndpoint = true
+    )
+    {
+        if (cuttingGeometryId == Sketcher::GeoEnum::GeoUndef) {
+            return;
+        }
+
+        auto* sketch = sketchgui->getObject<Sketcher::SketchObject>();
+        auto constraint = std::make_unique<Sketcher::Constraint>();
+        constraint->Type = Sketcher::PointOnObject;
+        constraint->First = geometryId;
+        constraint->FirstPos = point;
+        constraint->Second = cuttingGeometryId;
+
+        if (matchCuttingEndpoint && cuttingGeometryId >= 0
+            && !sketch->isClosedCurve(sketch->getGeometry(cuttingGeometryId))) {
+            for (const auto cuttingPoint : {Sketcher::PointPos::start, Sketcher::PointPos::end}) {
+                if ((sketch->getPoint(cuttingGeometryId, cuttingPoint) - cutPoint).Length()
+                    < 500 * Precision::Confusion()) {
+                    constraint->Type = Sketcher::Coincident;
+                    constraint->SecondPos = cuttingPoint;
+                    break;
+                }
+            }
+        }
+
+        std::vector<std::unique_ptr<Sketcher::Constraint>> constraints;
+        constraints.push_back(std::move(constraint));
+        if (filterRedundantAutoConstraints(constraints) && !constraints.empty()) {
+            addGeneratedAutoConstraints(constraints);
+        }
+    }
+
     void trimAsConstruction()
     {
         auto* sketch = sketchgui->getObject<Sketcher::SketchObject>();
@@ -247,36 +286,71 @@ private:
             return;
         }
 
-        const auto* curve
-            = static_cast<const Part::GeomCurve*>(sketch->getGeometry(geoIdToTrim));
-        if (firstGeoId == Sketcher::GeoEnum::GeoUndef) {
-            firstPoint = sketch->getPoint(geoIdToTrim, Sketcher::PointPos::start);
-        }
-        if (secondGeoId == Sketcher::GeoEnum::GeoUndef) {
-            secondPoint = sketch->getPoint(geoIdToTrim, Sketcher::PointPos::end);
+        int constructionGeoId = geoIdToTrim;
+        const bool closed = sketch->isClosedCurve(sketch->getGeometry(geoIdToTrim));
+        if (closed
+            && (firstGeoId == Sketcher::GeoEnum::GeoUndef
+                || secondGeoId == Sketcher::GeoEnum::GeoUndef
+                || (firstPoint - secondPoint).Length() < 500 * Precision::Confusion())) {
+            Gui::cmdAppObjectArgs(
+                sketchgui->getObject(),
+                "setConstruction(%d,True)",
+                geoIdToTrim
+            );
+            return;
         }
 
-        double firstParameter = curve->getFirstParameter();
-        double secondParameter = curve->getLastParameter();
-        curve->closestParameter(firstPoint, firstParameter);
-        curve->closestParameter(secondPoint, secondParameter);
-        std::unique_ptr<Part::Geometry> removedPart(
-            curve->createArc(firstParameter, secondParameter)
-        );
+        if (firstGeoId != Sketcher::GeoEnum::GeoUndef) {
+            const int newGeoId = sketch->getHighestCurveIndex() + 1;
+            Gui::cmdAppObjectArgs(
+                sketchgui->getObject(),
+                "split(%d,App.Vector(%f,%f,0))",
+                geoIdToTrim,
+                firstPoint.x,
+                firstPoint.y
+            );
+            constructionGeoId = closed ? geoIdToTrim : newGeoId;
+        }
+
+        int secondPieceGeoId = Sketcher::GeoEnum::GeoUndef;
+        if (secondGeoId != Sketcher::GeoEnum::GeoUndef) {
+            secondPieceGeoId = sketch->getHighestCurveIndex() + 1;
+            Gui::cmdAppObjectArgs(
+                sketchgui->getObject(),
+                "split(%d,App.Vector(%f,%f,0))",
+                constructionGeoId,
+                secondPoint.x,
+                secondPoint.y
+            );
+        }
 
         Gui::cmdAppObjectArgs(
             sketchgui->getObject(),
-            "trim(%d,App.Vector(%f,%f,0),%s)",
-            geoIdToTrim,
-            trimPos.x,
-            trimPos.y,
-            includeAxes ? "True" : "False"
+            "setConstruction(%d,True)",
+            constructionGeoId
         );
-        if (removedPart) {
-            Sketcher::GeometryFacade::setConstruction(removedPart.get(), true);
-            ShapeGeometry.push_back(std::move(removedPart));
-            commandAddShapeGeometryAndConstraints();
+
+        constrainCutPoint(
+            constructionGeoId,
+            Sketcher::PointPos::start,
+            firstGeoId,
+            firstPoint
+        );
+        if (closed && secondPieceGeoId != Sketcher::GeoEnum::GeoUndef) {
+            constrainCutPoint(
+                secondPieceGeoId,
+                Sketcher::PointPos::end,
+                firstGeoId,
+                firstPoint,
+                false
+            );
         }
+        constrainCutPoint(
+            constructionGeoId,
+            Sketcher::PointPos::end,
+            secondGeoId,
+            secondPoint
+        );
     }
 
     std::string getToolName() const override
