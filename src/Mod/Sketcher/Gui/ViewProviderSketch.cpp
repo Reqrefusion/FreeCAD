@@ -1331,6 +1331,13 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
             }
         }
         else {// Button 1 released
+            if (Mode == STATUS_SKETCH_Drag || Mode == STATUS_SKETCH_DragConstraint) {
+                // Use the actual cursor position instead of the picked geometry position.
+                if (!getCoordsOnSketchPlane(
+                        point, normal, snapHandle->cursorPos.x, snapHandle->cursorPos.y)) {
+                    return false;
+                }
+            }
             // Do things depending on the mode of the user interaction
             switch (Mode) {
                 case STATUS_SELECT_Point:
@@ -1395,11 +1402,6 @@ bool ViewProviderSketch::mouseButtonPressed(int Button, bool pressed, const SbVe
                     return true;
                 }
                 case STATUS_SKETCH_Drag: {
-                    if (!getCoordsOnSketchPlane(point, normal, x, y)) {
-                        return false;
-                    }
-                    snapHandle = std::make_unique<SnapManager::SnapHandle>(
-                        snapManager.get(), Base::Vector2d(x, y));
                     Base::Vector2d snappedPos = snapHandle->compute();
                     commitDragMove(snappedPos.x, snappedPos.y);
                     setSketchMode(STATUS_NONE);
